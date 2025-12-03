@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { RoleSelection } from "./components/RoleSelection";
-import  CharacterSelection  from "./components/CharacterSelection";
+import {CharacterSelection} from "./components/CharacterSelection";
 import { GameDashboard } from "./components/GameDashboard";
 import { PixelBattleGame } from "./components/PixelBattleGame";
 import { TeacherDashboard } from "./components/TeacherDashboard";
 import { Toaster } from "./components/ui/sonner";
-import { toast } from "sonner@2.0.3";
+import { toast } from  "sonner";
+import "./App.css";
+
+
 
 // Mock data for quizzes
 const mockQuizzes = {
@@ -376,6 +379,7 @@ export default function App() {
   };
 
   return (
+    <div className="App">
     <>
       {appState === 'role' && (
         <RoleSelection onSelectRole={handleRoleSelect} />
@@ -420,5 +424,6 @@ export default function App() {
 
       <Toaster />
     </>
+    </div>
   );
 }
