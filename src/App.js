@@ -6,7 +6,7 @@ import { PixelBattleGame } from "./components/PixelBattleGame";
 import { TeacherDashboard } from "./components/TeacherDashboard";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from  "sonner";
-import "./App.css";
+import "./styles/globals.css";
 
 
 
