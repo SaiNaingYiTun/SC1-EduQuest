@@ -1,137 +1,128 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Button } from "./ui/button";
-import { Sword, Wand2, Code, Lightbulb, Palette, Heart } from "lucide-react";
-import { motion } from "motion/react";
+import { useState } from 'react';
+import { Check } from 'lucide-react';
+import { Character } from '../App';
+
+
 
 const characterClasses = [
   {
-    id: "warrior",
-    name: "Warrior",
-    subject: "Mathematics",
-    description: "Master of numbers and logic. Solves equations with brute force and precision.",
-    icon: Sword,
-    color: "bg-red-500",
-    stats: {
-      hp: 150,
-      strength: "Problem Solving",
-      specialty: "Algebra & Geometry"
-    }
+    id: 'warrior',
+    name: 'Warrior',
+    description: 'Strong and brave, excels in combat challenges',
+    icon: '⚔️',
+    avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwd2FycmlvciUyMGtuaWdodHxlbnwxfHx8fDE3NjQ5MzQwOTF8MA&ixlib=rb-4.1.0&q=80&w=400',
+    color: 'red'
   },
   {
-    id: "mage",
-    name: "Mage",
-    subject: "Science",
-    description: "Harnesses the power of nature and experiments. Casts spells of knowledge.",
-    icon: Wand2,
-    color: "bg-purple-500",
-    stats: {
-      hp: 120,
-      strength: "Analysis",
-      specialty: "Physics & Chemistry"
-    }
+    id: 'mage',
+    name: 'Mage',
+    description: 'Wise and intelligent, masters arcane knowledge',
+    icon: '🔮',
+    avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpZXZhbCUyMG1hZ2UlMjB3aXphcmR8ZW58MXx8fHwxNzY1MDE2NzIyfDA&ixlib=rb-4.1.0&q=80&w=400',
+    color: 'purple'
   },
   {
-    id: "hacker",
-    name: "Hacker",
-    subject: "Programming",
-    description: "Codes their way through challenges. Master of algorithms and logic.",
-    icon: Code,
-    color: "bg-green-500",
-    stats: {
-      hp: 130,
-      strength: "Critical Thinking",
-      specialty: "Code & Algorithms"
-    }
+    id: 'rogue',
+    name: 'Rogue',
+    description: 'Quick and cunning, solves problems with agility',
+    icon: '🗡️',
+    avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwcm9ndWUlMjBhcmNoZXJ8ZW58MXx8fHwxNzY0OTc4NzgxfDA&ixlib=rb-4.1.0&q=80&w=400',
+    color: 'green'
   },
   {
-    id: "scholar",
-    name: "Scholar",
-    subject: "History & Literature",
-    description: "Keeper of stories and wisdom. Learns from the past to shape the future.",
-    icon: Lightbulb,
-    color: "bg-yellow-500",
-    stats: {
-      hp: 110,
-      strength: "Memory",
-      specialty: "Events & Analysis"
-    }
-  },
-  {
-    id: "artist",
-    name: "Artist",
-    subject: "Arts & Design",
-    description: "Creates beauty through creativity. Sees patterns where others see chaos.",
-    icon: Palette,
-    color: "bg-pink-500",
-    stats: {
-      hp: 100,
-      strength: "Creativity",
-      specialty: "Design & Theory"
-    }
+    id: 'cleric',
+    name: 'Cleric',
+    description: 'Devoted and supportive, helps others succeed',
+    icon: '✨',
+    avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwaGVhbGVyJTIwY2xlcmljfGVufDF8fHx8MTc2NDk3ODc5M3ww&ixlib=rb-4.1.0&q=80&w=400',
+    color: 'yellow'
   }
 ];
 
-export function CharacterSelection({ onSelectCharacter }) {
+export default function CharacterSelection({ onCharacterCreated, userId }) {
+  const [selectedClass, setSelectedClass] = useState('');
+  const [characterName, setCharacterName] = useState('');
+
+  const handleCreate = () => {
+    if (!selectedClass || !characterName.trim()) {
+      alert('Please select a class and enter a name');
+      return;
+    }
+
+    const selectedClassData = characterClasses.find(c => c.id === selectedClass);
+    
+    const character = {
+      id: `char_${userId}_${Date.now()}`,
+      name: characterName,
+      class: selectedClassData.name,
+      level: 1,
+      xp: 0,
+      maxXp: 100,
+      avatar: selectedClassData.avatar
+    };
+
+    onCharacterCreated(character);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-indigo-900 via-purple-900 to-pink-900 p-8">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-12"
-        >
-          <h1 className="text-5xl mb-4 text-white">Choose Your Path</h1>
-          <p className="text-xl text-purple-200">Select a character class to begin your learning adventure</p>
-        </motion.div>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="max-w-5xl w-full">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl mb-4 text-amber-400">Create Your Character</h1>
+          <p className="text-xl text-purple-200">Choose your path and begin your journey</p>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {characterClasses.map((character, index) => (
-            <motion.div
-              key={character.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+        <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 backdrop-blur-sm rounded-2xl p-8 border-2 border-purple-400/30 shadow-2xl mb-8">
+          <label className="block text-purple-100 mb-4 text-xl">Character Name</label>
+          <input
+            type="text"
+            value={characterName}
+            onChange={(e) => setCharacterName(e.target.value)}
+            className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none text-xl"
+            placeholder="Enter your character's name"
+          />
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {characterClasses.map((charClass) => (
+            <button
+              key={charClass.id}
+              onClick={() => setSelectedClass(charClass.id)}
+              className={`relative bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl p-6 border-4 transition-all duration-300 hover:scale-105 ${
+                selectedClass === charClass.id
+                  ? `border-${charClass.color}-400 shadow-lg shadow-${charClass.color}-500/50`
+                  : 'border-purple-400/30 hover:border-purple-400/50'
+              }`}
             >
-              <Card className="h-full bg-white/10 backdrop-blur-md border-white/20 text-white hover:bg-white/20 transition-colors cursor-pointer">
-                <CardHeader>
-                  <div className="flex items-center gap-4 mb-2">
-                    <div className={`p-3 rounded-lg ${character.color}`}>
-                      <character.icon className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-white">{character.name}</CardTitle>
-                      <CardDescription className="text-purple-200">{character.subject}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-purple-100">{character.description}</p>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Heart className="w-4 h-4" />
-                      <span>HP: {character.stats.hp}</span>
-                    </div>
-                    <div>
-                      <span className="text-purple-300">Strength:</span> {character.stats.strength}
-                    </div>
-                    <div>
-                      <span className="text-purple-300">Specialty:</span> {character.stats.specialty}
-                    </div>
-                  </div>
+              {selectedClass === charClass.id && (
+                <div className={`absolute top-4 right-4 w-8 h-8 rounded-full bg-${charClass.color}-500 flex items-center justify-center`}>
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+              )}
 
-                  <Button 
-                    className="w-full mt-4"
-                    onClick={() => onSelectCharacter(character)}
-                  >
-                    Select {character.name}
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+              <div className="aspect-square rounded-lg overflow-hidden mb-4 bg-slate-700">
+                <img 
+                  src={charClass.avatar} 
+                  alt={charClass.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              <div className="text-4xl mb-2">{charClass.icon}</div>
+              <h3 className="text-2xl mb-2 text-white">{charClass.name}</h3>
+              <p className="text-purple-200">{charClass.description}</p>
+            </button>
           ))}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={handleCreate}
+            disabled={!selectedClass || !characterName.trim()}
+            className="bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 disabled:from-gray-600 disabled:to-gray-700 disabled:cursor-not-allowed text-white px-12 py-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-amber-500/50 transform hover:scale-105 disabled:transform-none disabled:shadow-none text-xl"
+          >
+            Begin Your Quest
+          </button>
         </div>
       </div>
     </div>

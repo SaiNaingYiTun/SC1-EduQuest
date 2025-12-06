@@ -82,11 +82,9 @@
 }
 
 
-
 @layer base {
   * {
-    @apply border-gray-200 outline-slate-400/50;
-
+    @apply border-border outline-ring/50;
   }
 
   body {
