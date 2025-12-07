@@ -2,7 +2,6 @@ import { Trophy, Medal, Crown, Star } from 'lucide-react';
 import { Character } from '../App';
 
 
-
 // Mock leaderboard data
 const mockLeaderboard = [
   { id: '1', name: 'DragonSlayer99', class: 'Warrior', level: 15, xp: 1450, avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?w=100' },

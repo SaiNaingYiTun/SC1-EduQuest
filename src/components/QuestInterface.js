@@ -63,7 +63,7 @@ export function QuestInterface({ quest, onComplete, onBack }) {
   const [score, setScore] = useState(0);
   const [timeRemaining, setTimeRemaining] = useState(300); // 5 minutes
   const [questComplete, setQuestComplete] = useState(false);
-  const [answers, setAnswers] = useState<(number | null)>(new Array(mockQuestions.length).fill(null));
+  const [answers, setAnswers] = useState(new Array(mockQuestions.length).fill(null));
 
   const currentQuestion = mockQuestions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / mockQuestions.length) * 100;

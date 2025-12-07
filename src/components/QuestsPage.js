@@ -1,125 +1,18 @@
 import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle } from 'lucide-react';
-import { Character, Quest, User } from '../App';
-import QuestModal from './QuestModal';
+import { Character, Quest, User, Item } from '../App';
+import PhaserQuestGame from './PhaserQuestGame';
 
 
-
-// Mock quests data
-const mockQuests = [
-  {
-    id: 'quest1',
-    title: 'The Algebra Adventure',
-    description: 'Solve algebraic equations to unlock the ancient treasure',
-    difficulty: 'Easy',
-    xpReward: 50,
-    timeLimit: 120,
-    teacherId: 'teacher1',
-    questions: [
-      {
-        id: 'q1',
-        question: 'Solve for x: 2x + 5 = 13',
-        options: ['x = 2', 'x = 4', 'x = 6', 'x = 8'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q2',
-        question: 'What is 3x - 7 = 8?',
-        options: ['x = 3', 'x = 5', 'x = 7', 'x = 9'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q3',
-        question: 'Solve: 4x + 2 = 18',
-        options: ['x = 2', 'x = 4', 'x = 6', 'x = 8'],
-        correctAnswer: 1
-      }
-    ]
-  },
-  {
-    id: 'quest2',
-    title: 'Geometry Quest',
-    description: 'Master the secrets of shapes and angles',
-    difficulty: 'Medium',
-    xpReward: 100,
-    timeLimit: 180,
-    teacherId: 'teacher1',
-    questions: [
-      {
-        id: 'q1',
-        question: 'What is the sum of angles in a triangle?',
-        options: ['90°', '180°', '270°', '360°'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q2',
-        question: 'Area of a circle with radius 5?',
-        options: ['25π', '50π', '75π', '100π'],
-        correctAnswer: 0
-      },
-      {
-        id: 'q3',
-        question: 'How many sides does a hexagon have?',
-        options: ['4', '5', '6', '8'],
-        correctAnswer: 2
-      },
-      {
-        id: 'q4',
-        question: 'Pythagorean theorem: a² + b² = ?',
-        options: ['c', 'c²', '2c', 'c³'],
-        correctAnswer: 1
-      }
-    ]
-  },
-  {
-    id: 'quest3',
-    title: 'The Calculus Challenge',
-    description: 'Face the ultimate test of mathematical prowess',
-    difficulty: 'Hard',
-    xpReward: 200,
-    timeLimit: 300,
-    teacherId: 'teacher1',
-    questions: [
-      {
-        id: 'q1',
-        question: 'What is the derivative of x²?',
-        options: ['x', '2x', 'x²/2', '2x²'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q2',
-        question: 'Integral of 2x dx = ?',
-        options: ['x²', 'x² + C', '2x²', '2x² + C'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q3',
-        question: 'Limit of (x² - 4)/(x - 2) as x approaches 2?',
-        options: ['0', '2', '4', 'undefined'],
-        correctAnswer: 2
-      },
-      {
-        id: 'q4',
-        question: 'Second derivative of x³?',
-        options: ['3x²', '6x', 'x²', '3x'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q5',
-        question: 'What is d/dx(sin x)?',
-        options: ['cos x', '-cos x', 'sin x', '-sin x'],
-        correctAnswer: 0
-      }
-    ]
-  }
-];
 
 export default function QuestsPage({ 
   character, 
   onUpdateCharacter, 
   studentClasses,
   teachers,
-  onUnlockAchievement 
+  onUnlockAchievement,
+  quests,
+  inventory
 }) {
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [completedQuests, setCompletedQuests] = useState([]);
@@ -131,8 +24,8 @@ export default function QuestsPage({
     }
   }, [character.id]);
 
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft) => {
-    const quest = mockQuests.find(q => q.id === questId);
+  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+    const quest = quests.find(q => q.id === questId);
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
@@ -174,8 +67,13 @@ export default function QuestsPage({
     setSelectedQuest(null);
 
     // Show results
+    let itemsText = '';
+    if (itemsEarned.length > 0) {
+      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
+    }
+
     alert(
-      `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}\n${leveledUp ? `\n🎉 Level Up! You are now level ${newLevel}!` : ''}`
+      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
     );
   };
 
@@ -193,7 +91,7 @@ export default function QuestsPage({
   };
 
   // Filter quests based on student's classes
-  const availableQuests = mockQuests.filter(quest => 
+  const availableQuests = quests.filter(quest => 
     studentClasses.includes(quest.teacherId)
   );
 
@@ -298,10 +196,11 @@ export default function QuestsPage({
       )}
 
       {selectedQuest && (
-        <QuestModal
+        <PhaserQuestGame
           quest={selectedQuest}
-          onClose={() => setSelectedQuest(null)}
-          onComplete={handleQuestComplete}
+          character={character}
+          onQuestComplete={handleQuestComplete}
+          onBack={() => setSelectedQuest(null)}
         />
       )}
     </div>

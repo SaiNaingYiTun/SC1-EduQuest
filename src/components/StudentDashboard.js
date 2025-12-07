@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Home, Scroll, Trophy, User as UserIcon, Users } from 'lucide-react';
-import { User, Character, Achievement } from '../App';
+import { User, Character, Achievement, Quest, Item } from '../App';
 import StudentHome from './StudentHome';
 import QuestsPage from './QuestsPage';
 import LeaderboardPage from './LeaderboardPage';
 import StudentProfile from './StudentProfile';
 import ClassesPage from './ClassesPage';
+
 
 
 export default function StudentDashboard({
@@ -18,16 +19,18 @@ export default function StudentDashboard({
   studentClasses,
   teachers,
   achievements,
-  onUnlockAchievement
+  onUnlockAchievement,
+  quests,
+  inventory
 }) {
   const [activeTab, setActiveTab] = useState('home');
 
   const tabs = [
-    { id: 'home' , label: 'Home', icon: Home },
-    { id: 'quests' , label: 'Quests', icon: Scroll },
-    { id: 'classes' , label: 'Classes', icon: Users },
-    { id: 'leaderboard' , label: 'Leaderboard', icon: Trophy },
-    { id: 'profile' , label: 'Profile', icon: UserIcon },
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'quests', label: 'Quests', icon: Scroll },
+    { id: 'classes', label: 'Classes', icon: Users },
+    { id: 'leaderboard', label: 'Leaderboard', icon: Trophy },
+    { id: 'profile', label: 'Profile', icon: UserIcon },
   ];
 
   return (
@@ -91,6 +94,8 @@ export default function StudentDashboard({
             studentClasses={studentClasses}
             teachers={teachers}
             onUnlockAchievement={onUnlockAchievement}
+            quests={quests}
+            inventory={inventory}
           />
         )}
         

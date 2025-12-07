@@ -3,6 +3,7 @@ import { Search, BookOpen, Check } from 'lucide-react';
 import { User } from '../App';
 
 
+
 export default function ClassesPage({ studentClasses, teachers, onJoinClass }) {
   const [teacherUsername, setTeacherUsername] = useState('');
   const [otp, setOtp] = useState('');

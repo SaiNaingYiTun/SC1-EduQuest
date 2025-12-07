@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Home, Users, Scroll, BarChart3, User as UserIcon } from 'lucide-react';
-import { User, Character } from '../App';
+import { User, Character, Quest, Item } from '../App';
 import TeacherHome from './TeacherHome';
 import StudentOverview from './StudentOverview';
 import QuestManagement from './QuestManagement';
 import ClassAnalytics from './ClassAnalytics';
 import TeacherProfile from './TeacherProfile';
+
 
 
 export default function TeacherDashboard({
@@ -16,16 +17,21 @@ export default function TeacherDashboard({
   allStudents,
   characters,
   studentClasses,
-  onInviteStudent
+  onInviteStudent,
+  onCreateQuest,
+  onUpdateQuest,
+  onDeleteQuest,
+  onAddItemToInventory,
+  quests
 }) {
   const [activeTab, setActiveTab] = useState('home');
 
   const tabs = [
-    { id: 'home' , label: 'Home', icon: Home },
-    { id: 'students' , label: 'Students', icon: Users },
-    { id: 'quests' , label: 'Quests', icon: Scroll },
-    { id: 'analytics' , label: 'Analytics', icon: BarChart3 },
-    { id: 'profile' , label: 'Profile', icon: UserIcon },
+    { id: 'home', label: 'Home', icon: Home },
+    { id: 'students', label: 'Students', icon: Users },
+    { id: 'quests', label: 'Quests', icon: Scroll },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'profile', label: 'Profile', icon: UserIcon },
   ];
 
   return (
@@ -84,7 +90,14 @@ export default function TeacherDashboard({
         )}
         
         {activeTab === 'quests' && (
-          <QuestManagement user={user} />
+          <QuestManagement
+            user={user}
+            onCreateQuest={onCreateQuest}
+            onUpdateQuest={onUpdateQuest}
+            onDeleteQuest={onDeleteQuest}
+            onAddItemToInventory={onAddItemToInventory}
+            quests={quests}
+          />
         )}
         
         {activeTab === 'analytics' && (
