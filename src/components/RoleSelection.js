@@ -7,7 +7,7 @@ export default function RoleSelection({ onSelectRole }) {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
-          <h1 className="text-6xl mb-4 text-amber-400">⚔️ Mini RPG Study Quest ⚔️</h1>
+          <h1 className="text-6xl mb-4 text-amber-400">⚔️ EduQuest ⚔️</h1>
           <p className="text-xl text-purple-200">Choose Your Path, Brave Adventurer</p>
         </div>
 

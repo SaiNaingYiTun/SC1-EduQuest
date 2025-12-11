@@ -5,15 +5,15 @@ import { Character, Quest, Question, Item } from '../App';
 
 
 export default function PhaserQuestGame({ quest, character, onQuestComplete, onBack }) {
-  const gameRef = useRef(null);
-  const phaserGameRef = useRef(null);
+  const gameRef = useRef<HTMLDivElement>(null);
+  const phaserGameRef = useRef<Phaser.Game | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!gameRef.current) return;
 
     // Game configuration
-    const config = {
+    const config= {
       type: Phaser.AUTO,
       parent: gameRef.current,
       width: 800,
@@ -44,8 +44,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     let gameState = 'intro';
     let selectedAnswer = null;
     let combatPhase = 'attack';
-    let playerHP = 100;
-    let enemyHP = 100;
+    const maxHP = quest.questions.length * 100; // HP based on number of questions
+    let playerHP = maxHP;
+    let enemyHP = maxHP;
     let itemsEarned = [];
     // UI elements
     let dialogueBox;
@@ -261,7 +262,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       const playerY = 450;
       player = this.add.sprite(150, playerY, '').setOrigin(0.5);
       
-      // Create pixel art character based on class
+      // Create pixel art character based on class with weapons
       const playerGraphics = this.add.graphics();
       let playerColor = 0x3b82f6; // Default blue
       
@@ -272,33 +273,69 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           playerGraphics.fillStyle(playerColor, 1);
           playerGraphics.fillRect(140, 420, 20, 40); // Body
           playerGraphics.fillRect(135, 410, 30, 15); // Head
-          playerGraphics.fillStyle(0x78350f, 1);
-          playerGraphics.fillRect(130, 430, 10, 20); // Left arm with sword
+          // Draw arms
+          playerGraphics.fillStyle(0xfbbf24, 1);
+          playerGraphics.fillRect(130, 430, 10, 20); // Left arm
           playerGraphics.fillRect(160, 430, 10, 20); // Right arm
+          // Draw long sword
+          playerGraphics.fillStyle(0x71717a, 1); // Gray for blade
+          playerGraphics.fillRect(118, 425, 8, 30); // Sword blade
+          playerGraphics.fillStyle(0x78350f, 1); // Brown for hilt
+          playerGraphics.fillRect(120, 455, 4, 8); // Sword hilt
           break;
         case 'Mage':
           playerColor = 0x8b5cf6; // Purple
           playerGraphics.fillStyle(playerColor, 1);
           playerGraphics.fillRect(140, 420, 20, 40); // Body
           playerGraphics.fillRect(135, 410, 30, 15); // Head
-          playerGraphics.fillStyle(0x6366f1, 1);
-          playerGraphics.fillCircle(130, 440, 8); // Magic orb
+          // Draw arms
+          playerGraphics.fillStyle(0xfbbf24, 1);
+          playerGraphics.fillRect(130, 430, 10, 20); // Left arm
+          playerGraphics.fillRect(160, 430, 10, 20); // Right arm
+          // Draw magic staff
+          playerGraphics.fillStyle(0x78350f, 1); // Brown staff
+          playerGraphics.fillRect(122, 430, 4, 35); // Staff pole
+          playerGraphics.fillStyle(0xa78bfa, 1); // Purple crystal
+          playerGraphics.fillCircle(124, 428, 6); // Staff crystal
+          playerGraphics.fillStyle(0xfbbf24, 1); // Gold glow
+          playerGraphics.fillCircle(124, 428, 3); // Inner glow
           break;
         case 'Rogue':
           playerColor = 0x10b981; // Green
           playerGraphics.fillStyle(playerColor, 1);
           playerGraphics.fillRect(140, 420, 20, 40); // Body
           playerGraphics.fillRect(135, 410, 30, 15); // Head
-          playerGraphics.fillStyle(0x6b7280, 1);
-          playerGraphics.fillRect(130, 435, 8, 15); // Dagger
+          // Draw arms
+          playerGraphics.fillStyle(0xfbbf24, 1);
+          playerGraphics.fillRect(130, 430, 10, 20); // Left arm
+          playerGraphics.fillRect(160, 430, 10, 20); // Right arm
+          // Draw dagger
+          playerGraphics.fillStyle(0x6b7280, 1); // Gray blade
+          playerGraphics.fillRect(125, 435, 3, 15); // Dagger blade
+          playerGraphics.fillStyle(0x78350f, 1); // Brown hilt
+          playerGraphics.fillRect(124, 450, 5, 4); // Dagger hilt
           break;
-        case 'Ranger':
-          playerColor = 0xf59e0b; // Amber
+        case 'Cleric':
+          playerColor = 0xfbbf24; // Gold
           playerGraphics.fillStyle(playerColor, 1);
           playerGraphics.fillRect(140, 420, 20, 40); // Body
           playerGraphics.fillRect(135, 410, 30, 15); // Head
-          playerGraphics.fillStyle(0x78350f, 1);
-          playerGraphics.fillRect(125, 430, 15, 3); // Bow
+          // Draw arms
+          playerGraphics.fillStyle(0xf59e0b, 1);
+          playerGraphics.fillRect(130, 430, 10, 20); // Left arm
+          playerGraphics.fillRect(160, 430, 10, 20); // Right arm
+          // Draw grimoire (magic book)
+          playerGraphics.fillStyle(0x78350f, 1); // Brown book cover
+          playerGraphics.fillRect(118, 440, 14, 16); // Book
+          playerGraphics.fillStyle(0xfef3c7, 1); // Light yellow pages
+          playerGraphics.fillRect(119, 441, 12, 14); // Pages
+          playerGraphics.fillStyle(0xa78bfa, 1); // Purple rune
+          playerGraphics.fillCircle(125, 448, 3); // Magic rune on book
+          break;
+        default:
+          playerGraphics.fillStyle(playerColor, 1);
+          playerGraphics.fillRect(140, 420, 20, 40); // Body
+          playerGraphics.fillRect(135, 410, 30, 15); // Head
           break;
       }
 
@@ -314,7 +351,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       // HP bars
       hpBarPlayer = this.add.graphics();
       hpBarEnemy = this.add.graphics();
-      updateHPBars.call(this);
+      updateHPBars();
 
       // Combat text
       combatText = this.add.text(400, 250, '', {
@@ -339,8 +376,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       hpBarPlayer.clear();
       hpBarPlayer.fillStyle(0x1f2937, 1);
       hpBarPlayer.fillRect(50, 480, 200, 20);
-      hpBarPlayer.fillStyle(playerHP > 50 ? 0x10b981 : playerHP > 25 ? 0xf59e0b : 0xef4444, 1);
-      hpBarPlayer.fillRect(52, 482, (playerHP / 100) * 196, 16);
+      const playerHPPercent = (playerHP / maxHP) * 100;
+      hpBarPlayer.fillStyle(playerHPPercent > 50 ? 0x10b981 : playerHPPercent > 25 ? 0xf59e0b : 0xef4444, 1);
+      hpBarPlayer.fillRect(52, 482, (playerHP / maxHP) * 196, 16);
       
       const playerHPText = this.add.text(150, 490, `HP: ${playerHP}`, {
         fontSize: '14px',
@@ -352,8 +390,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       hpBarEnemy.clear();
       hpBarEnemy.fillStyle(0x1f2937, 1);
       hpBarEnemy.fillRect(550, 480, 200, 20);
-      hpBarEnemy.fillStyle(enemyHP > 50 ? 0x10b981 : enemyHP > 25 ? 0xf59e0b : 0xef4444, 1);
-      hpBarEnemy.fillRect(552, 482, (enemyHP / 100) * 196, 16);
+      const enemyHPPercent = (enemyHP / maxHP) * 100;
+      hpBarEnemy.fillStyle(enemyHPPercent > 50 ? 0x10b981 : enemyHPPercent > 25 ? 0xf59e0b : 0xef4444, 1);
+      hpBarEnemy.fillRect(552, 482, (enemyHP / maxHP) * 196, 16);
       
       const enemyHPText = this.add.text(650, 490, `HP: ${enemyHP}`, {
         fontSize: '14px',
@@ -363,25 +402,24 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     };
 
     const performPlayerAttack = function() {
-      let damage = 0;
+      const damage = 100; // Fixed damage for all classes
       let attackName = '';
 
       switch (character.class) {
         case 'Warrior':
-          damage = 40;
           attackName = 'Sword Slash';
           break;
         case 'Mage':
-          damage = 50;
           attackName = 'Fireball';
           break;
         case 'Rogue':
-          damage = 45;
           attackName = 'Backstab';
           break;
-        case 'Ranger':
-          damage = 35;
-          attackName = 'Arrow Shot';
+        case 'Cleric':
+          attackName = 'Holy Strike';
+          break;
+        default:
+          attackName = 'Attack';
           break;
       }
 
@@ -409,7 +447,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     };
 
     const performEnemyAttack = function() {
-      const damage = 20;
+      const damage = 100; // Fixed damage
       combatText.setText(`Enemy attacks! -${damage} HP`);
 
       this.tweens.add({
@@ -470,8 +508,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       if (combatText) combatText.destroy();
       
       // Reset for next combat
-      playerHP = 100;
-      enemyHP = 100;
+      playerHP = maxHP;
+      enemyHP = maxHP;
     };
 
     const nextQuestion = function() {

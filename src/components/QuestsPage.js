@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle } from 'lucide-react';
 import { Character, Quest, User, Item } from '../App';
-import PhaserQuestGame from './PhaserQuestGame';
+
 
 
 
@@ -12,7 +12,8 @@ export default function QuestsPage({
   teachers,
   onUnlockAchievement,
   quests,
-  inventory
+  inventory,
+  onStartQuest
 }) {
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [completedQuests, setCompletedQuests] = useState([]);
@@ -63,8 +64,6 @@ export default function QuestsPage({
     if (newLevel >= 10) {
       onUnlockAchievement('level_10');
     }
-
-    setSelectedQuest(null);
 
     // Show results
     let itemsText = '';
@@ -169,7 +168,7 @@ export default function QuestsPage({
                 </div>
 
                 <button
-                  onClick={() => setSelectedQuest(quest)}
+                  onClick={() => onStartQuest && onStartQuest(quest)}
                   disabled={isCompleted}
                   className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
                     isCompleted
@@ -193,15 +192,6 @@ export default function QuestsPage({
             );
           })}
         </div>
-      )}
-
-      {selectedQuest && (
-        <PhaserQuestGame
-          quest={selectedQuest}
-          character={character}
-          onQuestComplete={handleQuestComplete}
-          onBack={() => setSelectedQuest(null)}
-        />
       )}
     </div>
   );

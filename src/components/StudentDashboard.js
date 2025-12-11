@@ -89,6 +89,7 @@ export default function StudentDashboard({
         
         {activeTab === 'quests' && character && (
           <QuestsPage 
+            user={user}
             character={character}
             onUpdateCharacter={onUpdateCharacter}
             studentClasses={studentClasses}

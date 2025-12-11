@@ -4,138 +4,184 @@ import AuthPage from './components/AuthPage';
 import StudentDashboard from './components/StudentDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import CharacterSelection from './components/CharacterSelection';
-
-
+import GamePage from './components/GamePage';
 
 function App() {
   const [currentView, setCurrentView] = useState('role');
   const [selectedRole, setSelectedRole] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [allUsers, setAllUsers] = useState([
-    {
-      id: 'teacher1',
-      username: 'prof_merlin',
-      role: 'teacher',
-      name: 'Professor Merlin',
-      subjectName: 'Advanced Mathematics',
-      otpCode: 'MATH2024'
-    }
-  ]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [selectedQuest, setSelectedQuest] = useState(null);
+  
 
   const [characters, setCharacters] = useState({});
   const [studentClasses, setStudentClasses] = useState({});
   const [achievements, setAchievements] = useState({});
-  const [quests, setQuests] = useState([
-    {
-      id: 'quest1',
-      title: 'The Algebra Adventure',
-      description: 'Solve algebraic equations to unlock the ancient treasure',
-      difficulty: 'Easy',
-      xpReward: 50,
-      timeLimit: 120,
-      teacherId: 'teacher1',
-      questions: [
-        {
-          id: 'q1',
-          question: 'Solve for x: 2x + 5 = 13',
-          options: ['x = 2', 'x = 4', 'x = 6', 'x = 8'],
-          correctAnswer: 1,
-          explanation: 'To solve 2x + 5 = 13, subtract 5 from both sides to get 2x = 8, then divide by 2 to get x = 4.'
-        },
-        {
-          id: 'q2',
-          question: 'What is 3x - 7 = 8?',
-          options: ['x = 3', 'x = 5', 'x = 7', 'x = 9'],
-          correctAnswer: 1,
-          explanation: 'Add 7 to both sides: 3x = 15, then divide by 3 to get x = 5.'
-        },
-        {
-          id: 'q3',
-          question: 'Solve: 4x + 2 = 18',
-          options: ['x = 2', 'x = 4', 'x = 6', 'x = 8'],
-          correctAnswer: 1,
-          explanation: 'Subtract 2 from both sides: 4x = 16, then divide by 4 to get x = 4.'
-        }
-      ]
-    },
-    {
-      id: 'quest2',
-      title: 'Geometry Quest',
-      description: 'Master the secrets of shapes and angles',
-      difficulty: 'Medium',
-      xpReward: 100,
-      timeLimit: 180,
-      teacherId: 'teacher1',
-      questions: [
-        {
-          id: 'q1',
-          question: 'What is the sum of angles in a triangle?',
-          options: ['90°', '180°', '270°', '360°'],
-          correctAnswer: 1
-        },
-        {
-          id: 'q2',
-          question: 'Area of a circle with radius 5?',
-          options: ['25π', '50π', '75π', '100π'],
-          correctAnswer: 0
-        },
-        {
-          id: 'q3',
-          question: 'How many sides does a hexagon have?',
-          options: ['4', '5', '6', '8'],
-          correctAnswer: 2
-        },
-        {
-          id: 'q4',
-          question: 'Pythagorean theorem: a² + b² = ?',
-          options: ['c', 'c²', '2c', 'c³'],
-          correctAnswer: 1
-        }
-      ]
-    },
-    {
-      id: 'quest3',
-      title: 'The Calculus Challenge',
-      description: 'Face the ultimate test of mathematical prowess',
-      difficulty: 'Hard',
-      xpReward: 200,
-      timeLimit: 300,
-      teacherId: 'teacher1',
-      questions: [
-        {
-          id: 'q1',
-          question: 'What is the derivative of x²?',
-          options: ['x', '2x', 'x²/2', '2x²'],
-          correctAnswer: 1
-        },
-        {
-          id: 'q2',
-          question: 'Integral of 2x dx = ?',
-          options: ['x²', 'x² + C', '2x²', '2x² + C'],
-          correctAnswer: 1
-        },
-        {
-          id: 'q3',
-          question: 'Limit of (x² - 4)/(x - 2) as x approaches 2?',
-          options: ['0', '2', '4', 'undefined'],
-          correctAnswer: 2
-        },
-        {
-          id: 'q4',
-          question: 'Second derivative of x³?',
-          options: ['3x²', '6x', 'x²', '3x'],
-          correctAnswer: 1
-        },
-        {
-          id: 'q5',
-          question: 'What is d/dx(sin x)?',
-          options: ['cos x', '-cos x', 'sin x', '-sin x'],
-          correctAnswer: 0
-        }
-      ]
-    }
-  ]);
+  const [quests, setQuests] = useState([]);
   const [studentInventories, setStudentInventories] = useState({});
+  const [studentProgress, setStudentProgress] = useState({});
+  const [studentLevels, setStudentLevels] = useState({});
+  const [authToken, setAuthToken] = useState(() => {
+  return localStorage.getItem('authToken') || null;
+});
+
+  // -----------------------
+  // Backend helpers
+  // -----------------------
+
+  const saveStudentState = async (
+    studentId,
+    achievementList,
+    inventoryList,
+    progressObj,
+    levelInfo
+  ) => {
+    try {
+      await fetch(`/api/students/${studentId}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          achievements: achievementList,
+          inventory: inventoryList,
+          progress: progressObj,
+          level: levelInfo.level,
+          xp: levelInfo.xp
+        })
+      });
+    } catch (err) {
+      console.error('Error saving student state:', err);
+    }
+  };
+
+  const fetchStudentState = async (studentId) => {
+    try {
+      const res = await fetch(`/api/students/${studentId}/state`);
+      const data = await res.json();
+
+      const backendAchievements = Array.isArray(data.achievements)
+        ? data.achievements
+        : [];
+      const backendInventory = Array.isArray(data.inventory)
+        ? data.inventory
+        : [];
+
+      const backendProgress =
+        data.progress && typeof data.progress === 'object'
+          ? data.progress
+          : {};
+
+      const level = typeof data.level === 'number' ? data.level : 1;
+      const xp = typeof data.xp === 'number' ? data.xp : 0;
+
+      let finalAchievements = backendAchievements;
+
+      // If no achievements saved yet in backend, init with defaults
+      if (backendAchievements.length === 0) {
+        finalAchievements = getDefaultAchievements();
+        await saveStudentState(
+          studentId,
+          finalAchievements,
+          backendInventory,
+          backendProgress,
+          { level, xp }
+        );
+      }
+
+      setAchievements((prev) => ({
+        ...prev,
+        [studentId]: finalAchievements
+      }));
+
+      setStudentInventories((prev) => ({
+        ...prev,
+        [studentId]: backendInventory
+      }));
+
+      setStudentProgress((prev) => ({
+        ...prev,
+        [studentId]: backendProgress
+      }));
+
+      setStudentLevels((prev) => ({
+        ...prev,
+        [studentId]: { level, xp }
+      }));
+
+      setStudentClasses((prev) => ({
+        ...prev,
+        [studentId]: data.studentClasses || []
+      }));
+    } catch (err) {
+      console.error('Error loading student state:', err);
+    }
+  };
+
+  const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
+    try {
+      const res = await fetch(`/api/students/${studentId}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questId,
+          score,
+          xpGained: xpGainedOverride
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to update progress');
+      }
+
+      const data = await res.json();
+
+      const updatedProgress =
+        data.progress && typeof data.progress === 'object'
+          ? data.progress
+          : {};
+
+      setStudentProgress((prev) => ({
+        ...prev,
+        [studentId]: updatedProgress
+      }));
+
+      setStudentLevels((prev) => ({
+        ...prev,
+        [studentId]: {
+          level: data.level ?? 1,
+          xp: data.xp ?? 0
+        }
+      }));
+    } catch (err) {
+      console.error('Error updating progress:', err);
+    }
+  };
+
+  // -----------------------
+  // Initial load
+  // -----------------------
+
+  useEffect(() => {
+  if (!authToken) return;
+ 
+  const fetchAllUsers = async () => {
+    try {
+      const res = await authFetch('/api/users');
+      if (!res.ok) return;
+ 
+      const data = await res.json();
+      const normalized = data.map((u) => ({
+        ...u,
+        id: u.id || u._id
+      }));
+ 
+      setAllUsers(normalized);
+    } catch (err) {
+      console.error("Error loading users:", err);
+    }
+  };
+ 
+  fetchAllUsers();
+}, [authToken]);
 
   useEffect(() => {
     // Load from localStorage
@@ -143,9 +189,8 @@ function App() {
     const savedView = localStorage.getItem('currentView');
     const savedUsers = localStorage.getItem('allUsers');
     const savedCharacters = localStorage.getItem('characters');
-    const savedStudentClasses = localStorage.getItem('studentClasses');
+    
     const savedAchievements = localStorage.getItem('achievements');
-    const savedQuests = localStorage.getItem('quests');
     const savedStudentInventories = localStorage.getItem('studentInventories');
 
     if (savedUsers) {
@@ -154,22 +199,30 @@ function App() {
     if (savedCharacters) {
       setCharacters(JSON.parse(savedCharacters));
     }
-    if (savedStudentClasses) {
-      setStudentClasses(JSON.parse(savedStudentClasses));
-    }
+    
     if (savedAchievements) {
       setAchievements(JSON.parse(savedAchievements));
     }
-    if (savedQuests) {
-      setQuests(JSON.parse(savedQuests));
-    }
+
+    // Always load quests from backend API (backend is source of truth)
+    fetch('/api/quests')
+      .then((res) => res.json())
+      .then((data) => {
+        setQuests(data);
+      })
+      .catch((err) => {
+        console.error('Error loading quests from backend:', err);
+      });
+
     if (savedStudentInventories) {
       setStudentInventories(JSON.parse(savedStudentInventories));
     }
+
     if (savedUser) {
       const user = JSON.parse(savedUser);
       setCurrentUser(user);
       setSelectedRole(user.role);
+
       if (savedView) {
         setCurrentView(savedView);
       } else {
@@ -180,8 +233,22 @@ function App() {
           setCurrentView('dashboard');
         }
       }
+
+      // On reload, sync student state from backend too
+      if (user.role === 'student') {
+        fetchStudentState(user.id);
+      }
     }
+
+    
+ 
+  
+
   }, []);
+
+  // -----------------------
+  // Persist some state locally
+  // -----------------------
 
   useEffect(() => {
     // Save to localStorage
@@ -193,68 +260,165 @@ function App() {
     localStorage.setItem('characters', JSON.stringify(characters));
     localStorage.setItem('studentClasses', JSON.stringify(studentClasses));
     localStorage.setItem('achievements', JSON.stringify(achievements));
-    localStorage.setItem('quests', JSON.stringify(quests));
     localStorage.setItem('studentInventories', JSON.stringify(studentInventories));
-  }, [currentUser, currentView, allUsers, characters, studentClasses, achievements, quests, studentInventories]);
+  }, [currentUser, currentView, allUsers, characters, studentClasses, achievements, studentInventories]);
+
+  // -----------------------
+  // Auth & user handling
+  // -----------------------
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
     setCurrentView('auth');
   };
 
-  const handleAuth = (username, password, isSignUp) => {
+  const authFetch = (url, options = {}) => {
+  return fetch(url, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      // only add Content-Type if not provided (for GET it’s not needed)
+      ...(options.method && options.method !== 'GET'
+        ? { 'Content-Type': 'application/json' }
+        : {})
+    }
+  });
+};
+
+  const handleAuth = async (username, password, isSignUp, email) => {
+  try {
     if (isSignUp) {
-      // Sign up
-      const existingUser = allUsers.find(u => u.username === username);
-      if (existingUser) {
-        alert('Username already exists!');
+      // === SIGN UP ===
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username,
+          email,
+          password,
+          role: selectedRole,
+          name: username
+        })
+      });
+ 
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || 'Failed to register');
         return;
       }
-
-      const newUser = {
-        id: `${selectedRole}_${Date.now()}`,
-        username,
-        role: selectedRole,
-        name: username,
+ 
+      const data = await res.json(); // { user, token }
+ 
+      // normalise so we always have user.id
+      const backendUser = data.user;
+      const normalizedUser = {
+        ...backendUser,
+        id: backendUser.id || backendUser._id
       };
-
-      if (selectedRole === 'teacher') {
-        newUser.subjectName = 'My Subject';
-        newUser.otpCode = generateOTP();
-      }
-
-      setAllUsers([...allUsers, newUser]);
-      setCurrentUser(newUser);
-
+ 
+      setCurrentUser(normalizedUser);
+      setAuthToken(data.token);
+      localStorage.setItem('authToken', data.token);
+ 
+      // keep local allUsers if other parts of app still rely on it
+      setAllUsers((prev) => [...prev, normalizedUser]);
+ 
       if (selectedRole === 'student') {
-        // Initialize achievements for new student
-        setAchievements({
-          ...achievements,
-          [newUser.id]: getDefaultAchievements()
-        });
+        // set up local defaults for achievements/progress/inventory/level
+        const defaultAchievements = getDefaultAchievements();
+        const initialInventory = [];
+        const initialProgress = {};
+        const initialLevel = { level: 1, xp: 0 };
+ 
+        setAchievements((prev) => ({
+          ...prev,
+          [normalizedUser.id]: defaultAchievements
+        }));
+ 
+        setStudentInventories((prev) => ({
+          ...prev,
+          [normalizedUser.id]: initialInventory
+        }));
+ 
+        setStudentProgress((prev) => ({
+          ...prev,
+          [normalizedUser.id]: initialProgress
+        }));
+ 
+        setStudentLevels((prev) => ({
+          ...prev,
+          [normalizedUser.id]: initialLevel
+        }));
+ 
+        // initialise student state in backend with same defaults
+        await saveStudentState(
+          normalizedUser.id,
+          defaultAchievements,
+          initialInventory,
+          initialProgress,
+          initialLevel
+        );
+ 
         setCurrentView('character');
       } else {
+        // teacher goes straight to dashboard
         setCurrentView('dashboard');
       }
     } else {
-      // Sign in
-      const user = allUsers.find(u => u.username === username && u.role === selectedRole);
-      if (!user) {
-        alert('Invalid username or password!');
+      // === SIGN IN ===
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usernameOrEmail: username,
+          password,
+          role: selectedRole
+        })
+      });
+ 
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || 'Failed to login');
         return;
       }
-
-      setCurrentUser(user);
-
-      if (user.role === 'student' && !user.characterId) {
+ 
+      const data = await res.json(); // { user, token }
+ 
+      const backendUser = data.user;
+      const normalizedUser = {
+        ...backendUser,
+        id: backendUser.id || backendUser._id
+      };
+ 
+      setCurrentUser(normalizedUser);
+      setAuthToken(data.token);
+      localStorage.setItem('authToken', data.token);
+ 
+      // keep local list if you still use allUsers for UI (classes, etc.)
+      setAllUsers((prev) => {
+        const exists = prev.some((u) => u.id === normalizedUser.id);
+        return exists ? prev : [...prev, normalizedUser];
+      });
+ 
+      // for students, load state from backend (achievements, inventory, progress, level)
+      if (normalizedUser.role === 'student') {
+        await fetchStudentState(normalizedUser.id);
+      }
+ 
+      if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
         setCurrentView('character');
       } else {
         setCurrentView('dashboard');
       }
     }
-  };
+  } catch (err) {
+    console.error('Auth error:', err);
+    alert('Something went wrong. Please try again.');
+  }
+};
 
-  const handleCharacterCreation = (character) => {
+  const handleCharacterCreation = async (character) => {
     if (!currentUser) return;
 
     const updatedUser = {
@@ -262,13 +426,39 @@ function App() {
       characterId: character.id
     };
 
-    setCharacters({
-      ...characters,
+    setCharacters((prev) => ({
+      ...prev,
       [character.id]: character
-    });
+    }));
 
     setCurrentUser(updatedUser);
-    setAllUsers(allUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+
+    try {
+    // save characterId in backend User document
+    const res = await authFetch(`/api/users/${currentUser.id}/character`, {
+      method: 'PUT',
+      body: JSON.stringify({ characterId: character.id })
+    });
+ 
+    if (!res.ok) {
+      console.error('Failed to update characterId in backend');
+    } else {
+      // optional: sync with what backend returns
+      const savedUser = await res.json();
+      const normalized = {
+        ...savedUser,
+        id: savedUser.id || savedUser._id
+      };
+      setCurrentUser(normalized);
+      setAllUsers((prev) =>
+        prev.map((u) => (u.id === normalized.id ? normalized : u))
+      );
+    }
+  } catch (err) {
+    console.error('Error updating characterId:', err);
+  }
+
     setCurrentView('dashboard');
   };
 
@@ -276,6 +466,8 @@ function App() {
     setCurrentUser(null);
     setSelectedRole(null);
     setCurrentView('role');
+    setAuthToken(null);
+    localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('currentView');
   };
@@ -289,7 +481,7 @@ function App() {
     };
 
     setCurrentUser(updatedUser);
-    setAllUsers(allUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+    setAllUsers(allUsers.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
   };
 
   const handleUpdateCharacter = (characterId, updates) => {
@@ -305,7 +497,7 @@ function App() {
   const handleJoinClass = (teacherUsername, otp) => {
     if (!currentUser || currentUser.role !== 'student') return;
 
-    const teacher = allUsers.find(u => u.username === teacherUsername && u.role === 'teacher');
+    const teacher = allUsers.find((u) => u.username === teacherUsername && u.role === 'teacher');
     if (!teacher) {
       alert('Teacher not found!');
       return false;
@@ -330,38 +522,183 @@ function App() {
     return true;
   };
 
-  const handleUnlockAchievement = (achievementId) => {
+  const handleUnlockAchievement = async (achievementId) => {
     if (!currentUser) return;
 
-    const userAchievements = achievements[currentUser.id] || []
+    const userId = currentUser.id;
+    const userAchievements = achievements[userId] || [];
+
+    const updatedAchievements = userAchievements.map((a) =>
+      a.id === achievementId && !a.unlocked
+        ? { ...a, unlocked: true, unlockedAt: new Date().toISOString() }
+        : a
+    );
+
+    const inventory = studentInventories[userId] || [];
+    const progressObj = studentProgress[userId] || {};
+    const levelInfo = studentLevels[userId] || { level: 1, xp: 0 };
+
     setAchievements({
       ...achievements,
-      [currentUser.id]: userAchievements.map(a => 
-        a.id === achievementId && !a.unlocked
-          ? { ...a, unlocked: true, unlockedAt: new Date().toISOString() }
-          : a
-      )
+      [userId]: updatedAchievements
     });
+
+    await saveStudentState(
+      userId,
+      updatedAchievements,
+      inventory,
+      progressObj,
+      levelInfo
+    );
   };
 
-  const handleCreateQuest = (quest) => {
-    setQuests([...quests, quest]);
+  const handleCreateQuest = async (newQuest) => {
+    try {
+      const response = await authFetch('/api/quests', {
+        method: 'POST',
+        //headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newQuest)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create quest');
+      }
+
+      const createdQuest = await response.json();
+
+      setQuests((prev) => [...prev, createdQuest]);
+    } catch (error) {
+      console.error('Error creating quest:', error);
+    }
   };
 
-  const handleUpdateQuest = (questId, updates) => {
-    setQuests(quests.map(q => q.id === questId ? { ...q, ...updates } : q));
+  const handleUpdateQuest = async (updatedQuest) => {
+    try {
+      const response = await authFetch(`/api/quests/${updatedQuest.id}`, {
+        method: 'PUT',
+       // headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedQuest)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update quest');
+      }
+
+      const savedQuest = await response.json();
+
+      setQuests((prev) =>
+        prev.map((quest) => (quest.id === savedQuest.id ? savedQuest : quest))
+      );
+    } catch (error) {
+      console.error('Error updating quest:', error);
+    }
   };
 
-  const handleDeleteQuest = (questId) => {
-    setQuests(quests.filter(q => q.id !== questId));
+  const handleDeleteQuest = async (questId) => {
+    try {
+      const response = await authFetch(`/api/quests/${questId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete quest');
+      }
+
+      setQuests((prev) => prev.filter((quest) => quest.id !== questId));
+    } catch (error) {
+      console.error('Error deleting quest:', error);
+    }
   };
 
-  const handleAddItemToInventory = (studentId, item) => {
+  const handleStartQuest = (quest) => {
+    setSelectedQuest(quest);
+    setCurrentView('game');
+  };
+  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+    if (!currentUser || !currentUser.characterId) return;
+
+    const quest = quests.find(q => q.id === questId);
+    if (!quest) return;
+
+    const character = characters[currentUser.characterId];
+    if (!character) return;
+
+    const percentage = (score / totalQuestions) * 100;
+    const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+
+    // Update character
+    const newXp = character.xp + xpEarned;
+    const newLevel = Math.floor(newXp / 100) + 1;
+    const leveledUp = newLevel > character.level;
+
+    handleUpdateCharacter(character.id, {
+      xp: newXp,
+      level: newLevel,
+      maxXp: newLevel * 100
+    });
+
+    // Add earned items to inventory
+    itemsEarned.forEach(item => {
+      handleAddItemToInventory(currentUser.id, item);
+    });
+
+    // Check for achievements
+    handleUnlockAchievement('first_quest');
+    if (percentage === 100) {
+      handleUnlockAchievement('perfect_score');
+    }
+    if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
+      handleUnlockAchievement('speed_demon');
+    }
+    if (newLevel >= 5) {
+      handleUnlockAchievement('level_5');
+    }
+    if (newLevel >= 10) {
+      handleUnlockAchievement('level_10');
+    }
+
+    // Return to dashboard
+    setCurrentView('dashboard');
+    setSelectedQuest(null);
+
+    // Show results
+    let itemsText = '';
+    if (itemsEarned.length > 0) {
+      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
+    }
+
+    setTimeout(() => {
+      alert(
+        `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}${leveledUp ? `\n\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
+      );
+    }, 100);
+  };
+
+  const handleAddItemToInventory = async (studentId, item) => {
+    const newInventory = [...(studentInventories[studentId] || []), item];
+
+    const achievementList =
+      achievements[studentId] || getDefaultAchievements();
+    const progressObj = studentProgress[studentId] || {};
+    const levelInfo = studentLevels[studentId] || { level: 1, xp: 0 };
+
     setStudentInventories({
       ...studentInventories,
-      [studentId]: [...(studentInventories[studentId] || []), item]
+      [studentId]: newInventory
     });
+
+    await saveStudentState(
+      studentId,
+      achievementList,
+      newInventory,
+      progressObj,
+      levelInfo
+    );
   };
+
+  // -----------------------
+  // Helpers
+  // -----------------------
 
   const generateOTP = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -417,60 +754,111 @@ function App() {
     }
   ];
 
+  // -----------------------
+  // Render
+  // -----------------------
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900">
       {currentView === 'role' && (
         <RoleSelection onSelectRole={handleRoleSelect} />
       )}
-      
+
       {currentView === 'auth' && selectedRole && (
-        <AuthPage role={selectedRole} onAuth={handleAuth} onBack={() => setCurrentView('role')} />
-      )}
-      
-      {currentView === 'character' && currentUser && currentUser.role === 'student' && (
-        <CharacterSelection onCharacterCreated={handleCharacterCreation} userId={currentUser.id} />
-      )}
-      
-      {currentView === 'dashboard' && currentUser && currentUser.role === 'student' && (
-        <StudentDashboard
-          user={currentUser}
-          character={currentUser.characterId ? characters[currentUser.characterId] : undefined}
-          onLogout={handleLogout}
-          onUpdateUser={handleUpdateUser}
-          onUpdateCharacter={handleUpdateCharacter}
-          onJoinClass={handleJoinClass}
-          studentClasses={studentClasses[currentUser.id] || []}
-          teachers={allUsers.filter(u => u.role === 'teacher')}
-          achievements={achievements[currentUser.id] || []}
-          onUnlockAchievement={handleUnlockAchievement}
-          quests={quests}
-          inventory={studentInventories[currentUser.id] || []}
+        <AuthPage
+          role={selectedRole}
+          onAuth={handleAuth}
+          onBack={() => setCurrentView('role')}
         />
       )}
-      
-      {currentView === 'dashboard' && currentUser && currentUser.role === 'teacher' && (
-        <TeacherDashboard
-          user={currentUser}
-          onLogout={handleLogout}
-          onUpdateUser={handleUpdateUser}
-          students={allUsers.filter(u => 
-            u.role === 'student' && 
-            (studentClasses[u.id] || []).includes(currentUser.id)
-          )}
-          allStudents={allUsers.filter(u => u.role === 'student')}
-          characters={characters}
-          studentClasses={studentClasses}
-          onInviteStudent={(studentId) => {
-            setStudentClasses({
-              ...studentClasses,
-              [studentId]: [...(studentClasses[studentId] || []), currentUser.id]
-            });
+
+      {currentView === 'character' &&
+        currentUser &&
+        currentUser.role === 'student' && (
+          <CharacterSelection
+            onCharacterCreated={handleCharacterCreation}
+            userId={currentUser.id}
+          />
+        )}
+
+      {currentView === 'dashboard' &&
+        currentUser &&
+        currentUser.role === 'student' && (
+          <StudentDashboard
+            user={currentUser}
+            character={
+              currentUser.characterId
+                ? characters[currentUser.characterId]
+                : undefined
+            }
+            onLogout={handleLogout}
+            onUpdateUser={handleUpdateUser}
+            onUpdateCharacter={handleUpdateCharacter}
+            onJoinClass={handleJoinClass}
+            studentClasses={studentClasses[currentUser.id] || []}
+            teachers={allUsers.filter((u) => u.role === 'teacher')}
+            achievements={achievements[currentUser.id] || []}
+            onUnlockAchievement={handleUnlockAchievement}
+            quests={quests}
+            inventory={studentInventories[currentUser.id] || []}
+            progress={studentProgress[currentUser.id] || {}}
+            levelInfo={studentLevels[currentUser.id] || { level: 1, xp: 0 }}
+            onUpdateProgress={handleUpdateProgress}
+            onStartQuest={handleStartQuest}
+          />
+        )}
+
+      {currentView === 'dashboard' &&
+        currentUser &&
+        currentUser.role === 'teacher' && (
+          <TeacherDashboard
+            user={currentUser}
+            onLogout={handleLogout}
+            onUpdateUser={handleUpdateUser}
+            students={allUsers.filter(
+              (u) =>
+                u.role === 'student' &&
+                (studentClasses[u.id] || []).includes(currentUser.id)
+            )}
+            allStudents={allUsers.filter((u) => u.role === 'student')}
+            characters={characters}
+            studentClasses={studentClasses}
+            onInviteStudent={async (studentId) => {
+              const updatedClasses = [
+                ...(studentClasses[studentId] || []),
+                currentUser.id
+              ];
+              setStudentClasses({
+                ...studentClasses,
+                [studentId]: updatedClasses
+              });
+
+              try {
+                await fetch(`/api/students/${studentId}/state`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ studentClasses: updatedClasses })
+                });
+              } catch (err) {
+                console.error('Error saving student classes:', err);
+              }
+            }}
+            onCreateQuest={handleCreateQuest}
+            onUpdateQuest={handleUpdateQuest}
+            onDeleteQuest={handleDeleteQuest}
+            onAddItemToInventory={handleAddItemToInventory}
+            quests={quests}
+          />
+        )}
+        {currentView === 'game' && selectedQuest && currentUser && currentUser.characterId && (
+        <GamePage
+          quest={selectedQuest}
+          character={characters[currentUser.characterId]}
+          onQuestComplete={handleQuestComplete}
+          onBack={() => {
+            setCurrentView('dashboard');
+            setSelectedQuest(null);
           }}
-          onCreateQuest={handleCreateQuest}
-          onUpdateQuest={handleUpdateQuest}
-          onDeleteQuest={handleDeleteQuest}
-          onAddItemToInventory={handleAddItemToInventory}
-          quests={quests}
         />
       )}
     </div>

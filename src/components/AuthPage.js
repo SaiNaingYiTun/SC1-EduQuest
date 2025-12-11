@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, User, Lock, Sword, BookOpen } from 'lucide-react';
+import { ArrowLeft, User, Lock, Sword, BookOpen ,Mail} from 'lucide-react';
 
 
 
@@ -7,16 +7,17 @@ export default function AuthPage({ role, onAuth, onBack } ) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!username.trim() || !password.trim()) {
+    if (!username.trim() || !password.trim()|| (isSignUp && !email.trim())) {
       alert('Please fill in all fields');
       return;
     }
 
-    onAuth(username, password, isSignUp);
+    onAuth(username, password, isSignUp, email);
   };
 
   const roleColor = role === 'student' ? 'blue' : 'amber';
@@ -60,6 +61,22 @@ export default function AuthPage({ role, onAuth, onBack } ) {
                 />
               </div>
             </div>
+            
+            {isSignUp && ( // Show email input only during sign-up
+              <div>
+                <label className="block text-purple-100 mb-2">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-300" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg pl-12 pr-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
+                    placeholder="Enter your email"
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-purple-100 mb-2">Password</label>
