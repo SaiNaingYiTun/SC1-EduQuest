@@ -15,7 +15,7 @@ export default function QuestsPage({
   inventory,
   onStartQuest
 }) {
-  const [selectedQuest, setSelectedQuest] = useState(null);
+  
   const [completedQuests, setCompletedQuests] = useState([]);
 
   useEffect(() => {

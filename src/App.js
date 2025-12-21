@@ -28,6 +28,8 @@ function App() {
   // -----------------------
   // Backend helpers
   // -----------------------
+ 
+
 
   const saveStudentState = async (
     studentId,
@@ -87,6 +89,13 @@ function App() {
         );
       }
 
+      if (data.character) {
+      setCharacters((prev) => ({
+        ...prev,
+        [data.character.id]: data.character
+      }));
+      }
+
       setAchievements((prev) => ({
         ...prev,
         [studentId]: finalAchievements
@@ -111,6 +120,9 @@ function App() {
         ...prev,
         [studentId]: data.studentClasses || []
       }));
+      
+      
+
     } catch (err) {
       console.error('Error loading student state:', err);
     }
@@ -193,9 +205,15 @@ function App() {
     const savedAchievements = localStorage.getItem('achievements');
     const savedStudentInventories = localStorage.getItem('studentInventories');
 
-    if (savedUsers) {
-      setAllUsers(JSON.parse(savedUsers));
+    if (savedUser) {
+    const user = JSON.parse(savedUser);
+    setCurrentUser(user);
+
+    // Fetch student state from backend if student
+    if (user.role === 'student') {
+      fetchStudentState(user.id);
     }
+  }
     if (savedCharacters) {
       setCharacters(JSON.parse(savedCharacters));
     }
@@ -242,7 +260,6 @@ function App() {
 
     
  
-  
 
   }, []);
 
@@ -286,133 +303,267 @@ function App() {
   });
 };
 
-  const handleAuth = async (username, password, isSignUp, email) => {
-  try {
-    if (isSignUp) {
+//   const handleAuth = async (username, password, isSignUp, email, subjects) => {
+//   try {
+//     if (isSignUp) {
+//       // === SIGN UP ===
+//       const res = await fetch('/api/auth/register', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           username,
+//           email,
+//           password,
+//           role: selectedRole,
+//           name: username
+//         })
+//       });
+ 
+//       if (!res.ok) {
+//         const errData = await res.json().catch(() => ({}));
+//         alert(errData.message || 'Failed to register');
+//         return;
+//       }
+ 
+//       const data = await res.json(); // { user, token }
+ 
+//       // normalise so we always have user.id
+//       const backendUser = data.user;
+//       const normalizedUser = {
+//         ...backendUser,
+//         id: backendUser.id || backendUser._id
+//       };
+ 
+//       setCurrentUser(normalizedUser);
+//       setAuthToken(data.token);
+//       localStorage.setItem('authToken', data.token);
+ 
+//       // keep local allUsers if other parts of app still rely on it
+//       setAllUsers((prev) => [...prev, normalizedUser]);
+ 
+//       if (selectedRole === 'student') {
+//         // set up local defaults for achievements/progress/inventory/level
+//         const defaultAchievements = getDefaultAchievements();
+//         const initialInventory = [];
+//         const initialProgress = {};
+//         const initialLevel = { level: 1, xp: 0 };
+ 
+//         setAchievements((prev) => ({
+//           ...prev,
+//           [normalizedUser.id]: defaultAchievements
+//         }));
+ 
+//         setStudentInventories((prev) => ({
+//           ...prev,
+//           [normalizedUser.id]: initialInventory
+//         }));
+ 
+//         setStudentProgress((prev) => ({
+//           ...prev,
+//           [normalizedUser.id]: initialProgress
+//         }));
+ 
+//         setStudentLevels((prev) => ({
+//           ...prev,
+//           [normalizedUser.id]: initialLevel
+//         }));
+ 
+//         // initialise student state in backend with same defaults
+//         await saveStudentState(
+//           normalizedUser.id,
+//           defaultAchievements,
+//           initialInventory,
+//           initialProgress,
+//           initialLevel
+//         );
+ 
+//         setCurrentView('character');
+//       } else {
+//         // teacher goes straight to dashboard
+//         setCurrentView('dashboard');
+//       }
+//     } else {
+//       // === SIGN IN ===
+//       const res = await fetch('/api/auth/login', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({
+//           usernameOrEmail: username,
+//           password,
+//           role: selectedRole
+//         })
+//       });
+ 
+//       if (!res.ok) {
+//         const errData = await res.json().catch(() => ({}));
+//         alert(errData.message || 'Failed to login');
+//         return;
+//       }
+ 
+//       const data = await res.json(); // { user, token }
+ 
+//       const backendUser = data.user;
+//       const normalizedUser = {
+//         ...backendUser,
+//         id: backendUser.id || backendUser._id
+//       };
+ 
+//       setCurrentUser(normalizedUser);
+//       setAuthToken(data.token);
+//       localStorage.setItem('authToken', data.token);
+ 
+//       // keep local list if you still use allUsers for UI (classes, etc.)
+//       setAllUsers((prev) => {
+//         const exists = prev.some((u) => u.id === normalizedUser.id);
+//         return exists ? prev : [...prev, normalizedUser];
+//       });
+ 
+//       // for students, load state from backend (achievements, inventory, progress, level)
+//       if (normalizedUser.role === 'student') {
+//         await fetchStudentState(normalizedUser.id);
+//       }
+ 
+//       if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
+//         setCurrentView('character');
+//       } else {
+//         setCurrentView('dashboard');
+//       }
+//     }
+//   } catch (err) {
+//     console.error('Auth error:', err);
+//     alert('Something went wrong. Please try again.');
+//   }
+// };
+
+
+  const handleAuth = async (username, password, isSignUp, email, role) => {
+    try {
+      if (isSignUp) {
       // === SIGN UP ===
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
           username,
           email,
           password,
-          role: selectedRole,
+          role: role || selectedRole,
           name: username
         })
       });
- 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || 'Failed to register');
-        return;
-      }
- 
-      const data = await res.json(); // { user, token }
- 
-      // normalise so we always have user.id
-      const backendUser = data.user;
-      const normalizedUser = {
-        ...backendUser,
-        id: backendUser.id || backendUser._id
-      };
- 
-      setCurrentUser(normalizedUser);
-      setAuthToken(data.token);
-      localStorage.setItem('authToken', data.token);
- 
-      // keep local allUsers if other parts of app still rely on it
-      setAllUsers((prev) => [...prev, normalizedUser]);
- 
-      if (selectedRole === 'student') {
-        // set up local defaults for achievements/progress/inventory/level
-        const defaultAchievements = getDefaultAchievements();
-        const initialInventory = [];
-        const initialProgress = {};
-        const initialLevel = { level: 1, xp: 0 };
- 
-        setAchievements((prev) => ({
-          ...prev,
-          [normalizedUser.id]: defaultAchievements
-        }));
- 
-        setStudentInventories((prev) => ({
-          ...prev,
-          [normalizedUser.id]: initialInventory
-        }));
- 
-        setStudentProgress((prev) => ({
-          ...prev,
-          [normalizedUser.id]: initialProgress
-        }));
- 
-        setStudentLevels((prev) => ({
-          ...prev,
-          [normalizedUser.id]: initialLevel
-        }));
- 
-        // initialise student state in backend with same defaults
-        await saveStudentState(
-          normalizedUser.id,
-          defaultAchievements,
-          initialInventory,
-          initialProgress,
-          initialLevel
-        );
- 
-        setCurrentView('character');
-      } else {
-        // teacher goes straight to dashboard
-        setCurrentView('dashboard');
-      }
-    } else {
-      // === SIGN IN ===
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          usernameOrEmail: username,
-          password,
-          role: selectedRole
-        })
-      });
- 
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || 'Failed to login');
-        return;
-      }
- 
-      const data = await res.json(); // { user, token }
- 
-      const backendUser = data.user;
-      const normalizedUser = {
-        ...backendUser,
-        id: backendUser.id || backendUser._id
-      };
- 
-      setCurrentUser(normalizedUser);
-      setAuthToken(data.token);
-      localStorage.setItem('authToken', data.token);
- 
-      // keep local list if you still use allUsers for UI (classes, etc.)
-      setAllUsers((prev) => {
-        const exists = prev.some((u) => u.id === normalizedUser.id);
-        return exists ? prev : [...prev, normalizedUser];
-      });
- 
-      // for students, load state from backend (achievements, inventory, progress, level)
-      if (normalizedUser.role === 'student') {
-        await fetchStudentState(normalizedUser.id);
-      }
- 
-      if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
-        setCurrentView('character');
-      } else {
-        setCurrentView('dashboard');
-      }
+  
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      alert(errData.message || (isSignUp ? 'Failed to register' : 'Failed to login'));
+      return;
     }
-  } catch (err) {
+
+    const data = await res.json(); // { user, token }
+
+    // normalise so we always have user.id
+    const backendUser = data.user;
+    const normalizedUser = {
+      ...backendUser,
+      id: backendUser.id || backendUser._id
+    };
+
+    setCurrentUser(normalizedUser);
+    setAuthToken(data.token);
+    localStorage.setItem('authToken', data.token);
+
+    // keep local allUsers if other parts of app still rely on it
+    setAllUsers((prev) => [...prev, normalizedUser]);
+
+    if ((role || selectedRole) === 'student') {
+      // set up local defaults for achievements/progress/inventory/level
+      const defaultAchievements = getDefaultAchievements();
+      const initialInventory = [];
+      const initialProgress = {};
+      const initialLevel = { level: 1, xp: 0 };
+
+      setAchievements((prev) => ({
+        ...prev,
+        [normalizedUser.id]: defaultAchievements
+      }));
+
+      setStudentInventories((prev) => ({
+        ...prev,
+        [normalizedUser.id]: initialInventory
+      }));
+
+      setStudentProgress((prev) => ({
+        ...prev,
+        [normalizedUser.id]: initialProgress
+      }));
+
+      setStudentLevels((prev) => ({
+        ...prev,
+        [normalizedUser.id]: initialLevel
+      }));
+
+      // initialise student state in backend with same defaults
+      await saveStudentState(
+        normalizedUser.id,
+        defaultAchievements,
+        initialInventory,
+        initialProgress,
+        initialLevel
+      );
+
+      setCurrentView('character');
+    } else {
+      // teacher goes straight to dashboard
+      setCurrentView('dashboard');
+    }
+  } else {
+    // === SIGN IN ===
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usernameOrEmail: username,
+        password,
+        role: role || selectedRole
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      alert(errData.message || 'Failed to login');
+      return;
+    }
+
+    const data = await res.json(); // { user, token }
+
+    const backendUser = data.user;
+    const normalizedUser = {
+      ...backendUser,
+      id: backendUser.id || backendUser._id
+    };
+
+    setCurrentUser(normalizedUser);
+    setAuthToken(data.token);
+    localStorage.setItem('authToken', data.token);
+
+    // keep local list if you still use allUsers for UI (classes, etc.)
+    setAllUsers((prev) => {
+      const exists = prev.some((u) => u.id === normalizedUser.id);
+      return exists ? prev : [...prev, normalizedUser];
+    });
+
+    // for students, load state from backend (achievements, inventory, progress, level)
+    if (normalizedUser.role === 'student') {
+      await fetchStudentState(normalizedUser.id);
+    }
+
+    if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
+      setCurrentView('character');
+    } else {
+      setCurrentView('dashboard');
+    }
+  }
+    } catch (err) {
     console.error('Auth error:', err);
     alert('Something went wrong. Please try again.');
   }
@@ -420,6 +571,8 @@ function App() {
 
   const handleCharacterCreation = async (character) => {
     if (!currentUser) return;
+
+    
 
     const updatedUser = {
       ...currentUser,
@@ -435,29 +588,22 @@ function App() {
     setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
 
     try {
-    // save characterId in backend User document
-    const res = await authFetch(`/api/users/${currentUser.id}/character`, {
+    // Save characterId in backend User document
+    await authFetch(`/api/users/${currentUser.id}/character`, {
       method: 'PUT',
       body: JSON.stringify({ characterId: character.id })
     });
- 
-    if (!res.ok) {
-      console.error('Failed to update characterId in backend');
-    } else {
-      // optional: sync with what backend returns
-      const savedUser = await res.json();
-      const normalized = {
-        ...savedUser,
-        id: savedUser.id || savedUser._id
-      };
-      setCurrentUser(normalized);
-      setAllUsers((prev) =>
-        prev.map((u) => (u.id === normalized.id ? normalized : u))
-      );
-    }
+
+    // Save full character object in student state
+    await fetch(`/api/students/${currentUser.id}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ character })
+    });
   } catch (err) {
-    console.error('Error updating characterId:', err);
+    console.error('Error updating character:', err);
   }
+
 
     setCurrentView('dashboard');
   };
@@ -834,10 +980,20 @@ function App() {
               });
 
               try {
-                await fetch(`/api/students/${studentId}/state`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ studentClasses: updatedClasses })
+                const res = await fetch(`/api/students/${studentId}/state`);
+                const existing = await res.json();
+ 
+              // 2️⃣ save merged state (prevents wiping)
+              await fetch(`/api/students/${studentId}/state`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                achievements: existing.achievements || [],
+                inventory: existing.inventory || [],
+                progress: existing.progress || {},
+                level: existing.level ?? 1,
+                xp: existing.xp ?? 0,
+                studentClasses: updatedClasses})
                 });
               } catch (err) {
                 console.error('Error saving student classes:', err);
@@ -848,6 +1004,7 @@ function App() {
             onDeleteQuest={handleDeleteQuest}
             onAddItemToInventory={handleAddItemToInventory}
             quests={quests}
+            authFetch={authFetch}
           />
         )}
         {currentView === 'game' && selectedQuest && currentUser && currentUser.characterId && (

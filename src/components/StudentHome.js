@@ -133,7 +133,7 @@ export default function StudentHome({ character, achievements, studentClasses, t
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-white text-xl">{teacher.subjectName}</div>
+                      <div className="text-white text-xl">{teacher.subjects}</div>
                       <div className="text-purple-200">Teacher: {teacher.name}</div>
                     </div>
                     <BookOpen className="w-8 h-8 text-purple-400" />

@@ -112,7 +112,7 @@ export default function ClassesPage({ studentClasses, teachers, onJoinClass }) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <BookOpen className="w-6 h-6 text-amber-400" />
-                    <h3 className="text-2xl text-white">{teacher.subjectName}</h3>
+                    <h3 className="text-2xl text-white">{teacher.subjects}</h3>
                   </div>
                   <div className="text-purple-200">
                     Instructor: {teacher.name}

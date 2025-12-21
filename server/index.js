@@ -49,11 +49,22 @@ const questSchema = new mongoose.Schema(
     xpReward: { type: Number, default: 0 },
     timeLimit: { type: Number, default: null },
     teacherId: { type: String, default: null },
+    subject: {type: String, required: true},
     questions: { type: [questionSchema], default: [] }
+    
   },
   { timestamps: true }
 );
 
+//Course schema
+const courseSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  section: { type: String},
+  teacherId: { type: String, required: true }
+}, { timestamps: true }
+
+)
+const Course = mongoose.model('Course', courseSchema);
 
  
 const Quest = mongoose.model('Quest', questSchema);
@@ -68,14 +79,14 @@ const userSchema = new mongoose.Schema(
  
     role: {
       type: String,
-      enum: ['student', 'teacher'],
+      enum: ['student', 'teacher', 'admin'],
       required: true
     },
  
     name: { type: String, required: true },
  
     // teacher-only fields
-    subjectName: { type: String },
+    subjects: { type: [String], default: [] },
     otpCode: { type: String },
  
     // optional character link
@@ -98,6 +109,7 @@ const User = mongoose.model('User', userSchema);
 const studentStateSchema = new mongoose.Schema(
   {
     studentId: { type: String, required: true, unique: true },
+    character: { type: Object,default: null},
  
     // progress per quest: { questId: score }
     progress: {
@@ -165,6 +177,14 @@ function authMiddleware(req, res, next) {
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 }
+
+function adminOnly(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin only' });
+  }
+  next();
+}
+
  
 function generateTeacherOtp(length = 8) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -177,7 +197,91 @@ function generateTeacherOtp(length = 8) {
 
 // ===== ROUTES =====
 
+
+// Course routes
+//Get all courses for a teacher
+app.get('/api/teachers/:teacherId/courses', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.userId !== req.params.teacherId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+    const courses = await Course.find({ teacherId: req.params.teacherId }).lean();
+    res.json(courses);
+  } catch (err) {
+    console.error('Error fetching courses:', err);
+    res.status(500).json({ message: 'Failed to fetch courses' });
+  }
+});
+
+// Create a new course for a teacher
+app.post('/api/teachers/:teacherId/courses', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.userId !== req.params.teacherId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+    const { name, section } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Course name is required' });
+    }
+    const course = new Course({
+      name: name.trim(),
+      section: section ? section.trim() : '',
+      teacherId: req.params.teacherId,
+    });
+    const saved = await course.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error('Error creating course:', err);
+    res.status(500).json({ message: 'Failed to create course' });
+  }
+});
+
+// Update a course
+app.put('/api/teachers/:teacherId/courses/:courseId', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.userId !== req.params.teacherId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+    const { name, section } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Course name is required' });
+    }
+    const updated = await Course.findOneAndUpdate(
+      { _id: req.params.courseId, teacherId: req.params.teacherId },
+      { name: name.trim(), section: section ? section.trim() : '' },
+      { new: true }
+    ).lean();
+    if (!updated) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error('Error updating course:', err);
+    res.status(500).json({ message: 'Failed to update course' });
+  }
+});
+
+// Delete a course
+app.delete('/api/teachers/:teacherId/courses/:courseId', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.userId !== req.params.teacherId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+    const result = await Course.deleteOne({ _id: req.params.courseId, teacherId: req.params.teacherId });
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+    res.json({ message: 'Course deleted', id: req.params.courseId });
+  } catch (err) {
+    console.error('Error deleting course:', err);
+    res.status(500).json({ message: 'Failed to delete course' });
+  }
+});
+
 // ===== AUTH ROUTES =====
+
+
+
 
 app.put('/api/users/:id/character', authMiddleware, async (req, res) => {
   try {
@@ -214,7 +318,7 @@ app.put('/api/users/:id/character', authMiddleware, async (req, res) => {
 // Register
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, email, password, role, name, subjectName } = req.body;
+    const { username, email, password, role, name, subjects } = req.body;
  
     if (!username || !email || !password || !role) {
       return res
@@ -237,7 +341,9 @@ app.post('/api/auth/register', async (req, res) => {
       email,
       role,
       name: name || username,
-      subjectName: role === 'teacher' ? subjectName || 'My Subject' : undefined,
+      subjects: role === 'teacher'  &&  Array.isArray(subjects)&&subjects.length>0 
+      ? subjects
+      : role === 'teacher' ? ['My Subjects'] : undefined,
       otpCode: role === 'teacher' ? generateTeacherOtp() : undefined
     });
  
@@ -298,6 +404,26 @@ app.get('/api/users', authMiddleware, async (req, res) => {
     res.json(users);
   } catch (err) {
     console.error('Error fetching users:', err);
+    res.status(500).json({ message: 'Failed to fetch users' });
+  }
+});
+
+// ===== ADMIN ROUTES =====
+ 
+// Get all users (admin only)
+// Optional filter: ?role=student | teacher
+app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { role } = req.query;
+    const filter = role ? { role } : {};
+ 
+    const users = await User.find(filter)
+      .select('-passwordHash')
+      .lean();
+ 
+    res.json(users);
+  } catch (err) {
+    console.error('Admin fetch users error:', err);
     res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
@@ -442,31 +568,58 @@ app.get('/api/students/:studentId/state', async (req, res) => {
 });
  
 //  full student state (achievements, inventory, progress, level/xp)
+// app.put('/api/students/:studentId/state', async (req, res) => {
+//   try {
+//     const { studentId } = req.params;
+//     const {
+//       achievements = [],
+//       inventory = [],
+//       progress = {},
+//       level,
+//       xp,
+//       studentClasses = []
+//     } = req.body;
+ 
+//     const updateDoc = {
+//       achievements,
+//       inventory,
+//       progress,
+//       studentClasses
+//     };
+ 
+//     if (typeof level === 'number') updateDoc.level = level;
+//     if (typeof xp === 'number') updateDoc.xp = xp;
+ 
+//     const state = await StudentState.findOneAndUpdate(
+//       { studentId },
+//       updateDoc,
+//       { new: true, upsert: true }
+//     ).lean();
+ 
+//     res.json(state);
+//   } catch (err) {
+//     console.error('Error saving student state:', err);
+//     res.status(500).json({ message: 'Failed to save student state' });
+//   }
+// });
+
 app.put('/api/students/:studentId/state', async (req, res) => {
   try {
     const { studentId } = req.params;
-    const {
-      achievements = [],
-      inventory = [],
-      progress = {},
-      level,
-      xp,
-      studentClasses = []
-    } = req.body;
+    const updateDoc = {};
+
+    if ('character' in req.body) updateDoc.character =req.body.character;
+    if ('achievements' in req.body) updateDoc.achievements = req.body.achievements;
+    if ('inventory' in req.body) updateDoc.inventory = req.body.inventory;
+    if ('progress' in req.body) updateDoc.progress = req.body.progress;
+    if ('studentClasses' in req.body) updateDoc.studentClasses = req.body.studentClasses;
  
-    const updateDoc = {
-      achievements,
-      inventory,
-      progress,
-      studentClasses
-    };
- 
-    if (typeof level === 'number') updateDoc.level = level;
-    if (typeof xp === 'number') updateDoc.xp = xp;
+    if ('level' in req.body && typeof req.body.level === 'number') updateDoc.level = req.body.level;
+    if ('xp' in req.body && typeof req.body.xp === 'number') updateDoc.xp = req.body.xp;
  
     const state = await StudentState.findOneAndUpdate(
       { studentId },
-      updateDoc,
+      { $set: updateDoc },
       { new: true, upsert: true }
     ).lean();
  
@@ -476,6 +629,7 @@ app.put('/api/students/:studentId/state', async (req, res) => {
     res.status(500).json({ message: 'Failed to save student state' });
   }
 });
+
  
 // Update progress for a quest and adjust level/xp
 app.post('/api/students/:studentId/progress', async (req, res) => {

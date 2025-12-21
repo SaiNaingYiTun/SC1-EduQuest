@@ -3,7 +3,7 @@ import { User, Character } from '../App';
 
 
 
-export default function TeacherHome({ user, students, characters }) {
+export default function TeacherHome({ user, students, characters , selectedCourse }) {
   const totalStudents = students.length;
   const totalQuests = 3; // Mock data
   const avgLevel = students.length > 0
@@ -19,8 +19,12 @@ export default function TeacherHome({ user, students, characters }) {
     <div className="space-y-8">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-amber-800/50 to-orange-800/50 rounded-2xl p-8 border-2 border-amber-400/30 backdrop-blur-sm">
-        <h2 className="text-4xl text-amber-400 mb-2">Welcome back, {user.name}!</h2>
-        <p className="text-xl text-amber-200">Manage your {user.subjectName} class</p>
+        <h2 className="text-4xl text-amber-400 mb-2">Welcome, {user.name}!</h2>       
+        <p className="text-xl text-amber-200">
+          {selectedCourse
+            ? <>Manage your <span className ="font-bold text-white">{selectedCourse} </span>class</>
+            : "Manage your classes"}
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -71,7 +75,7 @@ export default function TeacherHome({ user, students, characters }) {
             <div className="space-y-3">
               <div>
                 <div className="text-sm text-purple-300">Subject</div>
-                <div className="text-white">{user.subjectName}</div>
+                <div className="text-white">{user.subjects}</div>
               </div>
               <div>
                 <div className="text-sm text-purple-300">Instructor</div>

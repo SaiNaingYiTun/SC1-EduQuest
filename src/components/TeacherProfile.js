@@ -16,14 +16,14 @@ const defaultProfilePics = [
 export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name || '');
-  const [subjectName, setSubjectName] = useState(user.subjectName || '');
+  const [subjects, setSubjects] = useState(user.subjects || '');
   const [selectedAvatar, setSelectedAvatar] = useState(user.profilePic || defaultProfilePics[0]);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
 
   const handleSave = () => {
     onUpdateUser({
       name,
-      subjectName,
+      subjects,
       profilePic: selectedAvatar
     });
     setIsEditing(false);
@@ -31,7 +31,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
 
   const handleCancel = () => {
     setName(user.name || '');
-    setSubjectName(user.subjectName || '');
+    setSubjects(user.subjects || '');
     setSelectedAvatar(user.profilePic || defaultProfilePics[0]);
     setIsEditing(false);
     setShowAvatarPicker(false);
@@ -92,8 +92,8 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
                   <label className="block text-purple-100 mb-2">Subject/Course Name</label>
                   <input
                     type="text"
-                    value={subjectName}
-                    onChange={(e) => setSubjectName(e.target.value)}
+                    value={subjects}
+                    onChange={(e) => setSubjects(e.target.value)}
                     className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
                     placeholder="Enter your subject or course name"
                   />
@@ -110,7 +110,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
                   </div>
                   <div className="bg-purple-600/20 px-4 py-2 rounded-lg border border-purple-400/30">
                     <div className="text-sm text-purple-300">Subject</div>
-                    <div className="text-white">{user.subjectName}</div>
+                    <div className="text-white">{user.subjects}</div>
                   </div>
                 </div>
               </>
@@ -182,7 +182,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
                 <BookOpen className="w-8 h-8 text-amber-400 mt-1" />
                 <div className="flex-1">
                   <div className="text-white mb-1">Subject Name</div>
-                  <div className="text-2xl text-amber-400 mb-2">{user.subjectName}</div>
+                  <div className="text-2xl text-amber-400 mb-2">{user.subjects}</div>
                   <div className="text-sm text-purple-300">
                     This is the course that students will see when they join your class
                   </div>

@@ -8,16 +8,23 @@ export default function AuthPage({ role, onAuth, onBack } ) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
+  
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!username.trim() || !password.trim()|| (isSignUp && !email.trim())) {
+    if (!username.trim() || !password.trim()|| (isSignUp && !email.trim())
+      )
+     {
       alert('Please fill in all fields');
       return;
     }
 
-    onAuth(username, password, isSignUp, email);
+  
+      console.log('Submitting:', { username, password, isSignUp, email, role });
+      onAuth(username, password, isSignUp, email, role); 
+    
+
   };
 
   const roleColor = role === 'student' ? 'blue' : 'amber';
@@ -77,6 +84,9 @@ export default function AuthPage({ role, onAuth, onBack } ) {
                 </div>
               </div>
             )}
+
+            
+      
 
             <div>
               <label className="block text-purple-100 mb-2">Password</label>

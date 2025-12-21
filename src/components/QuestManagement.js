@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react';
-import { Plus, Scroll, Edit, Trash2, Clock, Star, X } from 'lucide-react';
+import { Plus, Scroll, BookOpen, Edit, Trash2, Clock, Star, X } from 'lucide-react';
 import { User, Quest, Question, Item } from '../App';
 
-
-
-
-export default function QuestManagement({ 
-  user, 
-  onCreateQuest, 
-  onUpdateQuest, 
-  onDeleteQuest, 
+export default function QuestManagement({
+  user,
+  onCreateQuest,
+  onUpdateQuest,
+  onDeleteQuest,
   onAddItemToInventory,
-  quests
+  quests,
+  selectedCourse
 }) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingQuest, setEditingQuest] = useState(null);
 
+  // Courses from backend
+  const [courses, setCourses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(false);
+
   // Filter quests for this teacher
-  const teacherQuests = quests.filter(q => q.teacherId === user.id);
+  const teacherQuests = quests.filter(
+    q => q.teacherId === user.id && (!selectedCourse || q.subject === selectedCourse)
+  );
 
   // Form state
   const [title, setTitle] = useState('');
@@ -25,10 +29,39 @@ export default function QuestManagement({
   const [difficulty, setDifficulty] = useState('Easy');
   const [xpReward, setXpReward] = useState(50);
   const [timeLimit, setTimeLimit] = useState(10);
+  const [subject, setSubject] = useState('');
   const [questions, setQuestions] = useState([
-  { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
-]);
+    { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
+  ]);
   const [localQuests, setLocalQuests] = useState([]);
+
+  // Fetch courses from backend
+  useEffect(() => {
+    async function fetchCourses() {
+      if (user?.role === 'teacher' && user?.id) {
+        setLoadingCourses(true);
+        try {
+          const res = await fetch(`/api/teachers/${user.id}/courses`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+            },
+          });
+          if (!res.ok) throw new Error('Failed to fetch courses');
+          const data = await res.json();
+          setCourses(data);
+          // Set default subject if not editing
+          if (!editingQuest && data.length > 0) setSubject(data[0].name);
+        } catch (err) {
+          setCourses([]);
+        } finally {
+          setLoadingCourses(false);
+        }
+      }
+    }
+    fetchCourses();
+    // eslint-disable-next-line
+  }, [user, editingQuest]);
+
   useEffect(() => {
     // Load quests from localStorage
     const savedQuests = localStorage.getItem('quests');
@@ -49,7 +82,7 @@ export default function QuestManagement({
     };
 
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Also poll for changes
     const interval = setInterval(handleStorageChange, 1000);
 
@@ -65,6 +98,7 @@ export default function QuestManagement({
     setDifficulty('Easy');
     setXpReward(50);
     setTimeLimit(10);
+    setSubject(courses.length > 0 ? courses[0].name : '');
     setQuestions([
       { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
     ]);
@@ -82,12 +116,15 @@ export default function QuestManagement({
     setDifficulty(quest.difficulty);
     setXpReward(quest.xpReward);
     setTimeLimit(quest.timeLimit ? quest.timeLimit / 60 : 10);
-    setQuestions(quest.questions.map(q => ({
-      question: q.question,
-      options: [...q.options],
-      correctAnswer: q.correctAnswer,
-      explanation: q.explanation || ''
-    })));
+    setSubject(quest.subject || (courses.length > 0 ? courses[0].name : ''));
+    setQuestions(
+      quest.questions.map(q => ({
+        question: q.question,
+        options: [...q.options],
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || ''
+      }))
+    );
     setEditingQuest(quest);
     setShowCreateModal(true);
   };
@@ -127,6 +164,10 @@ export default function QuestManagement({
       alert('Please enter a quest description');
       return;
     }
+    if (!subject || !courses.some(c => c.name === subject)) {
+      alert('Please select a course for this quest');
+      return;
+    }
     if (questions.some(q => !q.question.trim())) {
       alert('Please fill in all question fields');
       return;
@@ -136,7 +177,7 @@ export default function QuestManagement({
       return;
     }
 
-    const questData= {
+    const questData = {
       id: editingQuest ? editingQuest.id : `quest_${Date.now()}`,
       title,
       description,
@@ -144,6 +185,7 @@ export default function QuestManagement({
       xpReward,
       timeLimit: timeLimit * 60,
       teacherId: user.id,
+      subject,
       questions: questions.map((q, idx) => ({
         id: `q${idx + 1}`,
         question: q.question,
@@ -224,6 +266,12 @@ export default function QuestManagement({
                 <h3 className="text-xl text-white mb-2">{quest.title}</h3>
                 <p className="text-purple-200 mb-4">{quest.description}</p>
 
+                {/* subject list*/}
+                <div className="flex items-center gap-2 mb-2">
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs text-amber-400 font-semibold">{quest.subject}</span>
+                </div>
+
                 <div className="flex items-center gap-4 mb-6 text-sm text-purple-200">
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-amber-400" />
@@ -285,6 +333,28 @@ export default function QuestManagement({
 
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
               <div>
+                <label className="block text-purple-100 mb-2">Course *</label>
+                <select
+                  value={subject}
+                  onChange={e => setSubject(e.target.value)}
+                  className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white focus:border-purple-400 focus:outline-none"
+                  disabled={loadingCourses}
+                >
+                  {loadingCourses && (
+                    <option>Loading...</option>
+                  )}
+                  {!loadingCourses && courses.length === 0 && (
+                    <option value="">No courses found</option>
+                  )}
+                  {!loadingCourses && courses.map((course) => (
+                    <option key={course._id} value={course.name}>
+                      {course.name} ({course.section})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-purple-100 mb-2">Quest Title *</label>
                 <input
                   type="text"
@@ -311,7 +381,7 @@ export default function QuestManagement({
                   <label className="block text-purple-100 mb-2">Difficulty</label>
                   <select
                     value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value )}
+                    onChange={(e) => setDifficulty(e.target.value)}
                     className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white focus:border-purple-400 focus:outline-none"
                   >
                     <option>Easy</option>
