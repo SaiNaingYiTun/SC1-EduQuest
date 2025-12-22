@@ -22,7 +22,11 @@ export default function TeacherHome({ user, students, characters , selectedCours
         <h2 className="text-4xl text-amber-400 mb-2">Welcome, {user.name}!</h2>       
         <p className="text-xl text-amber-200">
           {selectedCourse
-            ? <>Manage your <span className ="font-bold text-white">{selectedCourse} </span>class</>
+            ? <>Manage your 
+            <span className="font-bold text-white">
+              {selectedCourse.name} {selectedCourse.section && `(${selectedCourse.section})`}
+            </span>
+            class</>
             : "Manage your classes"}
         </p>
       </div>

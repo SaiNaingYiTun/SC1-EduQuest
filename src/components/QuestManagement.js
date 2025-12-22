@@ -18,11 +18,17 @@ export default function QuestManagement({
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
 
-  // Filter quests for this teacher
-  const teacherQuests = quests.filter(
-    q => q.teacherId === user.id && (!selectedCourse || q.subject === selectedCourse)
-  );
+  console.log('DEBUG:', { quests, userId: user.id, selectedCourse });
 
+
+  // Filter quests for this teacher
+  const teacherQuests = quests.filter(q =>
+  String(q.teacherId) === String(user.id) &&
+  (
+    !selectedCourse ||
+    String(q.courseId) === String(selectedCourse._id)
+  )
+);
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -98,7 +104,7 @@ export default function QuestManagement({
     setDifficulty('Easy');
     setXpReward(50);
     setTimeLimit(10);
-    setSubject(courses.length > 0 ? courses[0].name : '');
+    setSubject(courses.length > 0 ? courses[0]._id : '');
     setQuestions([
       { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
     ]);
@@ -116,7 +122,8 @@ export default function QuestManagement({
     setDifficulty(quest.difficulty);
     setXpReward(quest.xpReward);
     setTimeLimit(quest.timeLimit ? quest.timeLimit / 60 : 10);
-    setSubject(quest.subject || (courses.length > 0 ? courses[0].name : ''));
+    const course = courses.find(c => c.name === quest.courseName || c._id === quest.courseId);
+    setSubject(course ? course._id : (courses.length > 0 ? courses[0]._id : ''));
     setQuestions(
       quest.questions.map(q => ({
         question: q.question,
@@ -164,7 +171,8 @@ export default function QuestManagement({
       alert('Please enter a quest description');
       return;
     }
-    if (!subject || !courses.some(c => c.name === subject)) {
+      const course = courses.find(c => c._id === subject);
+    if (!subject || !course) {
       alert('Please select a course for this quest');
       return;
     }
@@ -185,7 +193,9 @@ export default function QuestManagement({
       xpReward,
       timeLimit: timeLimit * 60,
       teacherId: user.id,
-      subject,
+      courseId: course._id,
+      courseName: course.name,
+      section: course.section,
       questions: questions.map((q, idx) => ({
         id: `q${idx + 1}`,
         question: q.question,
@@ -269,7 +279,7 @@ export default function QuestManagement({
                 {/* subject list*/}
                 <div className="flex items-center gap-2 mb-2">
                   <BookOpen className="w-4 h-4 text-amber-400" />
-                  <span className="text-xs text-amber-400 font-semibold">{quest.subject}</span>
+                  <span className="text-xs text-amber-400 font-semibold">{quest.courseName} ({quest.section})</span>
                 </div>
 
                 <div className="flex items-center gap-4 mb-6 text-sm text-purple-200">
@@ -347,7 +357,7 @@ export default function QuestManagement({
                     <option value="">No courses found</option>
                   )}
                   {!loadingCourses && courses.map((course) => (
-                    <option key={course._id} value={course.name}>
+                    <option key={course._id} value={course._id}>
                       {course.name} ({course.section})
                     </option>
                   ))}

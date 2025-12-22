@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState,useEffect } from 'react';
 import { Home, Users, Scroll, BarChart3, User as UserIcon } from 'lucide-react';
 import { User, Character, Quest, Item } from '../App';
 import TeacherHome from './TeacherHome';
@@ -27,7 +27,21 @@ export default function TeacherDashboard({
   authFetch
 }) {
   const [activeTab, setActiveTab] = useState('home');
-  const [selectedCourse, setSelectedCourse] = useState(user.subjects?.[0] || '');
+  const [courses, setCourses] = useState([]);
+  const [selectedCourse, setSelectedCourse] = useState(null);
+
+  //fetch courses 
+  useEffect(() => {
+    async function fetchCourses() {
+      const res = await authFetch(`/api/teachers/${user.id}/courses`);
+      const data = await res.json();
+      setCourses(data);
+      if (data.length > 0) setSelectedCourse(data[0]);
+    }
+    fetchCourses();
+  }, [user.id, authFetch]);
+
+
 
   const tabs = [
     { id: 'home', label: 'Home', icon: Home },
@@ -37,14 +51,15 @@ export default function TeacherDashboard({
     { id: 'courses' , label: 'Courses' , icon : BarChart3},
     { id: 'profile', label: 'Profile', icon: UserIcon },
   ];
-
-  const filteredStudents = selectedCourse
-  ? students.filter(s => Array.isArray(s.classes) && s.classes.includes(selectedCourse))
-  : students;
   
-  const filteredQuests = selectedCourse
-    ? quests.filter(q => q.classId === selectedCourse)
-    : quests;
+  const filteredStudents = selectedCourse && selectedCourse._id
+  ? students.filter(s => Array.isArray(s.classes) && s.classes.includes(selectedCourse._id))
+  : students;
+ 
+  
+  const filteredQuests = selectedCourse && typeof selectedCourse === 'object' && selectedCourse._id
+  ? quests.filter(q => String(q.courseId) === String(selectedCourse._id))
+  : quests;
 
   return (
     <div className="min-h-screen">
@@ -56,9 +71,9 @@ export default function TeacherDashboard({
             <div className="flex items-center gap-4 text-white">
               <div className="text-right">
                 <div className="text-sm text-amber-200">
-                  {user.subjects && user.subjects.length>0
-                   ? user.subjects.join(',')
-                    : ''}
+                  {Array.isArray(user.subjects) && user.subjects.length > 0
+                    ? user.subjects.join(', ')
+                    : (typeof user.subjects === 'string' ? user.subjects : '')}
                   </div>
                 <div>{user.name}</div>
               </div>
@@ -87,23 +102,33 @@ export default function TeacherDashboard({
             })}
           </div>
           {/*Course Selection Bar*/}
-          {user.subjects && user.subjects.length >1 && (
+          {courses.length > 0 && (
             <div className="flex gap-2 mt-4">
-              {user.subjects.map((course,idx) => (
+              {courses.map((course) => (
                 <button
-                  key={idx}
+                  key={course._id}
                   className={`px-4 py-2 rounded ${
-                    selectedCourse === course
+                    selectedCourse && selectedCourse._id === course._id
                       ? 'bg-amber-500 text-white'
                       : 'bg-amber-800/50 text-amber-200'
-                  }`}
-                  onClick={() => setSelectedCourse(course)}
-                  >
-                    {course}
-                  </button>
-              ))}
-            </div>
-          )}
+               }`}
+                onClick={() => setSelectedCourse(course)}
+                 >
+                {String(course.name)} ({String(course.section)})
+            </button>
+          ))}
+          <button
+            className={`px-4 py-2 rounded ${
+              !selectedCourse
+                ? 'bg-amber-500 text-white'
+                : 'bg-amber-800/50 text-amber-200'
+              }`}
+              onClick={() => setSelectedCourse(null)}
+            >
+            All Courses
+          </button>
+        </div>
+      )}
 
         </div>
       </nav>
@@ -126,6 +151,7 @@ export default function TeacherDashboard({
             allStudents={allStudents}
             characters={characters}
             onInviteStudent={onInviteStudent}
+            courses={courses}
           />
         )}
         

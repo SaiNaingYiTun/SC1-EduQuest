@@ -49,8 +49,12 @@ const questSchema = new mongoose.Schema(
     xpReward: { type: Number, default: 0 },
     timeLimit: { type: Number, default: null },
     teacherId: { type: String, default: null },
-    subject: {type: String, required: true},
-    questions: { type: [questionSchema], default: [] }
+    
+    questions: { type: [questionSchema], default: [] },
+    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course', required: true },
+    courseName: { type: String, required: true },
+    section: { type: String }
+
     
   },
   { timestamps: true }
@@ -484,6 +488,9 @@ app.post('/api/quests',authMiddleware, async (req, res) => {
       title: body.title,
       description: body.description,
       difficulty: body.difficulty || 'Easy',
+      courseId: body.courseId,
+      courseName: body.courseName,
+      section: body.section,
       xpReward: body.xpReward || 0,
       timeLimit: body.timeLimit ?? null,
       teacherId: req.user.userId,

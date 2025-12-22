@@ -180,12 +180,10 @@ export default function CourseManagement({ user, authFetch, onCoursesChange }) {
                         <div className={`rounded-full w-10 h-10 flex items-center justify-center bg-${color}-500 text-white font-bold text-lg`}>
                           {code.match(/[A-Z]+/)?.[0] || code}
                         </div>
-                        
                       </div>
                       <h4 className="text-lg font-semibold text-gray-800 truncate">
-                        {name}
+                        {course.name} ({section})
                       </h4>
-                      <div className="text-gray-500 text-sm mb-2">Section {section}</div>
                       <div className="flex gap-3 mt-5">
                         <button
                           onClick={e => {
@@ -227,9 +225,11 @@ export default function CourseManagement({ user, authFetch, onCoursesChange }) {
             >
               ✕
             </button>
-            <h3 className="text-2xl font-bold mb-2">{selectedCourse.name}</h3>
+            <h3 className="text-2xl font-bold mb-2">
+              {selectedCourse.name} ({selectedCourse.section})
+            </h3>
             <div className="mb-4 text-gray-600">
-              <span className="font-semibold">Section:</span> {parseCourse(selectedCourse).section}
+              <span className="font-semibold">Section:</span> {selectedCourse.section}
             </div>
             <div className="mb-4">
               <span className="font-semibold">Course ID:</span> {selectedCourse._id}
