@@ -31,7 +31,7 @@ export default function StudentOverview({
   );
 
   const handleInvite = (studentId) => {
-    onInviteStudent(studentId);
+    onInviteStudent(studentId,selectedCourseId);
     alert('Student invited successfully!');
     setShowInviteModal(false);
     setSearchQuery('');
@@ -96,10 +96,10 @@ export default function StudentOverview({
                       <div className="text-xs text-purple-300 mt-1">
                         {Array.isArray(student.studentClasses) && student.studentClasses.length > 0 ? (
                           <>
-                            Courses:&nbsp;
+                              &nbsp;
                             {student.studentClasses
                               .map(cid => {
-                                const course = courses.find(c => c._id === cid);
+                                const course = courses.find(c => String(c._id) === String(cid));
                                 return course ? `${course.name}${course.section ? ` (${course.section})` : ''}` : null;
                               })
                               .filter(Boolean)
@@ -107,7 +107,7 @@ export default function StudentOverview({
                             }
                           </>
                         ) : (
-                          'No courses'
+                          'No courses enrolled'
                         )}
                       </div>
                     </div>

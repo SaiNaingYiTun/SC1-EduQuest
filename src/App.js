@@ -12,6 +12,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [allUsers, setAllUsers] = useState([]);
   const [selectedQuest, setSelectedQuest] = useState(null);
+  const [courses, setCourses] = useState([]);
   
 
   const [characters, setCharacters] = useState({});
@@ -173,6 +174,24 @@ function App() {
   // -----------------------
 
   useEffect(() => {
+  const fetchCourses = async () => {
+    if (currentUser && currentUser.role === 'teacher' && authToken) {
+      try {
+        const res = await authFetch(`/api/teachers/${currentUser.id}/courses`);
+        if (!res.ok) return;
+        const data = await res.json();
+        setCourses(data);
+      } catch (err) {
+        console.error('Error loading courses:', err);
+      }
+    }
+  };
+  fetchCourses();
+}, [currentUser, authToken]);
+
+
+
+  useEffect(() => {
   if (!authToken) return;
  
   const fetchAllUsers = async () => {
@@ -194,6 +213,30 @@ function App() {
  
   fetchAllUsers();
 }, [authToken]);
+
+  useEffect(() => {
+  // After allUsers is loaded and you are a teacher, fetch student states
+  if (
+    currentUser &&
+    currentUser.role === 'teacher' &&
+    allUsers.length > 0
+  ) {
+    allUsers
+      .filter((u) => u.role === 'student')
+      .forEach(async (student) => {
+        try {
+          const res = await fetch(`/api/students/${student.id}/state`);
+          const data = await res.json();
+          setStudentClasses((prev) => ({
+            ...prev,
+            [student.id]: data.studentClasses || []
+          }));
+        } catch (err) {
+          // ignore
+        }
+      });
+  }
+}, [allUsers, currentUser]);
 
   useEffect(() => {
     // Load from localStorage
@@ -833,15 +876,22 @@ function App() {
             students={allUsers.filter(
               (u) =>
                 u.role === 'student' &&
-                (studentClasses[u.id] || []).includes(currentUser.id)
-            )}
+                (studentClasses[u.id] || []).some(cid =>
+                courses.some(course => String(course._id) === String(cid) && course.teacherId === currentUser.id) 
+                )
+            )
+            .map(u => ({
+              ...u,
+              studentClasses: studentClasses[u.id] || []
+            }))
+          }
             allStudents={allUsers.filter((u) => u.role === 'student')}
             characters={characters}
             studentClasses={studentClasses}
-            onInviteStudent={async (studentId) => {
+            onInviteStudent={async (studentId, courseId) => {
               const updatedClasses = [
                 ...(studentClasses[studentId] || []),
-                currentUser.id
+                courseId
               ];
               setStudentClasses({
                 ...studentClasses,
@@ -874,6 +924,7 @@ function App() {
             onAddItemToInventory={handleAddItemToInventory}
             quests={quests}
             authFetch={authFetch}
+            courses={courses}
           />
         )}
         {currentView === 'game' && selectedQuest && currentUser && currentUser.characterId && (
