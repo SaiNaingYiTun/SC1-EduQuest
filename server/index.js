@@ -431,6 +431,161 @@ app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch users' });
   }
 });
+
+// Create user (admin only)
+app.post('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { username, email, password, role, name, subjectName } = req.body;
+
+    if (!username || !email || !password || !role) {
+      return res.status(400).json({ message: 'username, email, password, role are required' });
+    }
+
+    if (!['student', 'teacher', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    // prevent public admin creation logic is already here (adminOnly)
+    const existing = await User.findOne({ $or: [{ username }, { email }] });
+    if (existing) {
+      return res.status(409).json({ message: 'Username or email already exists' });
+    }
+
+    const user = new User({
+      username,
+      email,
+      role,
+      name: name || username,
+      subjectName: role === 'teacher' ? (subjectName || 'My Subject') : undefined,
+      otpCode: role === 'teacher' ? generateTeacherOtp() : undefined
+    });
+
+    await user.setPassword(password);
+    const saved = await user.save();
+
+    const { passwordHash, ...safe } = saved.toObject();
+    res.status(201).json(safe);
+  } catch (err) {
+    console.error('Admin create user error:', err);
+    res.status(500).json({ message: 'Failed to create user' });
+  }
+});
+
+// Update user (admin only)
+app.put('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    console.log('ADMIN UPDATE -> by:', req.user?.username, 'userId:', req.user?.userId, 'targetId:', req.params.id);
+    const { id } = req.params;
+
+    // build safe update doc
+    const updateDoc = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'username')) updateDoc.username = req.body.username;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'email')) updateDoc.email = req.body.email;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) updateDoc.name = req.body.name;
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
+      const newRole = req.body.role;
+      if (!['student', 'teacher', 'admin'].includes(newRole)) {
+        return res.status(400).json({ message: 'Invalid role' });
+      }
+      updateDoc.role = newRole;
+
+      // teacher fields handling
+      if (newRole === 'teacher') {
+        updateDoc.subjectName = req.body.subjectName || 'My Subject';
+        updateDoc.otpCode = req.body.otpCode || generateTeacherOtp();
+      } else {
+        updateDoc.subjectName = undefined;
+        updateDoc.otpCode = undefined;
+      }
+    } else {
+      // role unchanged; only allow subjectName update if provided
+      if (Object.prototype.hasOwnProperty.call(req.body, 'subjectName')) {
+        updateDoc.subjectName = req.body.subjectName;
+      }
+    }
+
+    // optional password reset
+    if (Object.prototype.hasOwnProperty.call(req.body, 'password') && req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateDoc.passwordHash = await bcrypt.hash(req.body.password, salt);
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      id,
+      { $set: updateDoc },
+      { new: true }
+    ).select('-passwordHash').lean();
+
+    if (!updated) return res.status(404).json({ message: 'User not found' });
+
+    res.json(updated);
+  } catch (err) {
+    console.error('Admin update user error:', err);
+    res.status(500).json({ message: 'Failed to update user' });
+  }
+});
+
+// Delete user (admin only)
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    console.log('ADMIN DELETE -> by:', req.user?.username, 'userId:', req.user?.userId, 'targetId:', req.params.id);
+    const { id } = req.params;
+
+    const result = await User.deleteOne({ _id: id });
+    if (result.deletedCount === 0) return res.status(404).json({ message: 'User not found' });
+
+    // optional cleanup (recommended)
+    try {
+      await StudentState.deleteOne({ studentId: id });
+      await Character.deleteOne({ ownerUserId: id });
+    } catch (cleanupErr) {
+      console.warn('Cleanup after user delete failed (ignored):', cleanupErr);
+    }
+
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Admin delete user error:', err);
+    res.status(500).json({ message: 'Failed to delete user' });
+  }
+});
+
+app.post('/api/setup-admin', async (req, res) => {
+  try {
+    const { setupKey, username, email, password } = req.body;
+
+    if (!process.env.SETUP_ADMIN_KEY) {
+      return res.status(500).json({ message: 'SETUP_ADMIN_KEY not set on server' });
+    }
+
+    if (setupKey !== process.env.SETUP_ADMIN_KEY) {
+      return res.status(403).json({ message: 'Invalid setup key' });
+    }
+
+    // Only allow if NO admin exists yet
+    const existingAdmin = await User.findOne({ role: 'admin' });
+    if (existingAdmin) {
+      return res.status(409).json({ message: 'Admin already exists' });
+    }
+
+    const user = new User({
+      username,
+      email,
+      role: 'admin',
+      name: 'System Admin'
+    });
+
+    await user.setPassword(password);
+    const saved = await user.save();
+
+    const { passwordHash, ...userSafe } = saved.toObject();
+    res.status(201).json({ message: 'Admin created', user: userSafe });
+  } catch (err) {
+    console.error('setup-admin error:', err);
+    res.status(500).json({ message: 'Failed to create admin' });
+  }
+});
  
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import RoleSelection from './components/RoleSelection';
 import AuthPage from './components/AuthPage';
+import AdminLoginPage from './components/AdminLoginPage';
+import AdminDashboard from './components/AdminDashboard';
 import StudentDashboard from './components/StudentDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import CharacterSelection from './components/CharacterSelection';
@@ -301,6 +303,18 @@ function App() {
       }
     }
 
+    const path = window.location.pathname;
+  if (path === '/admin-login') {
+    setCurrentView('admin-login');
+  } else if (path === '/character') {
+    // only switch if user is student
+    if (currentUser && currentUser.role === 'student') {
+      setCurrentView('character');
+    }
+  } else if (path === '/dashboard') {
+    if (currentUser) setCurrentView('dashboard');
+  }
+
     
  
 
@@ -481,6 +495,49 @@ function App() {
   }
 };
 
+  const handleAdminLogin = async (username, password) => {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usernameOrEmail: username,
+        password,
+        role: 'admin'
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      console.error('Admin login failed response:', res.status, data);
+      alert(data.message || 'Admin login failed');
+      return;
+    }
+
+    if (!data.token) {
+      console.error('Admin login succeeded but no token returned:', data);
+      alert('No token returned from server for admin — check backend');
+      return;
+    }
+
+    const adminUser = {
+      ...data.user,
+      id: data.user.id || data.user._id
+    };
+
+    setCurrentUser(adminUser);
+    setAuthToken(data.token);
+    localStorage.setItem('authToken', data.token);
+    localStorage.setItem('currentUser', JSON.stringify(adminUser));
+
+    setCurrentView('admin');
+  } catch (err) {
+    console.error('Admin login error:', err);
+    alert('Admin login failed');
+  }
+};
+
   const handleCharacterCreation = async (character) => {
     if (!currentUser) return;
 
@@ -528,6 +585,14 @@ function App() {
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
     localStorage.removeItem('currentView');
+  };
+
+  const handleAdminLogout = () => {
+    setCurrentUser(null);
+    setAuthToken(null);
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
+    setCurrentView('admin-login'); // return to admin-login after logout
   };
 
   const handleUpdateUser = (updates) => {
@@ -827,6 +892,22 @@ function App() {
           role={selectedRole}
           onAuth={handleAuth}
           onBack={() => setCurrentView('role')}
+        />
+      )}
+
+      {currentView === 'admin-login' && (
+        <AdminLoginPage
+          onAdminLogin={handleAdminLogin}
+          onBack={() => setCurrentView('role')}
+        />
+      )}
+
+      {currentView === 'admin' && currentUser?.role === 'admin' && (
+        <AdminDashboard
+          user={currentUser}
+          authFetch={authFetch}
+          onLogout={handleAdminLogout}
+          go={(view) => setCurrentView(view)}
         />
       )}
 
