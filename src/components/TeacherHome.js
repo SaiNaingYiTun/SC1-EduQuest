@@ -1,75 +1,71 @@
-import { Users, Scroll, TrendingUp, BookOpen } from 'lucide-react';
+import { Users, Scroll, GraduationCap, BookOpen } from 'lucide-react';
 import { User, Character } from '../App';
 
 
 
-export default function TeacherHome({ user, students, characters , selectedCourse }) {
+export default function TeacherHome({ user, students, characters, selectedCourse, dashboardStats }) {
   const totalStudents = students.length;
-  const totalQuests = 3; // Mock data
-  const avgLevel = students.length > 0
-    ? Math.round(students.reduce((sum, student) => {
-        const char = student.characterId ? characters[student.characterId] : null;
-        return sum + (char?.level || 0);
-      }, 0) / students.length)
-    : 0;
+  const totalCourses = dashboardStats?.totalCourses || 0;
+  const totalQuests = dashboardStats?.totalQuests || 0;
 
   const recentStudents = students.slice(-5).reverse();
 
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-amber-800/50 to-orange-800/50 rounded-2xl p-8 border-2 border-amber-400/30 backdrop-blur-sm">
-        <h2 className="text-4xl text-amber-400 mb-2">Welcome, {user.name}!</h2>       
-        <p className="text-xl text-amber-200">
+      <div className="bg-gradient-to-r from-indigo-700/40 to-purple-800/40 rounded-2xl p-8 border border-indigo-400/20">
+        <h2 className="text-3xl font-semibold text-white mb-2">
+          Dashboard Overview
+        </h2>
+        <p className="text-purple-200">
           {selectedCourse
-            ? <>Manage your 
-            <span className="font-bold text-white">
-              {selectedCourse.name} {selectedCourse.section && `(${selectedCourse.section})`}
-            </span>
-            class</>
-            : "Manage your classes"}
+            ? <>Currently viewing  
+              <span className="text-amber-400 font-medium">
+                {selectedCourse.name} {selectedCourse.section && `(${selectedCourse.section})`}
+              </span>
+            </>
+            : "Overview of all your courses"}
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-4 gap-6">
-        <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-xl p-6 border-2 border-blue-400/30 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="w-8 h-8 text-blue-400" />
-            <div className="text-3xl text-white">{totalStudents}</div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="bg-slate-800/60 rounded-xl p-6 border border-indigo-400/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-purple-300">Total Students</div>
+              <div className="text-3xl font-bold text-white">{totalStudents}</div>
+            </div>
+            <Users className="w-8 h-8 text-indigo-400" />
           </div>
-          <div className="text-purple-200">Total Students</div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-xl p-6 border-2 border-amber-400/30 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="bg-slate-800/60 rounded-xl p-6 border border-green-400/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-purple-300">Active Course</div>
+              <div className="text-3xl font-bold text-white">{totalCourses}</div>
+            </div>
+            <GraduationCap className="w-8 h-8 text-green-400" />
+          </div>
+        </div>
+
+        <div className="bg-slate-800/60 rounded-xl p-6 border border-amber-400/20">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-purple-300">Active Quests</div>
+              <div className="text-3xl font-bold text-white">{totalQuests}</div>
+            </div>
             <Scroll className="w-8 h-8 text-amber-400" />
-            <div className="text-3xl text-white">{totalQuests}</div>
           </div>
-          <div className="text-purple-200">Active Quests</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-xl p-6 border-2 border-green-400/30 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <TrendingUp className="w-8 h-8 text-green-400" />
-            <div className="text-3xl text-white">{avgLevel}</div>
-          </div>
-          <div className="text-purple-200">Average Level</div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-xl p-6 border-2 border-purple-400/30 backdrop-blur-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <BookOpen className="w-8 h-8 text-purple-400" />
-            <div className="text-3xl text-white">{user.otpCode}</div>
-          </div>
-          <div className="text-purple-200">Class Code</div>
         </div>
       </div>
+
 
       {/* Class Information */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
         <h3 className="text-2xl text-amber-400 mb-6">Class Information</h3>
-        
+
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-slate-800/50 rounded-lg p-6 border-2 border-purple-400/30">
             <div className="flex items-center gap-4 mb-4">
@@ -78,7 +74,7 @@ export default function TeacherHome({ user, students, characters , selectedCours
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-sm text-purple-300">Subject</div>
+                <div className="text-sm text-purple-300">Faculty</div>
                 <div className="text-white">{user.subjects}</div>
               </div>
               <div>
@@ -99,13 +95,6 @@ export default function TeacherHome({ user, students, characters , selectedCours
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-sm text-purple-300">Class OTP Code</div>
-                <div className="text-2xl text-amber-400 tracking-wider">{user.otpCode}</div>
-                <div className="text-xs text-purple-300 mt-1">
-                  Share this code with students to join your class
-                </div>
-              </div>
-              <div>
                 <div className="text-sm text-purple-300">Total Enrolled</div>
                 <div className="text-white">{totalStudents} Students</div>
               </div>
@@ -118,11 +107,11 @@ export default function TeacherHome({ user, students, characters , selectedCours
       {recentStudents.length > 0 && (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
           <h3 className="text-2xl text-amber-400 mb-6">Recently Joined Students</h3>
-          
+
           <div className="space-y-3">
             {recentStudents.map((student) => {
               const character = student.characterId ? characters[student.characterId] : null;
-              
+
               return (
                 <div
                   key={student.id}
@@ -140,12 +129,12 @@ export default function TeacherHome({ user, students, characters , selectedCours
                         <Users className="w-6 h-6 text-white" />
                       </div>
                     )}
-                    
+
                     <div className="flex-1">
                       <div className="text-white">{student.name}</div>
                       <div className="text-sm text-purple-200">@{student.username}</div>
                     </div>
-                    
+
                     {character && (
                       <div className="text-right">
                         <div className="text-white">Level {character.level}</div>
@@ -165,7 +154,7 @@ export default function TeacherHome({ user, students, characters , selectedCours
           <Users className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
           <h3 className="text-2xl text-white mb-2">No Students Yet</h3>
           <p className="text-purple-200 mb-6">
-            Share your class code <span className="text-amber-400 tracking-wider">{user.otpCode}</span> with students to get started!
+            Invite students from the Students tab to start building your class.
           </p>
         </div>
       )}

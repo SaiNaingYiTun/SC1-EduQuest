@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import { COURSE_STATUS, COURSE_STATUS_COLORS, COURSE_STATUS_DISPLAY, COURSE_STATUS_MESSAGES } from '../components/courseStatus';
+
 
 export default function AdminDashboard({ user, authFetch, onLogout, go }) {
   const [tab, setTab] = useState("all"); // all | student | teacher | admin
@@ -193,6 +195,8 @@ export default function AdminDashboard({ user, authFetch, onLogout, go }) {
             <TabButton active={tab === "student"} onClick={() => setTab("student")}>Students</TabButton>
             <TabButton active={tab === "teacher"} onClick={() => setTab("teacher")}>Teachers</TabButton>
             <TabButton active={tab === "admin"} onClick={() => setTab("admin")}>Admins</TabButton>
+            <TabButton active={tab === "courses"} onClick={() => setTab("courses")}>Courses</TabButton>
+
 
             <div className="ml-4 flex items-center gap-2">
               <select
@@ -231,111 +235,117 @@ export default function AdminDashboard({ user, authFetch, onLogout, go }) {
           </button>
         </div>
 
-        {/* Table */}
-        <div className="bg-slate-950/30 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-            <div className="font-semibold">Users</div>
-            <div className="text-sm text-slate-300">
-              {loading ? "Loading..." : `${users.length} record(s)`}
+        {/* Conditional rendering: show table for users, or courses tab */}
+        {tab !== "courses" ? (
+          // EXISTING USER TABLE
+          <div className="bg-slate-950/30 border border-slate-800 rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+              <div className="font-semibold">Users</div>
+              <div className="text-sm text-slate-300">
+                {loading ? "Loading..." : `${users.length} record(s)`}
+              </div>
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-slate-900/60 text-slate-200">
-                <tr>
-                  <th className="text-left px-4 py-3">Username</th>
-                  <th className="text-left px-4 py-3">Email</th>
-                  <th className="text-left px-4 py-3">Role</th>
-                  <th className="text-left px-4 py-3">Name</th>
-                  <th className="text-left px-4 py-3">Subject</th>
-                  <th className="text-left px-4 py-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-900/60 text-slate-200">
                   <tr>
-                    <td className="px-4 py-4 text-slate-300" colSpan={6}>
-                      Loading users...
-                    </td>
+                    <th className="text-left px-4 py-3">Username</th>
+                    <th className="text-left px-4 py-3">Email</th>
+                    <th className="text-left px-4 py-3">Role</th>
+                    <th className="text-left px-4 py-3">Name</th>
+                    <th className="text-left px-4 py-3">Subject</th>
+                    <th className="text-left px-4 py-3">Actions</th>
                   </tr>
-                ) : filteredUsers.length === 0 ? (
-                  <tr>
-                    <td className="px-4 py-4 text-slate-300" colSpan={6}>
-                      No users found.
-                    </td>
-                  </tr>
-                ) : (
-                  pagedUsers.map((u) => (
-                    <tr
-                      key={u._id}
-                      className="border-t border-slate-800 hover:bg-slate-900/40"
-                    >
-                      <td className="px-4 py-3">{u.username}</td>
-                      <td className="px-4 py-3">{u.email}</td>
-                      <td className="px-4 py-3">
-                        <span className="px-2 py-1 rounded bg-slate-800">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">{u.name}</td>
-                      <td className="px-4 py-3">{u.subjectName || "-"}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => openEdit(u)}
-                            className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => deleteUser(u)}
-                            className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 font-semibold"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td className="px-4 py-4 text-slate-300" colSpan={6}>
+                        Loading users...
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between">
-            <div className="text-sm text-slate-300">
-              Showing {filteredUsers.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length}
+                  ) : filteredUsers.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-4 text-slate-300" colSpan={6}>
+                        No users found.
+                      </td>
+                    </tr>
+                  ) : (
+                    pagedUsers.map((u) => (
+                      <tr
+                        key={u._id}
+                        className="border-t border-slate-800 hover:bg-slate-900/40"
+                      >
+                        <td className="px-4 py-3">{u.username}</td>
+                        <td className="px-4 py-3">{u.email}</td>
+                        <td className="px-4 py-3">
+                          <span className="px-2 py-1 rounded bg-slate-800">
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">{u.name}</td>
+                        <td className="px-4 py-3">{u.subjectName || "-"}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => openEdit(u)}
+                              className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => deleteUser(u)}
+                              className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 font-semibold"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
+            <div className="px-4 py-3 border-t border-slate-800 flex items-center justify-between">
+              <div className="text-sm text-slate-300">
+                Showing {filteredUsers.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1} - {Math.min(page * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length}
+              </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
-              >
-                Prev
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <div className="flex items-center gap-2">
                 <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`px-3 py-1 rounded ${p === page ? 'bg-amber-500 text-black' : 'bg-slate-800'}`}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
                 >
-                  {p}
+                  Prev
                 </button>
-              ))}
 
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
-              >
-                Next
-              </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-1 rounded ${p === page ? 'bg-amber-500 text-black' : 'bg-slate-800'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="px-3 py-1 rounded bg-slate-800 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          // COURSES TAB
+          <CourseManagementTab authFetch={authFetch} toast={(msg, type) => console.log(msg)} />
+        )}
 
         {modalOpen && (
           <UserModal
@@ -506,13 +516,266 @@ function TabButton({ active, onClick, children }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-lg transition ${
-        active
-          ? "bg-amber-500 text-black font-semibold"
-          : "bg-slate-800 hover:bg-slate-700"
-      }`}
+      className={`px-4 py-2 rounded-lg transition ${active
+        ? "bg-amber-500 text-black font-semibold"
+        : "bg-slate-800 hover:bg-slate-700"
+        }`}
     >
       {children}
     </button>
+  );
+}
+
+
+
+function CourseManagementTab({ authFetch, toast }) {
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [rejectingCourse, setRejectingCourse] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [filterStatus, setFilterStatus] = useState(COURSE_STATUS.PENDING); // pending | approved | rejected | all
+
+  useEffect(() => {
+    loadCourses();
+  }, []);
+
+  const loadCourses = async () => {
+    setLoading(true);
+    try {
+      const res = await authFetch('/api/admin/courses');
+      if (!res.ok) throw new Error('Failed to load courses');
+      const data = await res.json();
+      setCourses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+      setCourses([]);
+      toast?.(err.message || 'Failed to load courses', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredCourses = filterStatus === 'all'
+    ? courses
+    : courses.filter(c => c.status === filterStatus);
+
+  const handleApprove = async (courseId) => {
+    try {
+      const res = await authFetch(`/api/admin/courses/${courseId}/approve`, { method: 'PUT' });
+      if (!res.ok) throw new Error('Failed to approve course');
+      await loadCourses();
+      toast?.('Course approved successfully', 'success');
+    } catch (err) {
+      console.error(err);
+      toast?.(err.message || 'Failed to approve course', 'error');
+    }
+  };
+
+  const handleOpenRejectModal = (course) => {
+    setRejectingCourse(course);
+    setRejectReason('');
+  };
+
+  const handleReject = async () => {
+    if (!rejectingCourse || !rejectReason.trim()) {
+      toast?.('Rejection reason is required', 'error');
+      return;
+    }
+    try {
+      const res = await authFetch(
+        `/api/admin/courses/${rejectingCourse._id}/reject`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({ reason: rejectReason.trim() })
+        }
+      );
+      if (!res.ok) throw new Error('Failed to reject course');
+      await loadCourses();
+      setRejectingCourse(null);
+      setRejectReason('');
+      toast?.('Course rejected', 'success');
+    } catch (err) {
+      console.error(err);
+      toast?.(err.message || 'Failed to reject course', 'error');
+    }
+  };
+
+  const handleDelete = async (courseId) => {
+    if (!window.confirm('Delete this course? This will remove all associated quests and enrollments.')) return;
+    try {
+      const res = await authFetch(`/api/admin/courses/${courseId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete course');
+      await loadCourses();
+      toast?.('Course deleted', 'success');
+    } catch (err) {
+      console.error(err);
+      toast?.(err.message || 'Failed to delete course', 'error');
+    }
+  };
+
+  return (
+    <div>
+      {/* Filter buttons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <button
+          onClick={() => setFilterStatus(COURSE_STATUS.PENDING)}
+          className={`px-4 py-2 rounded-lg transition ${filterStatus === COURSE_STATUS.PENDING
+            ? 'bg-yellow-500 text-white'
+            : 'bg-slate-800 hover:bg-slate-700'
+            }`}
+        >
+          Pending ({courses.filter(c => c.status === COURSE_STATUS.PENDING).length})
+        </button>
+        <button
+          onClick={() => setFilterStatus(COURSE_STATUS.APPROVED)}
+          className={`px-4 py-2 rounded-lg transition ${filterStatus === COURSE_STATUS.APPROVED
+            ? 'bg-green-500 text-white'
+            : 'bg-slate-800 hover:bg-slate-700'
+            }`}
+        >
+          Approved ({courses.filter(c => c.status === COURSE_STATUS.APPROVED).length})
+        </button>
+        <button
+          onClick={() => setFilterStatus(COURSE_STATUS.REJECTED)}
+          className={`px-4 py-2 rounded-lg transition ${filterStatus === COURSE_STATUS.REJECTED
+            ? 'bg-red-500 text-white'
+            : 'bg-slate-800 hover:bg-slate-700'
+            }`}
+        >
+          Rejected ({courses.filter(c => c.status === COURSE_STATUS.REJECTED).length})
+        </button>
+        <button
+          onClick={() => setFilterStatus('all')}
+          className={`px-4 py-2 rounded-lg transition ${filterStatus === 'all'
+            ? 'bg-amber-500 text-white'
+            : 'bg-slate-800 hover:bg-slate-700'
+            }`}
+        >
+          All ({courses.length})
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="bg-slate-950/30 border border-slate-800 rounded-2xl overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-800">
+          <div className="font-semibold">Courses</div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-900/60 text-slate-200">
+              <tr>
+                <th className="text-left px-4 py-3">Course Name</th>
+                <th className="text-left px-4 py-3">Section</th>
+                <th className="text-left px-4 py-3">Teacher</th>
+                <th className="text-left px-4 py-3">Status</th>
+                <th className="text-left px-4 py-3">Created</th>
+                <th className="text-left px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-4 py-4 text-slate-300" colSpan={6}>
+                    Loading courses...
+                  </td>
+                </tr>
+              ) : filteredCourses.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-4 text-slate-300" colSpan={6}>
+                    No courses found.
+                  </td>
+                </tr>
+              ) : (
+                filteredCourses.map((course) => (
+                  <tr key={course._id} className="border-t border-slate-800 hover:bg-slate-900/40">
+                    <td className="px-4 py-3 font-semibold">{course.name}</td>
+                    <td className="px-4 py-3">{course.section || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-300">
+                      <div>{course.teacherName}</div>
+                      <div className="text-xs text-slate-400">{course.teacherEmail}</div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-semibold ${course.status === 'pending'
+                          ? 'bg-yellow-500 text-yellow-900'
+                          : course.status === 'approved'
+                            ? 'bg-green-500 text-green-900'
+                            : 'bg-red-500 text-red-900'
+                          }`}
+                      >
+                        {(course.status || 'pending').charAt(0).toUpperCase() + (course.status || 'pending').slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {new Date(course.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        {course.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleApprove(course._id)}
+                              className="px-3 py-1 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleOpenRejectModal(course)}
+                              className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        <button
+                          onClick={() => handleDelete(course._id)}
+                          className="px-3 py-1 rounded bg-slate-700 hover:bg-slate-600 text-white text-xs font-semibold transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Reject Modal */}
+      {rejectingCourse && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6">
+            <h2 className="text-xl font-bold mb-4">Reject Course</h2>
+            <p className="text-slate-300 mb-4">
+              Rejecting: <strong>{rejectingCourse.name}</strong>
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter rejection reason (required)..."
+              className="w-full px-4 py-3 rounded-lg bg-slate-800 border border-slate-700 text-white outline-none focus:border-slate-500 mb-4"
+              rows={4}
+            />
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setRejectingCourse(null)}
+                className="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 font-semibold"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
