@@ -175,21 +175,25 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       console.log('Found answer positions:', answerPositions);
 
-      // Create quiz NPC
-      quizNPC = this.physics.add.sprite(640, 300, 'warrior_idle');
-      quizNPC.setScale(2);
-      quizNPC.setTint(0x00ffff);
+      // Create quiz NPC (Wizard)
+      quizNPC = this.physics.add.sprite(640, 300, 'qm_idle');
+      quizNPC.setScale(2.5);
       quizNPC.body.setImmovable(true);
       quizNPC.body.setAllowGravity(false);
-      quizNPC.body.setSize(40, 40);
-      quizNPC.body.setOffset(48, 50);
+      quizNPC.body.setSize(40, 50);
+      quizNPC.body.setOffset(30, 50);
       quizNPC.setDepth(5);
+
+      // Play wizard idle animation
+      if (this.anims.exists('qm_idle_anim')) {
+        quizNPC.play('qm_idle_anim');
+      }
 
       // Add NPC name label
       this.add
-        .text(640, 250, 'Quest Master', {
+        .text(640, 240, 'Quest Master', {
           fontSize: '20px',
-          color: '#fbbf24',
+          color: '#a78bfa',
           fontFamily: 'monospace',
           fontStyle: 'bold',
         })
@@ -222,7 +226,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       // Play idle animation
       if (this.anims.exists('warrior_idle_anim')) {
         quizPlayer.play('warrior_idle_anim');
-        quizNPC.play('warrior_idle_anim');
       }
 
       // Add NPC collision/overlap to show question
@@ -524,6 +527,12 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Warrior.preload(this);
       Boss.preload(this);
 
+      // ✅ Preload wizard sprite for Quest Master
+      this.load.spritesheet('qm_idle', 'assets/sprites/quest_master/Idle.png', {
+        frameWidth: 100,
+        frameHeight: 100,
+      });
+
       // Quiz tilemap
       this.load.tilemapTiledJSON('map0', 'assets/maps/map0.json');
       this.load.image('quiz_tiles', 'assets/maps/tiles/quiz_tiles.png');
@@ -544,6 +553,18 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       console.log('Creating animations...');
       Warrior.createAnimations(this);
       Boss.createAnimations(this);
+
+      // ✅ Create wizard idle animation
+      if (!this.anims.exists('qm_idle_anim')) {
+        this.anims.create({
+          key: 'qm_idle_anim',
+          frames: this.anims.generateFrameNumbers('qm_idle', { start: 0, end: 7 }),
+          frameRate: 8,
+          repeat: -1,
+        });
+        console.log('Created qm_idle_anim');
+      }
+
       console.log('Animations created');
 
       // Start timer
