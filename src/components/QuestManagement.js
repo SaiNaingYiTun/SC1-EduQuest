@@ -11,24 +11,30 @@ export default function QuestManagement({
   quests,
   selectedCourse
 }) {
+  
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingQuest, setEditingQuest] = useState(null);
 
   // Courses from backend
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
 
-  console.log('DEBUG:', { quests, userId: user.id, selectedCourse });
+  //console.log("Courses:", courses.map(c => ({ name: c.name, _id: c._id })));
+  //console.log("Selected course:", selectedCourse);
+
+
 
 
   // Filter quests for this teacher
   const teacherQuests = quests.filter(q =>
-  String(q.teacherId) === String(user.id) &&
-  (
-    !selectedCourse ||
-    String(q.courseId) === String(selectedCourse._id)
-  )
-);
+    String(q.teacherId) === String(user.id) &&
+    (
+      !selectedCourse ||
+      String(q.courseId) === String(selectedCourse._id)
+    )
+  );
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -56,7 +62,7 @@ export default function QuestManagement({
           const data = await res.json();
           setCourses(data);
           // Set default subject if not editing
-          if (!editingQuest && data.length > 0) setSubject(data[0].name);
+          if (!editingQuest && data.length > 0) setSubject(data[0]._id);
         } catch (err) {
           setCourses([]);
         } finally {
@@ -171,7 +177,7 @@ export default function QuestManagement({
       alert('Please enter a quest description');
       return;
     }
-      const course = courses.find(c => c._id === subject);
+    const course = courses.find(c => c._id === subject);
     if (!subject || !course) {
       alert('Please select a course for this quest');
       return;
@@ -247,6 +253,8 @@ export default function QuestManagement({
         </button>
       </div>
 
+      
+
       {/* Quest List */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {teacherQuests.length === 0 ? (
@@ -260,6 +268,9 @@ export default function QuestManagement({
         ) : (
           teacherQuests.map((quest) => {
             const difficultyColor = getDifficultyColor(quest.difficulty);
+
+
+            
 
             return (
               <div
@@ -524,3 +535,6 @@ export default function QuestManagement({
     </div>
   );
 }
+
+
+;

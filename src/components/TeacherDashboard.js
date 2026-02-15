@@ -1,14 +1,11 @@
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, Users, Scroll, BarChart3, User as UserIcon } from 'lucide-react';
-import { User, Character, Quest, Item } from '../App';
 import TeacherHome from './TeacherHome';
 import StudentOverview from './StudentOverview';
 import QuestManagement from './QuestManagement';
 import ClassAnalytics from './ClassAnalytics';
 import TeacherProfile from './TeacherProfile';
 import CourseManagement from './CourseManagement';
-
-
 
 export default function TeacherDashboard({
   user,
@@ -24,42 +21,67 @@ export default function TeacherDashboard({
   onDeleteQuest,
   onAddItemToInventory,
   quests,
-  authFetch
+  authFetch,
+  onRefreshAllUsers,
+  onRefreshQuests,
+  onRefreshStudentClasses,
+  onRefreshCourses,
+  onCoursesChange,
+
 }) {
   const [activeTab, setActiveTab] = useState('home');
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
 
-  //fetch courses 
+  // Fetch courses
   useEffect(() => {
     async function fetchCourses() {
       const res = await authFetch(`/api/teachers/${user.id}/courses`);
       const data = await res.json();
       setCourses(data);
-      if (data.length > 0) setSelectedCourse(data[0]);
+
     }
     fetchCourses();
   }, [user.id, authFetch]);
-
-
 
   const tabs = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'quests', label: 'Quests', icon: Scroll },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'courses' , label: 'Courses' , icon : BarChart3},
+    { id: 'courses', label: 'Courses', icon: BarChart3 },
     { id: 'profile', label: 'Profile', icon: UserIcon },
   ];
-  
+
   const filteredStudents = selectedCourse && selectedCourse._id
-  ? students.filter(s => Array.isArray(s.classes) && s.classes.includes(selectedCourse._id))
-  : students;
- 
-  
+    ? students.filter(s =>
+      Array.isArray(s.studentClasses) &&
+      s.studentClasses.some(cid => String(cid) === String(selectedCourse._id))
+    )
+    : students;
+
   const filteredQuests = selectedCourse && typeof selectedCourse === 'object' && selectedCourse._id
-  ? quests.filter(q => String(q.courseId) === String(selectedCourse._id))
-  : quests;
+    ? quests.filter(q => String(q.courseId) === String(selectedCourse._id))
+    : quests;
+
+  // Course selector dropdown (shown for tabs that use course context)
+  const showCourseSelector = ['students', 'quests'].includes(activeTab) && courses.length > 0;
+
+  const [dashboardStats, setDashboardStats] = useState({
+    totalCourses: 0,
+    totalQuests: 0,
+  });
+
+  useEffect(() => {
+    async function fetchDashboardStats() {
+      const res = await authFetch(`/api/teachers/${user.id}/dashboard-stats`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setDashboardStats(data);
+    }
+    fetchDashboardStats();
+  }, [user.id, authFetch]);
+
 
   return (
     <div className="min-h-screen">
@@ -70,16 +92,21 @@ export default function TeacherDashboard({
             <h1 className="text-3xl text-amber-400">📚 Teacher Portal</h1>
             <div className="flex items-center gap-4 text-white">
               <div className="text-right">
-                <div className="text-sm text-amber-200">
-                  {Array.isArray(user.subjects) && user.subjects.length > 0
-                    ? user.subjects.join(', ')
-                    : (typeof user.subjects === 'string' ? user.subjects : '')}
-                  </div>
+
                 <div>{user.name}</div>
               </div>
-              <div className="w-12 h-12 rounded-full bg-amber-500 flex items-center justify-center border-2 border-amber-400">
-                <UserIcon className="w-6 h-6 text-white" />
+              <div className="avatar-circle w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 flex items-center justify-center bg-white shadow-md">
+                {user.profilePic ? (
+                  <img
+                    src={user.profilePic}
+                    alt={user.name}
+                    className="w-full h-full object-cover object-center"
+                  />
+                ) : (
+                  <UserIcon className="w-6 h-6 text-amber-500" />
+                )}
               </div>
+
             </div>
           </div>
           <div className="flex gap-2 overflow-x-auto">
@@ -89,11 +116,10 @@ export default function TeacherDashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'bg-amber-500 text-white shadow-lg'
-                      : 'bg-amber-800/50 text-amber-200 hover:bg-amber-700/50'
-                  }`}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === tab.id
+                    ? 'bg-amber-500 text-white shadow-lg'
+                    : 'bg-amber-800/50 text-amber-200 hover:bg-amber-700/50'
+                    }`}
                 >
                   <Icon className="w-5 h-5" />
                   {tab.label}
@@ -101,49 +127,48 @@ export default function TeacherDashboard({
               );
             })}
           </div>
-          {/*Course Selection Bar*/}
-          {courses.length > 0 && (
-            <div className="flex gap-2 mt-4">
-              {courses.map((course) => (
-                <button
-                  key={course._id}
-                  className={`px-4 py-2 rounded ${
-                    selectedCourse && selectedCourse._id === course._id
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-amber-800/50 text-amber-200'
-               }`}
-                onClick={() => setSelectedCourse(course)}
-                 >
-                {String(course.name)} ({String(course.section)})
-            </button>
-          ))}
-          <button
-            className={`px-4 py-2 rounded ${
-              !selectedCourse
-                ? 'bg-amber-500 text-white'
-                : 'bg-amber-800/50 text-amber-200'
-              }`}
-              onClick={() => setSelectedCourse(null)}
-            >
-            All Courses
-          </button>
-        </div>
-      )}
-
         </div>
       </nav>
+
+      {/* Course Selector */}
+      {showCourseSelector && (
+        <div className="max-w-7xl mx-auto px-4 mt-6 mb-2">
+          <label className="text-amber-400 mr-2 font-semibold">Filter by Course:</label>
+          <select
+            value={selectedCourse?._id || ''}
+            onChange={e => {
+              const value = e.target.value;
+              if (value === '') {
+                setSelectedCourse(null); // All Courses
+              } else {
+                const course = courses.find(c => c._id === value);
+                setSelectedCourse(course || null);
+              }
+            }}
+            className="px-4 py-2 rounded border border-amber-400 bg-amber-50 text-amber-900"
+          >
+            <option value="">All Courses</option>
+            {courses.map(course => (
+              <option key={course._id} value={course._id}>
+                {course.name} ({course.section})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'home' && (
-          <TeacherHome 
+          <TeacherHome
             user={user}
-            students={filteredStudents} 
+            students={filteredStudents}
             characters={characters}
             selectedCourse={selectedCourse}
-             />
+            dashboardStats={dashboardStats}
+          />
         )}
-        
+
         {activeTab === 'students' && (
           <StudentOverview
             user={user}
@@ -151,10 +176,18 @@ export default function TeacherDashboard({
             allStudents={allStudents}
             characters={characters}
             onInviteStudent={onInviteStudent}
-            courses={courses}
+            courses={Array.isArray(courses) ? courses : []}
+            selectedCourseId={selectedCourse ? selectedCourse._id : ''}
+            onRefreshStudents={async () => {
+              await onRefreshCourses?.();
+              await onRefreshAllUsers?.();
+              await onRefreshStudentClasses?.();
+            }}
+
+
           />
         )}
-        
+
         {activeTab === 'quests' && (
           <QuestManagement
             user={user}
@@ -163,27 +196,45 @@ export default function TeacherDashboard({
             onDeleteQuest={onDeleteQuest}
             onAddItemToInventory={onAddItemToInventory}
             quests={filteredQuests}
-            selectedCourse ={selectedCourse}
+            selectedCourse={selectedCourse}
           />
         )}
 
         {activeTab === 'courses' && (
           <CourseManagement
-            user = {user}
-            authFetch = {authFetch}
+            user={user}
+            authFetch={authFetch}
             onCoursesChange={(courses) => {
-
+              setCourses(courses);
+              // Optionally update selectedCourse if needed
+              if (courses.length > 0 && (!selectedCourse || !courses.some(c => c._id === selectedCourse._id))) {
+                setSelectedCourse(courses[0]);
+              }
             }}
+            onAfterCourseChange={async () => {
+              await onRefreshQuests?.();
+              await onRefreshCourses?.();
+              await onRefreshAllUsers?.();
+              await onRefreshStudentClasses?.();
+            }}
+
           />
-            
         )}
-        
+
         {activeTab === 'analytics' && (
           <ClassAnalytics students={students} characters={characters} />
         )}
-        
+
         {activeTab === 'profile' && (
-          <TeacherProfile user={user} onUpdateUser={onUpdateUser} onLogout={onLogout} />
+          <TeacherProfile user={user}
+            onUpdateUser={onUpdateUser}
+            onLogout={onLogout}
+            stats={{
+              courses: courses.length,
+              students: students.length,
+              quests: quests.length,
+            }}
+          />
         )}
       </div>
     </div>
