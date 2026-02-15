@@ -11,8 +11,8 @@ export default function StudentHome({ character, achievements, studentClasses, t
     <div className="space-y-8">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-purple-800/50 to-blue-800/50 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h2 className="text-4xl text-amber-400 mb-2">Welcome back, {character.name}!</h2>
-        <p className="text-xl text-purple-200">Ready for your next adventure?</p>
+        <h2 className="text-4xl text-amber-400 mb-2 font-pixel">Welcome back, {character.name}!</h2>
+        <p className="text-xl text-purple-200 font-pixel">Ready for your next adventure?</p>
       </div>
 
       {/* Stats Grid */}
@@ -52,7 +52,7 @@ export default function StudentHome({ character, achievements, studentClasses, t
 
       {/* Character Progress */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-4">Character Progress</h3>
+        <h3 className="text-2xl text-amber-400 mb-4 font-pixel">Character Progress</h3>
         
         <div className="flex items-center gap-6 mb-6">
           <img 
@@ -83,7 +83,7 @@ export default function StudentHome({ character, achievements, studentClasses, t
               </div>
             </div>
             {xpProgress <= 20 && (
-              <div className="text-sm text-purple-200 mt-1">
+              <div className="text-sm text-purple-200 mt-1 font-pixel">
                 {character.xp} / {character.maxXp} XP
               </div>
             )}
@@ -93,10 +93,10 @@ export default function StudentHome({ character, achievements, studentClasses, t
 
       {/* Recent Achievements */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Recent Achievements</h3>
+        <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Recent Achievements</h3>
         
         {unlockedAchievements.length === 0 ? (
-          <div className="text-center py-8 text-purple-200">
+          <div className="text-center py-8 text-purple-200 font-pixel">
             <Trophy className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
             <p>Complete quests to unlock achievements!</p>
           </div>
@@ -119,7 +119,7 @@ export default function StudentHome({ character, achievements, studentClasses, t
       {/* Classes Overview */}
       {studentClasses.length > 0 && (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6">Your Classes</h3>
+          <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Your Classes</h3>
           
           <div className="space-y-4">
             {studentClasses.map((teacherId) => {
@@ -133,8 +133,8 @@ export default function StudentHome({ character, achievements, studentClasses, t
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-white text-xl">{teacher.subjects}</div>
-                      <div className="text-purple-200">Teacher: {teacher.name}</div>
+                      <div className="text-white text-xl font-pixel">{teacher.subjects}</div>
+                      <div className="text-purple-200 font-pixel">Teacher: {teacher.name}</div>
                     </div>
                     <BookOpen className="w-8 h-8 text-purple-400" />
                   </div>

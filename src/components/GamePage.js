@@ -1,5 +1,5 @@
 import { Character, Quest, Item, User } from '../App';
-import PhaserQuestGame from './PhaserQuestGame';
+import PhaserQuestGame from './PhaserQuestGame1';
 
 
 

@@ -3,6 +3,9 @@ module.exports = {
   content: ["./src/**/*.{js,jsx,ts,tsx}"],
     theme: {
     extend: {
+      fontFamily: {
+        pixel: ['"Pixelify Sans"', 'ui-sans-serif', 'system-ui'],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",

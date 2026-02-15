@@ -3,6 +3,10 @@ import { Check } from 'lucide-react';
 import { Character } from '../App';
 
 
+import warriorSprite from '../sprites/characters/hero_warrior.png';
+import mageSprite from '../sprites/characters/hero_mage.png';
+import rogueSprite from '../sprites/characters/hero_rogue.png';
+import clericSprite from '../sprites/characters/hero_cleric.png';
 
 const characterClasses = [
   {
@@ -10,7 +14,7 @@ const characterClasses = [
     name: 'Warrior',
     description: 'Strong and brave, excels in combat challenges',
     icon: '⚔️',
-    avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwd2FycmlvciUyMGtuaWdodHxlbnwxfHx8fDE3NjQ5MzQwOTF8MA&ixlib=rb-4.1.0&q=80&w=400',
+    avatar: warriorSprite,
     color: 'red'
   },
   {
@@ -18,7 +22,7 @@ const characterClasses = [
     name: 'Mage',
     description: 'Wise and intelligent, masters arcane knowledge',
     icon: '🔮',
-    avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZWRpZXZhbCUyMG1hZ2UlMjB3aXphcmR8ZW58MXx8fHwxNzY1MDE2NzIyfDA&ixlib=rb-4.1.0&q=80&w=400',
+    avatar: mageSprite,
     color: 'purple'
   },
   {
@@ -26,7 +30,7 @@ const characterClasses = [
     name: 'Rogue',
     description: 'Quick and cunning, solves problems with agility',
     icon: '🗡️',
-    avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwcm9ndWUlMjBhcmNoZXJ8ZW58MXx8fHwxNzY0OTc4NzgxfDA&ixlib=rb-4.1.0&q=80&w=400',
+    avatar: rogueSprite,
     color: 'green'
   },
   {
@@ -34,7 +38,7 @@ const characterClasses = [
     name: 'Cleric',
     description: 'Devoted and supportive, helps others succeed',
     icon: '✨',
-    avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwaGVhbGVyJTIwY2xlcmljfGVufDF8fHx8MTc2NDk3ODc5M3ww&ixlib=rb-4.1.0&q=80&w=400',
+    avatar: clericSprite,
     color: 'yellow'
   }
 ];
@@ -100,11 +104,11 @@ export default function CharacterSelection({ onCharacterCreated, userId }) {
                 </div>
               )}
 
-              <div className="aspect-square rounded-lg overflow-hidden mb-4 bg-slate-700">
+              <div className="mb-4 flex items-end justify-center h-40">
                 <img 
                   src={charClass.avatar} 
                   alt={charClass.name}
-                  className="w-full h-full object-cover"
+                  className="h-32 w-32 [image-rendering:pixelated]"
                 />
               </div>
 

@@ -21,7 +21,8 @@ export default function StudentDashboard({
   achievements,
   onUnlockAchievement,
   quests,
-  inventory
+  inventory,
+  onStartQuest
 }) {
   const [activeTab, setActiveTab] = useState('home');
 
@@ -39,12 +40,12 @@ export default function StudentDashboard({
       <nav className="bg-gradient-to-r from-purple-900 to-blue-900 border-b-4 border-amber-400 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl text-amber-400">⚔️ Study Quest</h1>
+            <h1 className="text-3xl text-amber-400 font-pixel">⚔️ EduQuest</h1>
             {character && (
               <div className="flex items-center gap-4 text-white">
                 <div className="text-right">
-                  <div className="text-sm text-purple-200">Level {character.level}</div>
-                  <div>{character.name}</div>
+                  <div className="text-sm text-purple-200 font-pixel">Level {character.level}</div>
+                  <div className="font-pixel">{character.name}</div>
                 </div>
                 <img 
                   src={character.avatar} 
@@ -61,7 +62,7 @@ export default function StudentDashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap font-pixel ${
                     activeTab === tab.id
                       ? 'bg-amber-500 text-white shadow-lg'
                       : 'bg-purple-800/50 text-purple-200 hover:bg-purple-700/50'
@@ -97,6 +98,7 @@ export default function StudentDashboard({
             onUnlockAchievement={onUnlockAchievement}
             quests={quests}
             inventory={inventory}
+            onStartQuest={onStartQuest}
           />
         )}
         

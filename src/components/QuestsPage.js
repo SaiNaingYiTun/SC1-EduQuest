@@ -2,7 +2,42 @@ import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle } from 'lucide-react';
 import { Character, Quest, User, Item } from '../App';
 
-
+const MOCK_QUESTS = [
+  {
+    id: 'mock-quest-1',
+    title: 'Dungeon of Trials',
+    description: 'Practice quiz in a spooky medieval dungeon.',
+    difficulty: 'Easy',
+    xpReward: 50,
+    timeLimit: 180, // seconds
+    teacherId: 'mock-teacher-1',
+    questions: [
+      {
+        id: 'q1',
+        question: 'Which metal is most often used to forge medieval swords?',
+        options: ['Gold', 'Iron', 'Silver', 'Copper'],
+        correctAnswer: 1
+      },
+      {
+        id: 'q2',
+        question: 'What is the main purpose of a castle moat?',
+        options: ['Decoration', 'Waste disposal', 'Defense', 'Farming'],
+        correctAnswer: 2
+      },
+      {
+        id: 'q3',
+        question: 'Which job would a medieval alchemist likely try to do?',
+        options: [
+          'Turn lead into gold',
+          'Command armies',
+          'Collect taxes',
+          'Write laws'
+        ],
+        correctAnswer: 0
+      }
+    ]
+  }
+];
 
 
 export default function QuestsPage({ 
@@ -26,7 +61,12 @@ export default function QuestsPage({
   }, [character.id]);
 
   const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
-    const quest = quests.find(q => q.id === questId);
+    // const quest = quests.find(q => q.id === questId);
+    // if (!quest) return;
+
+    // Use both real quests and mock quests
+    const allQuests = [...MOCK_QUESTS, ...(quests || [])];
+    const quest = allQuests.find(q => q.id === questId);
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
@@ -89,16 +129,38 @@ export default function QuestsPage({
     }
   };
 
+  const hasRealQuests = Array.isArray(quests) && quests.length > 0;
+
+  // Always include mock quests; add real quests if present
+  const sourceQuests = [
+    ...MOCK_QUESTS,
+    ...(hasRealQuests ? quests : [])
+  ];
+
+  // Only filter real quests by class; mock quests are always visible
+  const availableQuests = sourceQuests.filter((quest) => {
+    if (quest.teacherId?.startsWith('mock')) return true;      // keep mock
+    if (!hasRealQuests) return true;                           // only mock
+    return studentClasses.includes(quest.teacherId);           // real quests
+  });
+
+  // const sourceQuests = quests && quests.length > 0 ? quests : MOCK_QUESTS;
+
+  // const availableQuests =
+  //   quests && quests.length > 0
+  //     ? sourceQuests.filter((quest) => studentClasses.includes(quest.teacherId))
+  //     : sourceQuests;
+
   // Filter quests based on student's classes
-  const availableQuests = quests.filter(quest => 
-    studentClasses.includes(quest.teacherId)
-  );
+  // const availableQuests = quests.filter(quest => 
+  //   studentClasses.includes(quest.teacherId)
+  // );
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-4xl text-amber-400">Available Quests</h2>
-        <div className="text-purple-200">
+        <h2 className="text-4xl text-amber-400 font-pixel">Available Quests</h2>
+        <div className="text-purple-200 font-pixel">
           Completed: {completedQuests.length} / {availableQuests.length}
         </div>
       </div>
@@ -136,21 +198,27 @@ export default function QuestsPage({
 
                 <div className="flex items-start justify-between mb-4">
                   <Scroll className="w-12 h-12 text-amber-400" />
-                  <span className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50`}>
+                  <span className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50 font-pixel`}>
                     {quest.difficulty}
                   </span>
                 </div>
 
-                <h3 className="text-xl text-white mb-2">{quest.title}</h3>
-                <p className="text-purple-200 mb-4">{quest.description}</p>
+                <h3 className="text-xl text-white mb-2 font-pixel">{quest.title}</h3>
+                <p className="text-purple-200 mb-4 font-pixel">{quest.description}</p>
 
-                {teacher && (
+                {teacher || quest.teacherId?.startsWith('mock') ? (
+                  <div className="text-sm text-purple-300 mb-4 font-pixel">
+                    By: {teacher ? teacher.name : 'Demo Dungeon Master'}
+                  </div>
+                ) : null}
+
+                {/* {teacher && (
                   <div className="text-sm text-purple-300 mb-4">
                     By: {teacher.name}
                   </div>
-                )}
+                )} */}
 
-                <div className="flex items-center gap-4 mb-4 text-sm text-purple-200">
+                <div className="flex items-center gap-4 mb-4 text-sm text-purple-200 font-pixel">
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-amber-400" />
                     <span>+{quest.xpReward} XP</span>
@@ -178,12 +246,12 @@ export default function QuestsPage({
                 >
                   {isCompleted ? (
                     <>
-                      <CheckCircle className="w-5 h-5" />
+                      <CheckCircle className="w-5 h-5 font-pixel" />
                       Completed
                     </>
                   ) : (
                     <>
-                      <Play className="w-5 h-5" />
+                      <Play className="w-5 h-5 font-pixel" />
                       Start Quest
                     </>
                   )}
