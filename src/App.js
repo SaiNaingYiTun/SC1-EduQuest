@@ -8,6 +8,7 @@ import TeacherDashboard from './components/TeacherDashboard';
 import CharacterSelection from './components/CharacterSelection';
 import GamePage from './components/GamePage';
 import { createContext, useContext } from 'react';
+import { API_URL } from './api';
 
 const ToastCtx = createContext(() => { });
 export const useToast = () => useContext(ToastCtx);
@@ -56,7 +57,7 @@ function App() {
   // -----------------------
 
   const authFetch = useCallback(async (url, options = {}) => {
-    const res = await fetch(url, {
+    const res = await fetch(`${API_URL}${url}`, {
       ...options,
       headers: {
         ...(options.headers || {}),
@@ -260,7 +261,7 @@ function App() {
     levelInfo
   ) => {
     try {
-      await fetch(`/api/students/${studentId}/state`, {
+      await fetch(`${API_URL}/api/students/${studentId}/state`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -278,7 +279,7 @@ function App() {
 
   const fetchStudentState = async (studentId) => {
     try {
-      const res = await fetch(`/api/students/${studentId}/state`);
+      const res = await fetch(`${API_URL}/api/students/${studentId}/state`);
       const data = await res.json();
 
       const backendAchievements = Array.isArray(data.achievements)
@@ -351,7 +352,7 @@ function App() {
 
   const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
     try {
-      const res = await fetch(`/api/students/${studentId}/progress`, {
+      const res = await fetch(`${API_URL}/api/students/${studentId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -440,7 +441,7 @@ function App() {
     }
 
     // Always load quests from backend API (backend is source of truth)
-    fetch('/api/quests')
+    fetch(`${API_URL}/api/quests`)
       .then((res) => res.json())
       .then((data) => {
         setQuests(data);
@@ -518,7 +519,7 @@ function App() {
     try {
       if (isSignUp) {
         // === SIGN UP ===
-        const res = await fetch('/api/auth/register', {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -596,7 +597,7 @@ function App() {
         }
       } else {
         // === SIGN IN ===
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -649,7 +650,7 @@ function App() {
 
   const handleAdminLogin = async (username, password) => {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -716,7 +717,7 @@ function App() {
       });
 
       // Save full character object in student state
-      await fetch(`/api/students/${currentUser.id}/state`, {
+      await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ character })
@@ -839,7 +840,7 @@ function App() {
       }
 
       // Option 1: Fetch all quests from backend to ensure state is up-to-date
-      const allQuestsRes = await fetch('/api/quests');
+      const allQuestsRes = await fetch(`${API_URL}/api/quests`);
       if (allQuestsRes.ok) {
         const allQuests = await allQuestsRes.json();
         setQuests(allQuests);
