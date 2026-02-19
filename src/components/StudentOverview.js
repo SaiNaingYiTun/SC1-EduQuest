@@ -183,7 +183,7 @@ export default function StudentOverview({
                                 hover:border-purple-400/40
                                 hover:shadow-lg hover:shadow-purple-500/10
                                 transition-all duration-300"
-                                >
+                >
 
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-start gap-4">
@@ -291,7 +291,7 @@ export default function StudentOverview({
                     </div>
                   ) : (
                     <div className="text-center py-4 text-purple-300 text-sm">
-                      Character not created yet
+                      {student.characterId ? 'Loading character...' : 'Character not created yet'}
                     </div>
                   )}
                 </div>

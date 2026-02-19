@@ -21,7 +21,7 @@ export default function AuthPage({ role, onAuth, onBack } ) {
     }
 
   
-      console.log('Submitting:', { username, password, isSignUp, email, role });
+      //console.log('Submitting:', { username, password, isSignUp, email, role });
       onAuth(username, password, isSignUp, email, role); 
     
 

@@ -132,8 +132,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
     }
   };
 
-  //console.log(CLOUD_NAME, UPLOAD_PRESET);
-
+ 
 
 
 

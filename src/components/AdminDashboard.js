@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import AdminReportsTab from './AdminReportsTab';
 import { COURSE_STATUS, COURSE_STATUS_COLORS, COURSE_STATUS_DISPLAY, COURSE_STATUS_MESSAGES } from '../components/courseStatus';
 
 
@@ -196,6 +197,8 @@ export default function AdminDashboard({ user, authFetch, onLogout, go }) {
             <TabButton active={tab === "teacher"} onClick={() => setTab("teacher")}>Teachers</TabButton>
             <TabButton active={tab === "admin"} onClick={() => setTab("admin")}>Admins</TabButton>
             <TabButton active={tab === "courses"} onClick={() => setTab("courses")}>Courses</TabButton>
+            <TabButton active={tab === "reports"} onClick={() => setTab("reports")}>Reports</TabButton>
+
 
 
             <div className="ml-4 flex items-center gap-2">
@@ -236,7 +239,7 @@ export default function AdminDashboard({ user, authFetch, onLogout, go }) {
         </div>
 
         {/* Conditional rendering: show table for users, or courses tab */}
-        {tab !== "courses" ? (
+        {tab !== "courses" && tab !== "reports" ? (
           // EXISTING USER TABLE
           <div className="bg-slate-950/30 border border-slate-800 rounded-2xl overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
@@ -342,10 +345,14 @@ export default function AdminDashboard({ user, authFetch, onLogout, go }) {
               </div>
             </div>
           </div>
-        ) : (
+        ) : tab === "courses" ? (
           // COURSES TAB
           <CourseManagementTab authFetch={authFetch} toast={(msg, type) => console.log(msg)} />
+        ) : (
+          // REPORTS TAB
+          <AdminReportsTab authFetch={authFetch} toast={(msg, type) => console.log(msg)} />
         )}
+
 
         {modalOpen && (
           <UserModal

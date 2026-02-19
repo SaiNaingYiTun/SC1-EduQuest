@@ -22,20 +22,12 @@ const characterClasses = [
     color: 'purple'
   },
   {
-    id: 'rogue',
-    name: 'Rogue',
-    description: 'Quick and cunning, solves problems with agility',
-    icon: '🗡️',
+    id: 'archer',
+    name: 'Archer',
+    description: 'Swift and precise, strikes from afar with deadly accuracy',
+    icon: '🏹',
     avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwcm9ndWUlMjBhcmNoZXJ8ZW58MXx8fHwxNzY0OTc4NzgxfDA&ixlib=rb-4.1.0&q=80&w=400',
     color: 'green'
-  },
-  {
-    id: 'cleric',
-    name: 'Cleric',
-    description: 'Devoted and supportive, helps others succeed',
-    icon: '✨',
-    avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYW50YXN5JTIwaGVhbGVyJTIwY2xlcmljfGVufDF8fHx8MTc2NDk3ODc5M3ww&ixlib=rb-4.1.0&q=80&w=400',
-    color: 'yellow'
   }
 ];
 
@@ -83,7 +75,7 @@ export default function CharacterSelection({ onCharacterCreated, userId }) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {characterClasses.map((charClass) => (
             <button
               key={charClass.id}

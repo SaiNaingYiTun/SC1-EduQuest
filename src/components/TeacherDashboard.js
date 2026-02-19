@@ -6,6 +6,7 @@ import QuestManagement from './QuestManagement';
 import ClassAnalytics from './ClassAnalytics';
 import TeacherProfile from './TeacherProfile';
 import CourseManagement from './CourseManagement';
+import NotificationBell from './NotificationBell';
 
 export default function TeacherDashboard({
   user,
@@ -32,6 +33,7 @@ export default function TeacherDashboard({
   const [activeTab, setActiveTab] = useState('home');
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  
 
   // Fetch courses
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function TeacherDashboard({
     : quests;
 
   // Course selector dropdown (shown for tabs that use course context)
-  const showCourseSelector = ['students', 'quests'].includes(activeTab) && courses.length > 0;
+  const showCourseSelector = ['students', 'quests','analytics'].includes(activeTab) && courses.length > 0;
 
   const [dashboardStats, setDashboardStats] = useState({
     totalCourses: 0,
@@ -92,21 +94,26 @@ export default function TeacherDashboard({
             <h1 className="text-3xl text-amber-400">📚 Teacher Portal</h1>
             <div className="flex items-center gap-4 text-white">
               <div className="text-right">
-
                 <div>{user.name}</div>
+                <div>{Array.isArray(user.subjects) ? (user.subjects[0] || 'Not set') : (user.subjects || 'Not set')}</div>
               </div>
-              <div className="avatar-circle w-14 h-14 rounded-full overflow-hidden border-2 border-amber-400 flex items-center justify-center bg-white shadow-md">
+              <div className="w-12 h-12 rounded-full  object-cover overflow-hidden">
                 {user.profilePic ? (
                   <img
                     src={user.profilePic}
                     alt={user.name}
-                    className="w-full h-full object-cover object-center"
+                    className="w-12 h-12 rounded-full border-2 border-amber-400 object-cover"
                   />
                 ) : (
                   <UserIcon className="w-6 h-6 text-amber-500" />
                 )}
               </div>
 
+              {/* Notification Bell + Logout */}
+              <div className="flex gap-2 ml-4 pl-4 border-l border-amber-600">
+                <NotificationBell user={user} authFetch={authFetch} />
+                
+              </div>
             </div>
           </div>
           <div className="flex gap-2 overflow-x-auto">
@@ -222,7 +229,8 @@ export default function TeacherDashboard({
         )}
 
         {activeTab === 'analytics' && (
-          <ClassAnalytics students={students} characters={characters} />
+          <ClassAnalytics students={filteredStudents} characters={characters} selectedCourse={selectedCourse} />
+          
         )}
 
         {activeTab === 'profile' && (
