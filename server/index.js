@@ -172,6 +172,38 @@ const studentStateSchema = new mongoose.Schema(
 
 const StudentState = mongoose.model('StudentState', studentStateSchema);
 
+const reportSchema = new mongoose.Schema({
+  reporterId: { type: String, required: true },
+  reporterName: { type: String, required: true },
+  teacherId: { type: String, required: true },
+  teacherName: { type: String, required: true },
+  courseId: { type: String, default: null },
+  courseName: { type: String, default: null },
+  category: { type: String, required: true },
+  subject: { type: String, required: true },
+  description: { type: String, required: true },
+  status: { type: String, default: 'pending' },
+  adminNotes: { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+const Report = mongoose.model('Report', reportSchema);
+
+// Add this schema after the Report schema (around line 190)
+const notificationSchema = new mongoose.Schema({
+  recipientId: { type: String, required: true }, // who receives the notification
+  type: { type: String, required: true }, // 'report', 'course_approved', etc.
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  relatedId: { type: String, default: null }, // report ID, course ID, etc.
+  read: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const Notification = mongoose.model('Notification', notificationSchema);
+
+
 function generateJwt(user) {
   return jwt.sign(
     {
@@ -225,10 +257,235 @@ function generateTeacherOtp(length = 8) {
 // ===== ROUTES =====
 
 
+// Create a report
+app.post('/api/reports', authMiddleware, async (req, res) => {
+  try {
+    const { reporterId, reporterName, teacherId, teacherName, courseId, courseName, category, subject, description } = req.body;
+
+    if (!reporterId || !teacherId || !category || !subject || !description) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const report = new Report({
+      reporterId,
+      reporterName,
+      teacherId,
+      teacherName,
+      courseId,
+      courseName,
+      category,
+      subject,
+      description
+    });
+
+    const saved = await report.save();
+
+    // CREATE NOTIFICATION FOR TEACHER
+    const notification = new Notification({
+      recipientId: teacherId,
+      type: 'report',
+      title: 'New Student Report',
+      message: `${reporterName} has submitted a report about you in "${courseName || 'a course'}"`,
+      relatedId: saved._id.toString()
+    });
+
+    await notification.save();
+
+    res.status(201).json(saved);
+  } catch (err) {
+    console.error('Error creating report:', err);
+    res.status(500).json({ message: 'Failed to create report' });
+  }
+});
+
+// Get teacher notifications
+app.get('/api/notifications/:userId', authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (req.user.userId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+
+    const notifications = await Notification.find({ recipientId: userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(notifications);
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    res.status(500).json({ message: 'Failed to fetch notifications' });
+  }
+});
+
+// Mark notification as read
+app.put('/api/notifications/:notificationId/read', authMiddleware, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+
+    const updated = await Notification.findByIdAndUpdate(
+      notificationId,
+      { read: true },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Notification not found' });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error('Error updating notification:', err);
+    res.status(500).json({ message: 'Failed to update notification' });
+  }
+});
+
+// Mark all notifications as read
+app.put('/api/notifications/:userId/read-all', authMiddleware, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (req.user.userId !== userId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+
+    await Notification.updateMany(
+      { recipientId: userId, read: false },
+      { read: true }
+    );
+
+    res.json({ message: 'All notifications marked as read' });
+  } catch (err) {
+    console.error('Error marking notifications as read:', err);
+    res.status(500).json({ message: 'Failed to update notifications' });
+  }
+});
+
+// Get all reports (admin only)
+app.get('/api/admin/reports', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const reports = await Report.find().sort({ createdAt: -1 }).lean();
+    res.json(reports);
+  } catch (err) {
+    console.error('Error fetching reports:', err);
+    res.status(500).json({ message: 'Failed to fetch reports' });
+  }
+});
+
+// Update report status (admin only)
+// Update report status endpoint - add notifications
+app.put('/api/admin/reports/:reportId', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { status, adminNotes } = req.body;
+
+    const report = await Report.findByIdAndUpdate(
+      reportId,
+      { status, adminNotes, updatedAt: new Date() },
+      { new: true }
+    ).lean();
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    // CREATE NOTIFICATION FOR TEACHER ONLY IF STATUS IS 'REVIEWED' OR 'RESOLVED'
+    if (status === 'resolved') {
+      const notification = new Notification({
+        recipientId: report.teacherId,
+        type: 'report_resolved',
+        title: 'Report Investigation Complete',
+        message: `A report has been investigated and resolved.`,
+        relatedId: report._id.toString()
+      });
+
+      await notification.save();
+    }
+
+    res.json(report);
+  } catch (err) {
+    console.error('Error updating report:', err);
+    res.status(500).json({ message: 'Failed to update report' });
+  }
+});
+
+app.get('/api/courses/:courseId/leaderboard', authMiddleware, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId).lean();
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (req.user.role === 'teacher' && String(course.teacherId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: 'Not allowed' });
+    }
+
+    if (req.user.role === 'student') {
+      const me = await User.findById(req.user.userId).select('studentClasses').lean();
+      const enrolled = (me?.studentClasses || []).some((cid) => String(cid) === String(courseId));
+      if (!enrolled) {
+        return res.status(403).json({ message: 'Not allowed' });
+      }
+    }
+
+    const students = await User.find({ role: 'student', studentClasses: courseId })
+      .select('_id username name profilePic')
+      .lean();
+
+    const studentIds = students.map((s) => s._id.toString());
+
+    const states = await StudentState.find({ studentId: { $in: studentIds } })
+      .select('studentId level xp character')
+      .lean();
+
+    const stateByStudentId = new Map(states.map((s) => [String(s.studentId), s]));
+
+    const leaderboard = students
+      .map((student) => {
+        const studentId = student._id.toString();
+        const state = stateByStudentId.get(studentId);
+        const character = state?.character || null;
+
+        return {
+          id: studentId,
+          name: student.name || student.username,
+          class: character?.class || 'Adventurer',
+          avatar: character?.avatar || student.profilePic || '',
+          level: typeof state?.level === 'number' ? state.level : 1,
+          xp: typeof state?.xp === 'number' ? state.xp : 0
+        };
+      })
+      .sort((a, b) => {
+        if (b.level !== a.level) return b.level - a.level;
+        return b.xp - a.xp;
+      });
+
+    res.json({
+      courseId: course._id.toString(),
+      courseName: course.name,
+      section: course.section || '',
+      leaderboard
+    });
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    res.status(500).json({ message: 'Failed to fetch leaderboard' });
+  }
+});
 
 
 
 // Course routes
+app.get('/api/courses', async (req, res) => {
+  try {
+    const courses = await Course.find({ status: COURSE_STATUS.APPROVED }).lean();
+    res.json(courses);
+  } catch (err) {
+    console.error('Error fetching courses:', err);
+    res.status(500).json({ message: 'Failed to fetch courses' });
+  }
+});
 
 //Get all courses for a teacher
 app.get('/api/teachers/:teacherId/courses', authMiddleware, async (req, res) => {
@@ -585,7 +842,7 @@ app.put('/api/admin/courses/:courseId/approve', authMiddleware, adminOnly, async
     const updated = await Course.findByIdAndUpdate(
       courseId,
       {
-        status:COURSE_STATUS.APPROVED,
+        status: COURSE_STATUS.APPROVED,
         approvedBy: req.user.userId,
         rejectionReason: ''
       },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import RoleSelection from './components/RoleSelection';
 import AuthPage from './components/AuthPage';
 import AdminLoginPage from './components/AdminLoginPage';
@@ -40,6 +40,14 @@ function App() {
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2800);
   }, []);
+
+  const lastFetchRef = useRef({
+    users: 0,
+    quests: 0,
+    courses: 0,
+  });
+
+  const inflightRequestsRef = useRef(new Map());
 
 
 
@@ -103,58 +111,139 @@ function App() {
       )
     );
 
-    const next = {};
+    const nextClasses = {};
+    const nextCharacters = {};
+
     studentsToFetch.forEach((s, i) => {
       const r = results[i];
-      if (r.status === 'fulfilled' && Array.isArray(r.value.studentClasses)) {
-        next[s.id] = r.value.studentClasses;
-        fetchedStudentStateRef.current.add(s.id);
+      if (r.status !== 'fulfilled') return;
+
+      const value = r.value;
+
+      if (Array.isArray(value.studentClasses)) {
+        nextClasses[s.id] = value.studentClasses;
       }
+
+      if (value.character && value.character.id) {
+        nextCharacters[value.character.id] = value.character;
+      }
+
+      fetchedStudentStateRef.current.add(s.id);
     });
 
-    setStudentClasses(prev => ({ ...prev, ...next }));
+    setStudentClasses(prev => ({ ...prev, ...nextClasses }));
+    setCharacters(prev => ({ ...prev, ...nextCharacters }));
   }, [currentUser, allUsers, courses, authFetch, studentClasses]);
 
 
-  const refreshAllUsers = useCallback(async () => {
-    const res = await authFetch('/api/users');
-    if (!res.ok) return;
+  const refreshAllUsers = useCallback(async (force = false) => {
+    // 🚀 Request deduplication - prevent multiple simultaneous requests
+    const cacheKey = '/api/users';
+    if (inflightRequestsRef.current.has(cacheKey)) {
+      return inflightRequestsRef.current.get(cacheKey);
+    }
 
-    const data = await res.json();
-    const normalized = data.map(u => ({ ...u, id: u.id || u._id }));
-    setAllUsers(normalized);
+    // 🚀 Freshness check - skip if data is recent (< 30s)
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.users) < 30000) {
+      return;
+    }
 
-    // ✅ Build studentClasses map from backend User.studentClasses
-    const nextMap = {};
-    for (const u of normalized) {
-      if (u.role === 'student') {
-        nextMap[u.id] = Array.isArray(u.studentClasses)
-          ? u.studentClasses.map(String)
-          : [];
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch('/api/users');
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const normalized = data.map(u => ({ ...u, id: u.id || u._id }));
+        setAllUsers(normalized);
+
+        // ✅ Build studentClasses map from backend User.studentClasses
+        const nextMap = {};
+        for (const u of normalized) {
+          if (u.role === 'student') {
+            nextMap[u.id] = Array.isArray(u.studentClasses)
+              ? u.studentClasses.map(String)
+              : [];
+          }
+        }
+        setStudentClasses(nextMap);
+
+        lastFetchRef.current.users = Date.now();
+      } finally {
+        inflightRequestsRef.current.delete(cacheKey);
       }
-    }
-    setStudentClasses(nextMap);
+    })();
+
+    inflightRequestsRef.current.set(cacheKey, requestPromise);
+    return requestPromise;
   }, [authFetch]);
 
-  const refreshQuests = useCallback(async () => {
-    const res = await authFetch('/api/quests');
-    if (!res.ok) return;
-    const data = await res.json();
-    setQuests(Array.isArray(data) ? data : []);
+
+
+  const refreshQuests = useCallback(async (force = false) => {
+    const cacheKey = '/api/quests';
+    if (inflightRequestsRef.current.has(cacheKey)) {
+      return inflightRequestsRef.current.get(cacheKey);
+    }
+
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.quests) < 30000) {
+      return;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch('/api/quests');
+        if (!res.ok) return;
+        const data = await res.json();
+        setQuests(Array.isArray(data) ? data : []);
+        lastFetchRef.current.quests = Date.now();
+      } finally {
+        inflightRequestsRef.current.delete(cacheKey);
+      }
+    })();
+
+    inflightRequestsRef.current.set(cacheKey, requestPromise);
+    return requestPromise;
   }, [authFetch]);
 
-  const refreshCourses = useCallback(async () => {
-    if (!currentUser || currentUser.role !== 'teacher' || !authToken) return;
-    try {
-      const res = await authFetch(`/api/teachers/${currentUser.id}/courses`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setCourses(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Error loading courses:', err);
+
+
+  const refreshCourses = useCallback(async (force = false) => {
+    if (!currentUser || !authToken) return;
+
+    const url =
+      currentUser.role === 'teacher'
+        ? `/api/teachers/${currentUser.id}/courses`
+        : '/api/courses';
+
+    if (inflightRequestsRef.current.has(url)) {
+      return inflightRequestsRef.current.get(url);
     }
+
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.courses) < 30000) {
+      return;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        setCourses(Array.isArray(data) ? data : []);
+        lastFetchRef.current.courses = Date.now();
+      } catch (err) {
+        console.error('Error loading courses:', err);
+      } finally {
+        inflightRequestsRef.current.delete(url);
+      }
+    })();
+
+    inflightRequestsRef.current.set(url, requestPromise);
+    return requestPromise;
   }, [currentUser, authToken, authFetch]);
-
 
 
 
@@ -308,6 +397,12 @@ function App() {
     refreshCourses();
   }, [refreshCourses]);
 
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'teacher') return;
+    if (!allUsers.length || !courses.length) return;
+    refreshStudentClassesForTeacher();
+  }, [currentUser, allUsers, courses, refreshStudentClassesForTeacher]);
+
 
 
   useEffect(() => {
@@ -315,7 +410,7 @@ function App() {
     refreshAllUsers();
   }, [authToken, refreshAllUsers]);
 
-  
+
 
 
   useEffect(() => {
@@ -970,6 +1065,42 @@ function App() {
     return res;
   };
 
+  const teachers = useMemo(
+    () => allUsers.filter(u => u.role === 'teacher'),
+    [allUsers]
+  );
+
+  const students = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'teacher') return [];
+
+    const teacherCourseIds = courses
+      .filter(c => String(c.teacherId) === String(currentUser.id))
+      .map(c => String(c._id));
+
+    return allUsers
+      .filter(u =>
+        u.role === 'student' &&
+        (studentClasses[u.id] || []).some(cid =>
+          teacherCourseIds.includes(String(cid))
+        )
+      )
+      .map(u => ({
+        ...u,
+        studentClasses: studentClasses[u.id] || []
+      }));
+  }, [allUsers, currentUser, courses, studentClasses]);
+
+  const allStudentsWithClasses = useMemo(
+    () => allUsers
+      .filter(u => u.role === 'student')
+      .map(u => ({
+        ...u,
+        studentClasses: studentClasses[u.id] || []
+      })),
+    [allUsers, studentClasses]
+  );
+
+
 
 
 
@@ -1068,7 +1199,7 @@ function App() {
               onUpdateCharacter={handleUpdateCharacter}
               onJoinClass={handleJoinClass}
               studentClasses={studentClasses[currentUser.id] || []}
-              teachers={allUsers.filter(u => u.role === 'teacher')}
+              teachers={teachers}
               achievements={achievements[currentUser.id] || []}
               onUnlockAchievement={handleUnlockAchievement}
               quests={quests}
@@ -1077,6 +1208,8 @@ function App() {
               levelInfo={studentLevels[currentUser.id] || { level: 1, xp: 0 }}
               onUpdateProgress={handleUpdateProgress}
               onStartQuest={handleStartQuest}
+              courses={courses}
+              authFetch={authFetch}
             />
           )}
 
@@ -1086,28 +1219,8 @@ function App() {
               user={currentUser}
               onLogout={handleLogout}
               onUpdateUser={handleUpdateUser}
-              students={allUsers
-                .filter(u =>
-                  u.role === 'student' &&
-                  (studentClasses[u.id] || []).some(cid =>
-                    courses.some(course =>
-                      String(course._id) === String(cid) &&
-                      course.teacherId === currentUser.id
-                    )
-                  )
-                )
-                .map(u => ({
-                  ...u,
-                  studentClasses: studentClasses[u.id] || []
-                }))
-              }
-              allStudents={allUsers
-                .filter(u => u.role === 'student')
-                .map(u => ({
-                  ...u,
-                  studentClasses: studentClasses[u.id] || []
-                }))
-              }
+              students={students}
+              allStudents={allStudentsWithClasses}
               characters={characters}
               studentClasses={studentClasses}
               onInviteStudent={onInviteStudent}

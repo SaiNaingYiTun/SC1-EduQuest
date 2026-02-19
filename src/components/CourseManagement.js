@@ -1,6 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { Plus, Pencil, Trash2, Users } from "lucide-react";
-import { COURSE_STATUS, COURSE_STATUS_COLORS, COURSE_STATUS_DISPLAY, COURSE_STATUS_MESSAGES } from '../components/courseStatus';
+import {
+  COURSE_STATUS,
+  COURSE_STATUS_COLORS,
+  COURSE_STATUS_DISPLAY,
+  COURSE_STATUS_MESSAGES
+} from "../components/courseStatus";
 
 export default function CourseManagement({ user, authFetch, onCoursesChange, onAfterCourseChange }) {
   const [courses, setCourses] = useState([]);
@@ -32,7 +37,7 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
       onCoursesChange?.(next);
     };
     fetchCourses();
-  }, [user.id, authFetch]);
+  }, [user.id, authFetch, onCoursesChange]);
 
   // 2) Fetch all students once (for counts + course members)
   useEffect(() => {
@@ -69,7 +74,9 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
     if (!selectedCourse) return [];
     const courseId = String(selectedCourse._id);
     return allStudents.filter(
-      (stu) => Array.isArray(stu.studentClasses) && stu.studentClasses.map(String).includes(courseId)
+      (stu) =>
+        Array.isArray(stu.studentClasses) &&
+        stu.studentClasses.map(String).includes(courseId)
     );
   }, [allStudents, selectedCourse]);
 
@@ -127,7 +134,6 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
     setCourses(updated);
     onCoursesChange?.(updated);
 
-    // If detail modal open for same course, update it too
     if (selectedCourse?._id === courseId) {
       setSelectedCourse((prev) => ({ ...prev, name: editValue.trim(), section: editSection.trim() }));
     }
@@ -156,44 +162,72 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
   const studentsPill = (color) => {
     const base =
       color === "pink"
-        ? "bg-pink-100 text-pink-700"
+        ? "bg-pink-500/15 text-pink-200 border-pink-500/30"
         : color === "blue"
-          ? "bg-blue-100 text-blue-700"
+          ? "bg-blue-500/15 text-blue-200 border-blue-500/30"
           : color === "green"
-            ? "bg-green-100 text-green-700"
+            ? "bg-green-500/15 text-green-200 border-green-500/30"
             : color === "purple"
-              ? "bg-purple-100 text-purple-700"
+              ? "bg-purple-500/15 text-purple-200 border-purple-500/30"
               : color === "red"
-                ? "bg-red-100 text-red-700"
+                ? "bg-red-500/15 text-red-200 border-red-500/30"
                 : color === "teal"
-                  ? "bg-teal-100 text-teal-700"
-                  : "bg-amber-100 text-amber-700";
+                  ? "bg-teal-500/15 text-teal-200 border-teal-500/30"
+                  : "bg-amber-500/15 text-amber-200 border-amber-500/30";
     return base;
   };
 
+  const statusColors = COURSE_STATUS_COLORS;
+
   return (
-    <div className="max-w-5xl mx-auto mt-10 px-6">
-      {/* Add Course */}
-      <div className="bg-white/90 backdrop-blur rounded-2xl shadow-md border border-gray-200 p-6 mb-10">
-        <h3 className="text-xl font-semibold text-gray-800 mb-4">Add New Course</h3>
+    <div className="max-w-6xl mx-auto mt-10 px-6 pb-16">
+      {/* Page title row */}
+      <div className="flex items-end justify-between gap-4 mb-6">
+        <div>
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Courses
+          </div>
+          <div className="text-sm text-white/60 mt-1">
+            Create courses, edit details, and manage enrollment.
+          </div>
+        </div>
+
+        <div className="hidden sm:flex items-center gap-2 text-xs text-white/60">
+          <span className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/5">
+            Total courses: <span className="ml-1 text-white font-semibold">{courses.length}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Add Course (dark glass) */}
+      <div className="rounded-2xl border border-white/10 bg-slate-950/45 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] p-6 mb-10">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <h3 className="text-lg font-semibold text-white">Add New Course</h3>
+          <span className="text-xs text-white/50">Name + Section required</span>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-4">
           <input
             type="text"
             value={newCourse}
             onChange={(e) => setNewCourse(e.target.value)}
             placeholder="Enter course name"
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="flex-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/40
+                       focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400/40"
           />
           <input
             type="text"
             value={newSection}
             onChange={(e) => setNewSection(e.target.value)}
             placeholder="Section"
-            className="w-32 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            className="w-full sm:w-40 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white placeholder:text-white/40
+                       focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400/40"
           />
           <button
             onClick={handleAddCourse}
-            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold px-7 py-3 rounded-full shadow hover:shadow-amber-500/30 hover:scale-[1.02] transition"
+            className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-600
+                       text-white font-semibold px-7 py-3 rounded-full shadow-lg shadow-amber-500/20
+                       hover:shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.99] transition"
             type="button"
           >
             <Plus className="w-4 h-4" />
@@ -204,29 +238,32 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
 
       {/* Courses grid */}
       {courses.length === 0 ? (
-        <div className="bg-white/80 rounded-xl p-10 text-center border border-dashed border-gray-300">
-          <p className="text-gray-500 text-lg">You haven't created any courses yet.</p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-10 text-center">
+          <p className="text-white/70 text-lg">You haven't created any courses yet.</p>
+          <p className="text-white/40 text-sm mt-2">Use the form above to create your first course.</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-6">
           {courses.map((course) => {
             const color = pickColor(course?.name || "");
             const count = courseCounts[String(course._id)] || 0;
-
-            const statusColors = COURSE_STATUS_COLORS;
+            const status = course.status || COURSE_STATUS.PENDING;
 
             return (
               <div
                 key={course._id}
                 onClick={() => setSelectedCourse(course)}
-                className="group cursor-pointer overflow-hidden rounded-2xl bg-white shadow-lg border border-black/5 hover:shadow-2xl transition-all duration-300 hover:-translate-y-1"
+                className="group cursor-pointer overflow-hidden rounded-2xl border border-white/10
+                           bg-slate-950/45 backdrop-blur-xl shadow-[0_18px_60px_-24px_rgba(0,0,0,0.75)]
+                           hover:border-white/20 hover:-translate-y-1 transition-all duration-300"
               >
                 {/* top bar */}
-                <div className="h-12 bg-neutral-900 relative">
+                <div className="h-12 bg-gradient-to-r from-slate-900 to-slate-950 relative">
                   {/* initials bubble */}
                   <div
-                    className={`absolute -bottom-5 right-4 w-11 h-11 rounded-full ${colorClass[color]
-                      } text-white flex items-center justify-center font-bold shadow-lg border-4 border-white`}
+                    className={`absolute -bottom-5 right-4 w-11 h-11 rounded-full ${colorClass[color]}
+                                text-white flex items-center justify-center font-bold shadow-lg
+                                border-4 border-slate-900`}
                   >
                     {(course?.name?.[0] || "C").toUpperCase()}
                     {(course?.name?.[1] || "").toUpperCase()}
@@ -238,46 +275,54 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                   <div className={`absolute left-0 top-6 bottom-6 w-1.5 ${colorClass[color]} rounded-r`} />
 
                   <div className="pl-4">
-                    <div className="text-2xl font-extrabold tracking-wide text-neutral-900">
+                    <div className="text-xl sm:text-2xl font-extrabold tracking-wide text-white">
                       {course.name}
                     </div>
-                    <div className="text-sm text-neutral-500 mt-2">
+                    <div className="text-sm text-white/60 mt-2">
                       SECTION {course.section || "-"}
                     </div>
 
-                    {/* Status Badge */}
-                    <div className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-semibold ${statusColors[course.status || COURSE_STATUS.PENDING].bg} ${statusColors[course.status || COURSE_STATUS.PENDING].text}`}>
-                      {COURSE_STATUS_DISPLAY[course.status || COURSE_STATUS.PENDING]}
+                    {/* Status badge */}
+                    <div
+                      className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-semibold
+                      ${statusColors[status].bg} ${statusColors[status].text}`}
+                    >
+                      {COURSE_STATUS_DISPLAY[status]}
                     </div>
 
-                    {course.status === COURSE_STATUS.REJECTED && course.rejectionReason && (
-                      <div className="mt-2 p-2 bg-red-50 rounded text-xs text-red-700">
+                    {status === COURSE_STATUS.REJECTED && course.rejectionReason && (
+                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-200">
                         <strong>Rejection reason:</strong> {course.rejectionReason}
                       </div>
                     )}
 
-                    <div className="mt-5 flex items-center justify-between">
+                    <div className="mt-5 flex items-center justify-between gap-3">
                       {/* students pill (only show if approved) */}
-                      {course.status === COURSE_STATUS.APPROVED ? (
-                        <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold ${studentsPill(color)}`}>
+                      {status === COURSE_STATUS.APPROVED ? (
+                        <div
+                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold border
+                                      ${studentsPill(color)}`}
+                        >
                           <Users className="w-4 h-4" />
                           {loadingStudents ? "…" : count}
                         </div>
                       ) : (
-                        <div className="text-xs text-gray-400">
-                          {COURSE_STATUS_MESSAGES[course.status || COURSE_STATUS.PENDING]}
+                        <div className="text-xs text-white/40">
+                          {COURSE_STATUS_MESSAGES[status]}
                         </div>
                       )}
 
                       {/* actions */}
                       <div className="flex gap-2">
-                        {course.status !== COURSE_STATUS.REJECTED && (
+                        {status !== COURSE_STATUS.REJECTED && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               openEdit(course);
                             }}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition"
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
+                                       bg-blue-500/15 text-blue-200 border border-blue-500/25
+                                       hover:bg-blue-500/25 transition"
                             type="button"
                           >
                             <Pencil className="w-4 h-4" />
@@ -290,13 +335,20 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                             e.stopPropagation();
                             handleDeleteCourse(course._id);
                           }}
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold
+                                     bg-red-500/15 text-red-200 border border-red-500/25
+                                     hover:bg-red-500/25 transition"
                           type="button"
                         >
                           <Trash2 className="w-4 h-4" />
                           Delete
                         </button>
                       </div>
+                    </div>
+
+                    {/* subtle hint */}
+                    <div className="mt-4 text-xs text-white/30">
+                      Click card to view members
                     </div>
                   </div>
                 </div>
@@ -306,40 +358,48 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
         </div>
       )}
 
-      {/* Course detail modal (OTP REMOVED) */}
+      {/* Course detail modal */}
       {selectedCourse && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-8 shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="rounded-2xl max-w-lg w-full p-7 shadow-2xl relative
+                          border border-white/10 bg-slate-950/70 backdrop-blur-xl text-white">
             <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
+              className="absolute top-4 right-4 text-white/60 hover:text-red-300"
               onClick={() => setSelectedCourse(null)}
               type="button"
             >
               ✕
             </button>
 
-            <h3 className="text-2xl font-bold mb-2">
-              {selectedCourse.name} {selectedCourse.section ? `(${selectedCourse.section})` : ""}
+            <h3 className="text-2xl font-extrabold mb-1">
+              {selectedCourse.name}{" "}
+              {selectedCourse.section ? (
+                <span className="text-white/60 font-semibold">({selectedCourse.section})</span>
+              ) : null}
             </h3>
 
-            <div className="mb-4 text-gray-600">
-              <span className="font-semibold">Students:</span>{" "}
+            <div className="mb-4 text-white/70">
+              <span className="font-semibold text-white">Students:</span>{" "}
               {loadingStudents ? "Loading..." : selectedCourseStudents.length}
             </div>
 
-            <div className="mb-2 font-semibold text-gray-800">Members</div>
+            <div className="mb-2 font-semibold text-white">Members</div>
             <ul className="space-y-2 max-h-60 overflow-auto pr-1">
               {loadingStudents ? (
-                <li className="text-gray-400">Loading...</li>
+                <li className="text-white/40">Loading...</li>
               ) : selectedCourseStudents.length === 0 ? (
-                <li className="text-gray-400">No students enrolled.</li>
+                <li className="text-white/40">No students enrolled.</li>
               ) : (
                 selectedCourseStudents.map((stu) => (
-                  <li key={stu._id} className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-medium text-gray-800">
+                  <li
+                    key={stu._id}
+                    className="flex items-center justify-between gap-3 rounded-xl
+                               border border-white/10 bg-white/5 px-3 py-2"
+                  >
+                    <span className="text-sm font-medium text-white">
                       {stu.name || stu.username}
                     </span>
-                    <span className="text-xs text-gray-500">{stu.email}</span>
+                    <span className="text-xs text-white/60">{stu.email}</span>
                   </li>
                 ))
               )}
@@ -348,50 +408,54 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
         </div>
       )}
 
-      {/* Edit modal (THIS is what makes Edit work) */}
+      {/* Edit modal */}
       {editingCourse && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="rounded-2xl max-w-md w-full p-6 shadow-2xl relative
+                          border border-white/10 bg-slate-950/70 backdrop-blur-xl text-white">
             <button
-              className="absolute top-4 right-4 text-gray-500 hover:text-red-500"
+              className="absolute top-4 right-4 text-white/60 hover:text-red-300"
               onClick={closeEdit}
               type="button"
             >
               ✕
             </button>
 
-            <h3 className="text-xl font-bold mb-4">Edit Course</h3>
+            <h3 className="text-xl font-extrabold mb-4">Edit Course</h3>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-gray-600">Course name</label>
+                <label className="text-sm text-white/70">Course name</label>
                 <input
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full mt-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white
+                             focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400/40"
                 />
               </div>
 
               <div>
-                <label className="text-sm text-gray-600">Section</label>
+                <label className="text-sm text-white/70">Section</label>
                 <input
                   value={editSection}
                   onChange={(e) => setEditSection(e.target.value)}
-                  className="w-full mt-1 px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="w-full mt-1 px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white
+                             focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:border-amber-400/40"
                 />
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={closeEdit}
-                  className="px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 rounded-full border border-white/15 text-white/80 hover:bg-white/5"
                   type="button"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleEditSave}
-                  className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold hover:opacity-95"
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-orange-600
+                             text-white font-semibold hover:opacity-95"
                   type="button"
                 >
                   Save

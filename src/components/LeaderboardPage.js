@@ -1,37 +1,79 @@
-import { Trophy, Medal, Crown, Star } from 'lucide-react';
-import { Character } from '../App';
+import { useEffect, useMemo, useState } from 'react';
+import { Medal, Crown, Star } from 'lucide-react';
 
+export default function LeaderboardPage({
+  user,
+  character,
+  authFetch,
+  studentClasses = [],
+  courses = []
+}) {
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [players, setPlayers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-// Mock leaderboard data
-const mockLeaderboard = [
-  { id: '1', name: 'DragonSlayer99', class: 'Warrior', level: 15, xp: 1450, avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?w=100' },
-  { id: '2', name: 'WizardMaster', class: 'Mage', level: 14, xp: 1380, avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?w=100' },
-  { id: '3', name: 'ShadowNinja', class: 'Rogue', level: 13, xp: 1250, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
-  { id: '4', name: 'HolyKnight', class: 'Cleric', level: 12, xp: 1150, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
-  { id: '5', name: 'BraveHero', class: 'Warrior', level: 11, xp: 1050, avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?w=100' },
-  { id: '6', name: 'MysticSage', class: 'Mage', level: 10, xp: 950, avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?w=100' },
-  { id: '7', name: 'SwiftArcher', class: 'Rogue', level: 9, xp: 850, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
-  { id: '8', name: 'LightBearer', class: 'Cleric', level: 8, xp: 750, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
-];
+  const enrolledCourses = useMemo(() => {
+    const enrolledSet = new Set((studentClasses || []).map(String));
+    return (courses || []).filter((course) => enrolledSet.has(String(course._id)));
+  }, [studentClasses, courses]);
 
-export default function LeaderboardPage({ character }) {
-  // Add current character to leaderboard
-  const allPlayers = [
-    ...mockLeaderboard,
-    {
-      id: character.id,
-      name: character.name,
-      class: character.class,
-      level: character.level,
-      xp: character.xp,
-      avatar: character.avatar,
+  useEffect(() => {
+    if (!enrolledCourses.length) {
+      setSelectedCourseId('');
+      return;
     }
-  ].sort((a, b) => {
-    if (b.level !== a.level) return b.level - a.level;
-    return b.xp - a.xp;
-  });
 
-  const currentPlayerRank = allPlayers.findIndex(p => p.id === character.id) + 1;
+    const stillValid = enrolledCourses.some((c) => String(c._id) === String(selectedCourseId));
+    if (!selectedCourseId || !stillValid) {
+      setSelectedCourseId(String(enrolledCourses[0]._id));
+    }
+  }, [enrolledCourses, selectedCourseId]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadLeaderboard = async () => {
+      if (!selectedCourseId || !authFetch) {
+        setPlayers([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+
+        const res = await authFetch(`/api/courses/${selectedCourseId}/leaderboard`);
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+          throw new Error(data.message || 'Failed to load leaderboard');
+        }
+
+        if (!isCancelled) {
+          setPlayers(Array.isArray(data.leaderboard) ? data.leaderboard : []);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setPlayers([]);
+          setError(err.message || 'Failed to load leaderboard');
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadLeaderboard();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedCourseId, authFetch]);
+
+  const allPlayers = players;
+  const currentPlayerRank = allPlayers.findIndex((p) => String(p.id) === String(user?.id)) + 1;
+  const currentPlayer = allPlayers.find((p) => String(p.id) === String(user?.id));
 
   const getRankIcon = (rank) => {
     switch (rank) {
@@ -59,129 +101,175 @@ export default function LeaderboardPage({ character }) {
     }
   };
 
+  const renderAvatar = (player, sizeClass) => {
+    if (player.avatar) {
+      return (
+        <img
+          src={player.avatar}
+          alt={player.name}
+          className={`${sizeClass} rounded-full border-2 border-purple-400 object-cover`}
+        />
+      );
+    }
+
+    const initial = player.name?.trim()?.charAt(0)?.toUpperCase() || '?';
+    return (
+      <div className={`${sizeClass} rounded-full border-2 border-purple-400 bg-purple-900/70 text-white grid place-items-center`}>
+        {initial}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-4xl text-amber-400 mb-2">Leaderboard</h2>
-        <p className="text-xl text-purple-200">Compete with fellow adventurers</p>
+        <p className="text-xl text-purple-200">Compete with fellow adventurers in your class</p>
       </div>
 
-      {/* Current Player Rank Card */}
-      <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-2xl p-6 border-2 border-amber-400/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-4xl">🏆</div>
-            <div>
-              <div className="text-purple-200">Your Rank</div>
-              <div className="text-3xl text-white">#{currentPlayerRank}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-purple-200">Level {character.level}</div>
-            <div className="text-white">{character.xp} XP</div>
-          </div>
+      <div className="max-w-md mx-auto">
+        <label className="block text-purple-200 mb-2">Course</label>
+        <select
+          value={selectedCourseId}
+          onChange={(e) => setSelectedCourseId(e.target.value)}
+          className="w-full px-3 py-2 rounded-lg bg-slate-900/80 border border-purple-400/40 text-white"
+          disabled={enrolledCourses.length === 0}
+        >
+          {enrolledCourses.length === 0 ? (
+            <option value="">No enrolled courses</option>
+          ) : (
+            enrolledCourses.map((course) => (
+              <option key={course._id} value={course._id}>
+                {course.name}{course.section ? ` (${course.section})` : ''}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-400/40 text-red-200 rounded-xl px-4 py-3">
+          {error}
         </div>
-      </div>
+      )}
 
-      {/* Top 3 Podium */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        {allPlayers.slice(0, 3).map((player, index) => {
-          const rank = index + 1;
-          const isCurrentPlayer = player.id === character.id;
+      {loading && (
+        <div className="text-center text-purple-200">Loading leaderboard...</div>
+      )}
 
-          return (
-            <div
-              key={player.id}
-              className={`${rank === 1 ? 'md:order-2 md:-mt-8' : rank === 2 ? 'md:order-1' : 'md:order-3'}`}
-            >
-              <div className={`bg-gradient-to-br ${getRankBg(rank)} rounded-2xl p-6 border-2 backdrop-blur-sm ${
-                isCurrentPlayer ? 'ring-4 ring-amber-400' : ''
-              }`}>
-                <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    {getRankIcon(rank)}
-                  </div>
-                  
-                  <img
-                    src={player.avatar}
-                    alt={player.name}
-                    className={`w-20 h-20 rounded-full mx-auto mb-4 object-cover ${
-                      rank === 1 ? 'border-4 border-yellow-400 w-24 h-24' : 'border-2 border-purple-400'
-                    }`}
-                  />
-                  
-                  <h3 className={`${rank === 1 ? 'text-2xl' : 'text-xl'} text-white mb-1 ${
-                    isCurrentPlayer ? 'text-amber-400' : ''
-                  }`}>
-                    {player.name}
-                    {isCurrentPlayer && ' (You)'}
-                  </h3>
-                  <div className="text-purple-200 mb-2">{player.class}</div>
-                  <div className="flex items-center justify-center gap-3 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-amber-400" />
-                      <span className="text-white">Lv. {player.level}</span>
-                    </div>
-                    <div className="text-purple-300">{player.xp} XP</div>
-                  </div>
+      {!loading && !error && selectedCourseId && allPlayers.length === 0 && (
+        <div className="text-center text-purple-200">No ranked students in this course yet.</div>
+      )}
+
+      {!loading && !error && allPlayers.length > 0 && (
+        <>
+          <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-2xl p-6 border-2 border-amber-400/50 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl">🏆</div>
+                <div>
+                  <div className="text-purple-200">Your Rank</div>
+                  <div className="text-3xl text-white">{currentPlayerRank > 0 ? `#${currentPlayerRank}` : 'Unranked'}</div>
                 </div>
               </div>
+              <div className="text-right">
+                <div className="text-purple-200">Level {currentPlayer?.level ?? character?.level ?? 1}</div>
+                <div className="text-white">{currentPlayer?.xp ?? character?.xp ?? 0} XP</div>
+              </div>
             </div>
-          );
-        })}
-      </div>
+          </div>
 
-      {/* Rest of Leaderboard */}
-      {allPlayers.length > 3 && (
-        <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 border-purple-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6">Rankings</h3>
-          
-          <div className="space-y-3">
-            {allPlayers.slice(3).map((player, index) => {
-              const rank = index + 4;
-              const isCurrentPlayer = player.id === character.id;
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {allPlayers.slice(0, 3).map((player, index) => {
+              const rank = index + 1;
+              const isCurrentPlayer = String(player.id) === String(user?.id);
 
               return (
                 <div
                   key={player.id}
-                  className={`bg-slate-800/30 rounded-lg p-4 border transition-all ${
-                    isCurrentPlayer
-                      ? 'border-2 border-amber-400 bg-amber-600/10'
-                      : 'border border-purple-400/20 hover:border-purple-400/40'
-                  }`}
+                  className={`${rank === 1 ? 'md:order-2 md:-mt-8' : rank === 2 ? 'md:order-1' : 'md:order-3'}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 text-center">
-                      {getRankIcon(rank)}
-                    </div>
-                    
-                    <img
-                      src={player.avatar}
-                      alt={player.name}
-                      className="w-12 h-12 rounded-full border-2 border-purple-400 object-cover"
-                    />
-                    
-                    <div className="flex-1">
-                      <div className={`text-white ${isCurrentPlayer ? 'text-amber-400' : ''}`}>
+                  <div className={`bg-gradient-to-br ${getRankBg(rank)} rounded-2xl p-6 border-2 backdrop-blur-sm ${
+                    isCurrentPlayer ? 'ring-4 ring-amber-400' : ''
+                  }`}>
+                    <div className="text-center">
+                      <div className="flex justify-center mb-4">
+                        {getRankIcon(rank)}
+                      </div>
+
+                      <div className="flex justify-center mb-4">
+                        {renderAvatar(player, rank === 1 ? 'w-24 h-24' : 'w-20 h-20')}
+                      </div>
+
+                      <h3 className={`${rank === 1 ? 'text-2xl' : 'text-xl'} text-white mb-1 ${
+                        isCurrentPlayer ? 'text-amber-400' : ''
+                      }`}>
                         {player.name}
                         {isCurrentPlayer && ' (You)'}
+                      </h3>
+                      <div className="text-purple-200 mb-2">{player.class}</div>
+                      <div className="flex items-center justify-center gap-3 text-sm">
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-amber-400" />
+                          <span className="text-white">Lv. {player.level}</span>
+                        </div>
+                        <div className="text-purple-300">{player.xp} XP</div>
                       </div>
-                      <div className="text-sm text-purple-200">{player.class}</div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <div className="flex items-center gap-2 text-white">
-                        <Star className="w-4 h-4 text-amber-400" />
-                        <span>Lv. {player.level}</span>
-                      </div>
-                      <div className="text-sm text-purple-300">{player.xp} XP</div>
                     </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
+
+          {allPlayers.length > 3 && (
+            <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 border-purple-400/30 backdrop-blur-sm">
+              <h3 className="text-2xl text-amber-400 mb-6">Rankings</h3>
+
+              <div className="space-y-3">
+                {allPlayers.slice(3).map((player, index) => {
+                  const rank = index + 4;
+                  const isCurrentPlayer = String(player.id) === String(user?.id);
+
+                  return (
+                    <div
+                      key={player.id}
+                      className={`bg-slate-800/30 rounded-lg p-4 border transition-all ${
+                        isCurrentPlayer
+                          ? 'border-2 border-amber-400 bg-amber-600/10'
+                          : 'border border-purple-400/20 hover:border-purple-400/40'
+                      }`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 text-center">
+                          {getRankIcon(rank)}
+                        </div>
+
+                        {renderAvatar(player, 'w-12 h-12')}
+
+                        <div className="flex-1">
+                          <div className={`text-white ${isCurrentPlayer ? 'text-amber-400' : ''}`}>
+                            {player.name}
+                            {isCurrentPlayer && ' (You)'}
+                          </div>
+                          <div className="text-sm text-purple-200">{player.class}</div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="flex items-center gap-2 text-white">
+                            <Star className="w-4 h-4 text-amber-400" />
+                            <span>Lv. {player.level}</span>
+                          </div>
+                          <div className="text-sm text-purple-300">{player.xp} XP</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
