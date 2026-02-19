@@ -277,7 +277,7 @@ function App() {
     }
   };
 
-  const fetchStudentState = async (studentId) => {
+  const fetchStudentState = useCallback(async (studentId) => {
     try {
       const res = await fetch(`${API_URL}/api/students/${studentId}/state`);
       const data = await res.json();
@@ -348,7 +348,7 @@ function App() {
     } catch (err) {
       console.error('Error loading student state:', err);
     }
-  };
+  }, [API_URL]);
 
   const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
     try {

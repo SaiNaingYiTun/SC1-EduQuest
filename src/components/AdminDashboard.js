@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AdminReportsTab from './AdminReportsTab';
-import { COURSE_STATUS, COURSE_STATUS_COLORS, COURSE_STATUS_DISPLAY, COURSE_STATUS_MESSAGES } from '../components/courseStatus';
+import { COURSE_STATUS } from '../components/courseStatus';
 
 
 export default function AdminDashboard({ user, authFetch, onLogout, go }) {
@@ -542,11 +542,7 @@ function CourseManagementTab({ authFetch, toast }) {
   const [rejectReason, setRejectReason] = useState('');
   const [filterStatus, setFilterStatus] = useState(COURSE_STATUS.PENDING); // pending | approved | rejected | all
 
-  useEffect(() => {
-    loadCourses();
-  }, []);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     setLoading(true);
     try {
       const res = await authFetch('/api/admin/courses');
@@ -560,7 +556,11 @@ function CourseManagementTab({ authFetch, toast }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authFetch, toast]);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
 
   const filteredCourses = filterStatus === 'all'
     ? courses
