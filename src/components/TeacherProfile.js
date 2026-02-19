@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { User as UserIcon, Edit2, Save, LogOut, BookOpen, Key, RefreshCw } from 'lucide-react';
-import { User, useToast } from '../App';
+import { User as UserIcon, Edit2, Save, LogOut } from 'lucide-react';
+import { Character, useToast } from '../App';
+import { API_URL } from '../api';
 
 
 const defaultProfilePics = [
@@ -22,7 +23,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
 
   const handleSave = async () => {
     try {
-      const res = await fetch(`/api/users/${user.id}/profile`, {
+      const res = await fetch(`${API_URL}/api/users/${user.id}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
       setSelectedAvatar(imageUrl);
 
       // Save to YOUR backend (MongoDB) so it persists for the user
-      await fetch(`/api/users/${user.id}/profile-pic`, {
+      await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

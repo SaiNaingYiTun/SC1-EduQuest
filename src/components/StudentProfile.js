@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { User as UserIcon, Edit2, Save, LogOut, Camera } from 'lucide-react';
-import { User, Character, useToast } from '../App';
+import { Character, useToast } from '../App';
+import { API_URL } from '../api';
 
 
 
@@ -20,7 +21,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
 
   const handleSave = async () => {
     try {
-      const res = await fetch(`/api/users/${user.id}/profile`, {
+      const res = await fetch(`${API_URL}/api/users/${user.id}/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -40,7 +41,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
       }
       let updatedUser = data;
       if (selectedAvatar && selectedAvatar !== user.profilePic) {
-        const picRes = await fetch(`/api/users/${user.id}/profile-pic`, {
+        const picRes = await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
       const imageUrl = data.secure_url;
       setSelectedAvatar(imageUrl);
 
-      await fetch(`/api/users/${user.id}/profile-pic`, {
+      await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

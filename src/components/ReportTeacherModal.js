@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, AlertCircle } from 'lucide-react';
 import { useToast } from '../App';
+import { API_URL } from '../api';
 
 const REPORT_CATEGORIES = [
   { value: 'conduct', label: 'Inappropriate Conduct' },
@@ -32,7 +33,7 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/reports', {
+      const res = await fetch(`${API_URL}/api/reports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
