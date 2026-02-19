@@ -488,7 +488,7 @@ function App() {
     } else if (path === '/dashboard') {
       if (currentUser) setCurrentView('dashboard');
     }
-  }, []);
+  }, [currentUser, fetchStudentState]);
 
   // -----------------------
   // Persist some state locally
