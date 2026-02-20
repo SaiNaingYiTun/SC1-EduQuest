@@ -188,15 +188,15 @@ export default function StudentOverview({
 
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-start gap-4">
-                      {character ? (
+                      {student.profilePic ? (
                         <img
-                          src={character.avatar}
-                          alt={character.name}
-                          className="w-16 h-16 rounded-full border-2 border-amber-400 object-cover object-center"
+                          src={student.profilePic}
+                          alt={student.name}
+                          className="w-12 h-12 rounded-full border-2 border-purple-400 object-cover"
                         />
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center border-2 border-purple-400">
-                          <Users className="w-8 h-8 text-white" />
+                        <div className="w-12 h-12 rounded-full bg-purple-600 flex items-center justify-center border-2 border-purple-400">
+                          <Users className="w-6 h-6 text-white" />
                         </div>
                       )}
 
@@ -375,10 +375,10 @@ export default function StudentOverview({
                         className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20 hover:border-purple-400/40 transition-all"
                       >
                         <div className="flex items-center gap-4">
-                          {character ? (
+                          {student.profilePic ? (
                             <img
-                              src={character.avatar}
-                              alt={character.name}
+                              src={student.profilePic}
+                              alt={student.name}
                               className="w-12 h-12 rounded-full border-2 border-purple-400 object-cover"
                             />
                           ) : (

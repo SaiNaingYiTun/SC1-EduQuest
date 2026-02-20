@@ -256,7 +256,7 @@ export default function TeacherDashboard({
             stats={{
               courses: courses.length,
               students: students.length,
-              quests: quests.length,
+              quests: dashboardStats.totalQuests,
             }}
           />
         )}
