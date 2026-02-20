@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Users, Search, UserPlus, Star, Trophy } from 'lucide-react';
 import { useToast } from '../App';
+import { API_URL } from '../api';
 
 
 
@@ -40,7 +41,7 @@ export default function StudentOverview({
     if (!courseId) return;
     if (!window.confirm('Remove this student from the selected course?')) return;
     try {
-      await fetch(`/api/students/${studentId}/remove-course`, {
+      await fetch(`${API_URL}/api/students/${studentId}/remove-course`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),

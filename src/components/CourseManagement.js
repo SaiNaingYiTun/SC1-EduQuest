@@ -26,15 +26,27 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
   // 1) Fetch courses
   useEffect(() => {
     const fetchCourses = async () => {
-      const res = await authFetch(`/api/teachers/${user.id}/courses`);
-      if (res.status === 401) {
+      try {
+        const res = await authFetch(`/api/teachers/${user.id}/courses`);
+        if (res.status === 401 || !res.ok) {
+          setCourses([]);
+          return;
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          setCourses([]);
+          return;
+        }
+
+        const data = await res.json();
+        const next = Array.isArray(data) ? data : [];
+        setCourses(next);
+        onCoursesChange?.(next);
+      } catch (err) {
+        console.error('Error fetching courses:', err);
         setCourses([]);
-        return;
       }
-      const data = await res.json();
-      const next = Array.isArray(data) ? data : [];
-      setCourses(next);
-      onCoursesChange?.(next);
     };
     fetchCourses();
   }, [user.id, authFetch, onCoursesChange]);

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Scroll, BookOpen, Edit, Trash2, Clock, Star, X } from 'lucide-react';
 import { User, Quest, Question, Item } from '../App';
+import { API_URL } from '../api';
 
 export default function QuestManagement({
   user,
@@ -53,7 +54,7 @@ export default function QuestManagement({
       if (user?.role === 'teacher' && user?.id) {
         setLoadingCourses(true);
         try {
-          const res = await fetch(`/api/teachers/${user.id}/courses`, {
+          const res = await fetch(`${API_URL}/api/teachers/${user.id}/courses`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem('authToken')}`,
             },

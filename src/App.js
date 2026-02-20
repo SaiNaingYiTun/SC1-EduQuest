@@ -442,7 +442,16 @@ function App() {
 
     // Always load quests from backend API (backend is source of truth)
     fetch(`${API_URL}/api/quests`)
-      .then((res) => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to load quests: ${res.status}`);
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Failed to load quests: backend did not return JSON');
+        }
+        return res.json();
+      })
       .then((data) => {
         setQuests(data);
       })

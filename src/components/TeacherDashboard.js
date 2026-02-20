@@ -38,9 +38,25 @@ export default function TeacherDashboard({
   // Fetch courses
   useEffect(() => {
     async function fetchCourses() {
-      const res = await authFetch(`/api/teachers/${user.id}/courses`);
-      const data = await res.json();
-      setCourses(data);
+      try {
+        const res = await authFetch(`/api/teachers/${user.id}/courses`);
+        if (!res.ok) {
+          setCourses([]);
+          return;
+        }
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          setCourses([]);
+          return;
+        }
+
+        const data = await res.json();
+        setCourses(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error loading teacher courses:', err);
+        setCourses([]);
+      }
 
     }
     fetchCourses();
