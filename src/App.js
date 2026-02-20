@@ -415,29 +415,31 @@ function App() {
 
 
   useEffect(() => {
-    // Load from localStorage
-    const savedUser = localStorage.getItem('currentUser');
+    // Load from localStorage once on app mount.
+    const savedUserRaw = localStorage.getItem('currentUser');
     const savedView = localStorage.getItem('currentView');
     const savedCharacters = localStorage.getItem('characters');
-
     const savedAchievements = localStorage.getItem('achievements');
     const savedStudentInventories = localStorage.getItem('studentInventories');
 
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      setCurrentUser(user);
-
-      // Fetch student state from backend if student
-      if (user.role === 'student') {
-        fetchStudentState(user.id);
-      }
+    let savedUser = null;
+    if (savedUserRaw) {
+      const parsedUser = JSON.parse(savedUserRaw);
+      savedUser = { ...parsedUser, id: parsedUser.id || parsedUser._id };
+      setCurrentUser(savedUser);
+      setSelectedRole(savedUser.role);
     }
+
     if (savedCharacters) {
       setCharacters(JSON.parse(savedCharacters));
     }
 
     if (savedAchievements) {
       setAchievements(JSON.parse(savedAchievements));
+    }
+
+    if (savedStudentInventories) {
+      setStudentInventories(JSON.parse(savedStudentInventories));
     }
 
     // Always load quests from backend API (backend is source of truth)
@@ -453,35 +455,24 @@ function App() {
         return res.json();
       })
       .then((data) => {
-        setQuests(data);
+        setQuests(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
         console.error('Error loading quests from backend:', err);
       });
 
-    if (savedStudentInventories) {
-      setStudentInventories(JSON.parse(savedStudentInventories));
-    }
-
     if (savedUser) {
-      const user = JSON.parse(savedUser);
-      setCurrentUser(user);
-      setSelectedRole(user.role);
-
       if (savedView) {
         setCurrentView(savedView);
+      } else if (savedUser.role === 'student' && !savedUser.characterId) {
+        setCurrentView('character');
       } else {
-        // Determine view based on user state
-        if (user.role === 'student' && !user.characterId) {
-          setCurrentView('character');
-        } else {
-          setCurrentView('dashboard');
-        }
+        setCurrentView('dashboard');
       }
 
-      // On reload, sync student state from backend too
-      if (user.role === 'student') {
-        fetchStudentState(user.id);
+      // On reload, sync student state from backend once.
+      if (savedUser.role === 'student') {
+        fetchStudentState(savedUser.id);
       }
     }
 
@@ -490,14 +481,15 @@ function App() {
     if (path === '/admin-login') {
       setCurrentView('admin-login');
     } else if (path === '/character') {
-      // only switch if user is student
-      if (currentUser && currentUser.role === 'student') {
+      if (savedUser && savedUser.role === 'student') {
         setCurrentView('character');
       }
     } else if (path === '/dashboard') {
-      if (currentUser) setCurrentView('dashboard');
+      if (savedUser) {
+        setCurrentView('dashboard');
+      }
     }
-  }, [currentUser, fetchStudentState]);
+  }, [fetchStudentState]);
 
   // -----------------------
   // Persist some state locally
