@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Scroll, BookOpen, Edit, Trash2, Clock, Star, X } from 'lucide-react';
+import { Plus, Scroll, BookOpen, Edit, Trash2, Clock, Star, X, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 import { User, Quest, Question, Item } from '../App';
 import { API_URL } from '../api';
+import { useToast } from '../App';
 
 export default function QuestManagement({
   user,
@@ -12,7 +14,7 @@ export default function QuestManagement({
   quests,
   selectedCourse
 }) {
-  
+  const toast = useToast();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingQuest, setEditingQuest] = useState(null);
@@ -22,20 +24,12 @@ export default function QuestManagement({
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [selectedCourseId, setSelectedCourseId] = useState('');
 
-  //console.log("Courses:", courses.map(c => ({ name: c.name, _id: c._id })));
-  //console.log("Selected course:", selectedCourse);
+  // CSV state
+  const [csvQuestions, setCsvQuestions] = useState([]);
+  const [csvError, setCsvError] = useState('');
+  const [numQuestions, setNumQuestions] = useState(5);
+  const [useCSV, setUseCSV] = useState(false);
 
-
-
-
-  // Filter quests for this teacher
-  const teacherQuests = quests.filter(q =>
-    String(q.teacherId) === String(user.id) &&
-    (
-      !selectedCourse ||
-      String(q.courseId) === String(selectedCourse._id)
-    )
-  );
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -47,6 +41,18 @@ export default function QuestManagement({
     { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
   ]);
   const [localQuests, setLocalQuests] = useState([]);
+
+  // Delete confirmation state
+  const [deletingQuestId, setDeletingQuestId] = useState(null);
+
+  // Filter quests for this teacher
+  const teacherQuests = quests.filter(q =>
+    String(q.teacherId) === String(user.id) &&
+    (
+      !selectedCourse ||
+      String(q.courseId) === String(selectedCourse._id)
+    )
+  );
 
   // Fetch courses from backend
   useEffect(() => {
@@ -62,9 +68,9 @@ export default function QuestManagement({
           if (!res.ok) throw new Error('Failed to fetch courses');
           const data = await res.json();
           setCourses(data);
-          // Set default subject if not editing
           if (!editingQuest && data.length > 0) setSubject(data[0]._id);
         } catch (err) {
+          toast('Failed to load courses', 'error');
           setCourses([]);
         } finally {
           setLoadingCourses(false);
@@ -76,7 +82,6 @@ export default function QuestManagement({
   }, [user, editingQuest]);
 
   useEffect(() => {
-    // Load quests from localStorage
     const savedQuests = localStorage.getItem('quests');
     if (savedQuests) {
       const allQuests = JSON.parse(savedQuests);
@@ -85,7 +90,6 @@ export default function QuestManagement({
   }, [user.id]);
 
   useEffect(() => {
-    // Listen for storage changes
     const handleStorageChange = () => {
       const savedQuests = localStorage.getItem('quests');
       if (savedQuests) {
@@ -95,8 +99,6 @@ export default function QuestManagement({
     };
 
     window.addEventListener('storage', handleStorageChange);
-
-    // Also poll for changes
     const interval = setInterval(handleStorageChange, 1000);
 
     return () => {
@@ -116,6 +118,10 @@ export default function QuestManagement({
       { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
     ]);
     setEditingQuest(null);
+    setCsvQuestions([]);
+    setCsvError('');
+    setNumQuestions(5);
+    setUseCSV(false);
   };
 
   const openCreateModal = () => {
@@ -140,6 +146,10 @@ export default function QuestManagement({
       }))
     );
     setEditingQuest(quest);
+    setCsvQuestions([]);
+    setCsvError('');
+    setNumQuestions(5);
+    setUseCSV(false);
     setShowCreateModal(true);
   };
 
@@ -153,6 +163,8 @@ export default function QuestManagement({
   const removeQuestion = (index) => {
     if (questions.length > 1) {
       setQuestions(questions.filter((_, i) => i !== index));
+    } else {
+      toast('Quest must have at least one question', 'error');
     }
   };
 
@@ -168,28 +180,128 @@ export default function QuestManagement({
     setQuestions(updated);
   };
 
+  const handleCSVUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setCsvError('');
+    setCsvQuestions([]);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const rows = results.data;
+        if (!rows || rows.length === 0) {
+          setCsvError('CSV file is empty.');
+          toast('CSV file is empty', 'error');
+          return;
+        }
+
+        const required = ['question', 'option1', 'option2', 'option3', 'option4', 'correctAnswer'];
+        const headers = Object.keys(rows[0] || {});
+        const missingHeaders = required.filter(h => !headers.includes(h));
+
+        if (missingHeaders.length > 0) {
+          const msg = `Invalid CSV format. Missing columns: ${missingHeaders.join(', ')}`;
+          setCsvError(msg);
+          toast(msg, 'error');
+          return;
+        }
+
+        const parsed = rows.map((row, idx) => ({
+          id: `csv_q_${Date.now()}_${idx}`,
+          question: row.question?.trim(),
+          options: [
+            row.option1?.trim(),
+            row.option2?.trim(),
+            row.option3?.trim(),
+            row.option4?.trim()
+          ],
+          correctAnswer: parseInt(row.correctAnswer),
+          explanation: row.explanation?.trim() || ''
+        }));
+
+        const invalidRow = parsed.findIndex(
+          q =>
+            !q.question ||
+            q.options.some(o => !o) ||
+            isNaN(q.correctAnswer) ||
+            q.correctAnswer < 0 ||
+            q.correctAnswer > 3
+        );
+
+        if (invalidRow !== -1) {
+          const msg = `Row ${invalidRow + 2} has invalid data. Check all fields and correctAnswer must be 0-3.`;
+          setCsvError(msg);
+          toast(msg, 'error');
+          return;
+        }
+
+        setCsvQuestions(parsed);
+        setNumQuestions(Math.min(5, parsed.length));
+        toast(`${parsed.length} questions loaded from CSV`, 'success');
+      },
+      error: () => {
+        setCsvError('Failed to parse CSV file.');
+        toast('Failed to parse CSV file', 'error');
+      }
+    });
+  };
+
+  const shuffleAndPick = (arr, k) => {
+    const shuffled = [...arr].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, k);
+  };
+
   const handleSubmit = () => {
-    // Validation
     if (!title.trim()) {
-      alert('Please enter a quest title');
+      toast('Please enter a quest title', 'error');
       return;
     }
     if (!description.trim()) {
-      alert('Please enter a quest description');
+      toast('Please enter a quest description', 'error');
       return;
     }
     const course = courses.find(c => c._id === subject);
     if (!subject || !course) {
-      alert('Please select a course for this quest');
+      toast('Please select a course for this quest', 'error');
       return;
     }
-    if (questions.some(q => !q.question.trim())) {
-      alert('Please fill in all question fields');
-      return;
-    }
-    if (questions.some(q => q.options.some(opt => !opt.trim()))) {
-      alert('Please fill in all answer options');
-      return;
+
+    let finalQuestions = [];
+
+    if (useCSV) {
+      if (csvQuestions.length === 0) {
+        toast('Please upload a valid CSV file', 'error');
+        return;
+      }
+      if (numQuestions < 1) {
+        toast('Number of questions must be at least 1', 'error');
+        return;
+      }
+      if (numQuestions > csvQuestions.length) {
+        toast(`Number of questions (${numQuestions}) exceeds total CSV questions (${csvQuestions.length})`, 'error');
+        return;
+      }
+      finalQuestions = shuffleAndPick(csvQuestions, numQuestions);
+    } else {
+      const emptyQuestion = questions.findIndex(q => !q.question.trim());
+      if (emptyQuestion !== -1) {
+        toast(`Question ${emptyQuestion + 1} is empty`, 'error');
+        return;
+      }
+      const emptyOption = questions.findIndex(q => q.options.some(opt => !opt.trim()));
+      if (emptyOption !== -1) {
+        toast(`Question ${emptyOption + 1} has an empty answer option`, 'error');
+        return;
+      }
+      finalQuestions = questions.map((q, idx) => ({
+        id: `q${idx + 1}`,
+        question: q.question,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation || undefined
+      }));
     }
 
     const questData = {
@@ -203,19 +315,15 @@ export default function QuestManagement({
       courseId: course._id,
       courseName: course.name,
       section: course.section,
-      questions: questions.map((q, idx) => ({
-        id: `q${idx + 1}`,
-        question: q.question,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || undefined
-      }))
+      questions: finalQuestions
     };
 
     if (editingQuest) {
       onUpdateQuest(editingQuest.id, questData);
+      toast('Quest updated successfully!', 'success');
     } else {
       onCreateQuest(questData);
+      toast('Quest created successfully!', 'success');
     }
 
     setShowCreateModal(false);
@@ -223,9 +331,13 @@ export default function QuestManagement({
   };
 
   const handleDelete = (questId) => {
-    if (window.confirm('Are you sure you want to delete this quest?')) {
-      onDeleteQuest(questId);
-    }
+    setDeletingQuestId(questId);
+  };
+
+  const confirmDelete = (questId) => {
+    onDeleteQuest(questId);
+    setDeletingQuestId(null);
+    toast('Quest deleted', 'success');
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -254,8 +366,6 @@ export default function QuestManagement({
         </button>
       </div>
 
-      
-
       {/* Quest List */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {teacherQuests.length === 0 ? (
@@ -269,9 +379,6 @@ export default function QuestManagement({
         ) : (
           teacherQuests.map((quest) => {
             const difficultyColor = getDifficultyColor(quest.difficulty);
-
-
-            
 
             return (
               <div
@@ -288,7 +395,6 @@ export default function QuestManagement({
                 <h3 className="text-xl text-white mb-2">{quest.title}</h3>
                 <p className="text-purple-200 mb-4">{quest.description}</p>
 
-                {/* subject list*/}
                 <div className="flex items-center gap-2 mb-2">
                   <BookOpen className="w-4 h-4 text-amber-400" />
                   <span className="text-xs text-amber-400 font-semibold">{quest.courseName} ({quest.section})</span>
@@ -331,6 +437,32 @@ export default function QuestManagement({
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deletingQuestId && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl p-6 border-4 border-red-400 max-w-sm w-full">
+            <h3 className="text-xl text-white mb-3">Delete Quest?</h3>
+            <p className="text-purple-200 mb-6">
+              This action cannot be undone. All student progress will be lost.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => confirmDelete(deletingQuestId)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg transition-all"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setDeletingQuestId(null)}
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Create/Edit Quest Modal */}
       {showCreateModal && (
@@ -442,74 +574,146 @@ export default function QuestManagement({
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xl text-amber-300">Questions</h4>
-                  <button
-                    onClick={addQuestion}
-                    className="bg-green-600/50 hover:bg-green-600/70 border border-green-400/50 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Question
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setUseCSV(false)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all ${!useCSV ? 'bg-green-600 text-white' : 'bg-slate-700 text-purple-200 hover:bg-slate-600'}`}
+                    >
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseCSV(true)}
+                      className={`px-4 py-2 rounded-lg text-sm transition-all flex items-center gap-1 ${useCSV ? 'bg-green-600 text-white' : 'bg-slate-700 text-purple-200 hover:bg-slate-600'}`}
+                    >
+                      <Upload className="w-3 h-3" /> CSV
+                    </button>
+                  </div>
                 </div>
 
-                {questions.map((q, qIdx) => (
-                  <div key={qIdx} className="bg-slate-800/30 border-2 border-purple-400/20 rounded-xl p-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="text-purple-100">Question {qIdx + 1}</h5>
-                      {questions.length > 1 && (
-                        <button
-                          onClick={() => removeQuestion(qIdx)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-
+                {useCSV ? (
+                  <div className="bg-slate-800/30 border-2 border-dashed border-purple-400/30 rounded-xl p-4 space-y-3">
                     <div>
-                      <label className="block text-purple-100 text-sm mb-2">Question Text *</label>
+                      <label className="block text-purple-100 text-sm mb-2">Upload CSV File</label>
+                      <p className="text-xs text-purple-400 mb-2">
+                        Columns: <code className="text-amber-300">question, option1, option2, option3, option4, correctAnswer (0-3), explanation</code>
+                      </p>
                       <input
-                        type="text"
-                        value={q.question}
-                        onChange={(e) => updateQuestion(qIdx, 'question', e.target.value)}
-                        className="w-full bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
-                        placeholder="Enter your question"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVUpload}
+                        className="w-full text-white text-sm file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:bg-green-600 file:text-white file:cursor-pointer"
                       />
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-3">
-                      {q.options.map((opt, optIdx) => (
-                        <div key={optIdx} className="flex items-center gap-2">
+                    {csvError && (
+                      <div className="text-red-400 text-sm bg-red-900/20 border border-red-400/30 rounded px-3 py-2">
+                        ❌ {csvError}
+                      </div>
+                    )}
+
+                    {csvQuestions.length > 0 && (
+                      <>
+                        <div className="text-green-400 text-sm bg-green-900/20 border border-green-400/30 rounded px-3 py-2">
+                          ✅ {csvQuestions.length} questions loaded
+                        </div>
+                        <div>
+                          <label className="block text-purple-100 text-sm mb-2">
+                            Pick {numQuestions} questions (max: {csvQuestions.length})
+                          </label>
                           <input
-                            type="radio"
-                            name={`correct_${qIdx}`}
-                            checked={q.correctAnswer === optIdx}
-                            onChange={() => updateQuestion(qIdx, 'correctAnswer', optIdx)}
-                            className="w-4 h-4 text-green-600"
-                          />
-                          <input
-                            type="text"
-                            value={opt}
-                            onChange={(e) => updateQuestionOption(qIdx, optIdx, e.target.value)}
-                            className="flex-1 bg-slate-700/50 border border-purple-400/30 rounded-lg px-3 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none text-sm"
-                            placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                            type="number"
+                            min={1}
+                            max={csvQuestions.length}
+                            value={numQuestions}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 1;
+                              if (val > csvQuestions.length) {
+                                setCsvError(`Cannot exceed ${csvQuestions.length} questions`);
+                                setNumQuestions(csvQuestions.length);
+                              } else {
+                                setCsvError('');
+                                setNumQuestions(val);
+                              }
+                            }}
+                            className="w-24 bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-3 py-2 text-white focus:border-purple-400 focus:outline-none"
                           />
                         </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-purple-300">Select the radio button for the correct answer</p>
-
-                    <div>
-                      <label className="block text-purple-100 text-sm mb-2">Explanation (Optional)</label>
-                      <textarea
-                        value={q.explanation}
-                        onChange={(e) => updateQuestion(qIdx, 'explanation', e.target.value)}
-                        className="w-full bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none text-sm"
-                        rows={2}
-                        placeholder="Explain why this is the correct answer"
-                      />
-                    </div>
+                      </>
+                    )}
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-6">
+                    <button
+                      onClick={addQuestion}
+                      className="w-full bg-green-600/50 hover:bg-green-600/70 border border-green-400/50 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Question
+                    </button>
+
+                    {questions.map((q, qIdx) => (
+                      <div key={qIdx} className="bg-slate-800/30 border-2 border-purple-400/20 rounded-xl p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-purple-100">Question {qIdx + 1}</h5>
+                          {questions.length > 1 && (
+                            <button
+                              onClick={() => removeQuestion(qIdx)}
+                              className="text-red-400 hover:text-red-300 transition-colors"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-purple-100 text-sm mb-2">Question Text *</label>
+                          <input
+                            type="text"
+                            value={q.question}
+                            onChange={(e) => updateQuestion(qIdx, 'question', e.target.value)}
+                            className="w-full bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
+                            placeholder="Enter your question"
+                          />
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {q.options.map((opt, optIdx) => (
+                            <div key={optIdx} className="flex items-center gap-2">
+                              <input
+                                type="radio"
+                                name={`correct_${qIdx}`}
+                                checked={q.correctAnswer === optIdx}
+                                onChange={() => updateQuestion(qIdx, 'correctAnswer', optIdx)}
+                                className="w-4 h-4 text-green-600"
+                              />
+                              <input
+                                type="text"
+                                value={opt}
+                                onChange={(e) => updateQuestionOption(qIdx, optIdx, e.target.value)}
+                                className="flex-1 bg-slate-700/50 border border-purple-400/30 rounded-lg px-3 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none text-sm"
+                                placeholder={`Option ${String.fromCharCode(65 + optIdx)}`}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-purple-300">Select the radio button for the correct answer</p>
+
+                        <div>
+                          <label className="block text-purple-100 text-sm mb-2">Explanation (Optional)</label>
+                          <textarea
+                            value={q.explanation}
+                            onChange={(e) => updateQuestion(qIdx, 'explanation', e.target.value)}
+                            className="w-full bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none text-sm"
+                            rows={2}
+                            placeholder="Explain why this is the correct answer"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -536,6 +740,3 @@ export default function QuestManagement({
     </div>
   );
 }
-
-
-;

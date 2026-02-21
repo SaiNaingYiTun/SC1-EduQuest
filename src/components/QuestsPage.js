@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
-import { Character, Quest, User, Item } from '../App';
+
 
 export default function QuestsPage({
-  user,
   character,
   onUpdateCharacter,
   studentClasses = [],
   teachers = [],
   onUnlockAchievement,
   quests = [],
-  inventory = [],
   courses = [],
   onStartQuest
 }) {
