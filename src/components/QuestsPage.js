@@ -1,57 +1,34 @@
 import { useState, useEffect } from 'react';
-import { Scroll, Clock, Star, Trophy, Play, CheckCircle } from 'lucide-react';
-import { Character, Quest, User, Item } from '../App';
-
-const MOCK_QUESTS = [
-  {
-    id: 'mock-quest-1',
-    title: 'Dungeon of Trials',
-    description: 'Practice quiz in a spooky medieval dungeon.',
-    difficulty: 'Easy',
-    xpReward: 50,
-    timeLimit: 180, // seconds
-    teacherId: 'mock-teacher-1',
-    questions: [
-      {
-        id: 'q1',
-        question: 'Which metal is most often used to forge medieval swords?',
-        options: ['Gold', 'Iron', 'Silver', 'Copper'],
-        correctAnswer: 1
-      },
-      {
-        id: 'q2',
-        question: 'What is the main purpose of a castle moat?',
-        options: ['Decoration', 'Waste disposal', 'Defense', 'Farming'],
-        correctAnswer: 2
-      },
-      {
-        id: 'q3',
-        question: 'Which job would a medieval alchemist likely try to do?',
-        options: [
-          'Turn lead into gold',
-          'Command armies',
-          'Collect taxes',
-          'Write laws'
-        ],
-        correctAnswer: 0
-      }
-    ]
-  }
-];
+import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
 
-export default function QuestsPage({ 
-  character, 
-  onUpdateCharacter, 
-  studentClasses,
-  teachers,
+export default function QuestsPage({
+  character,
+  onUpdateCharacter,
+  studentClasses = [],
+  teachers = [],
   onUnlockAchievement,
-  quests,
-  inventory,
+  quests = [],
+  courses = [],
   onStartQuest
 }) {
-  
+
   const [completedQuests, setCompletedQuests] = useState([]);
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState('all'); // 'all' or courseId
+
+  const enrolledCourseIds = studentClasses.map(String);
+  
+  // Get courses student is enrolled in
+  const enrolledCourses = courses.filter(course => 
+    enrolledCourseIds.includes(String(course._id))
+  );
+
+  // Filter quests by enrolled courses and selected filter
+  const availableQuests = quests.filter(quest => {
+    const isEnrolled = enrolledCourseIds.includes(String(quest.courseId));
+    const matchesFilter = selectedCourseFilter === 'all' || String(quest.courseId) === selectedCourseFilter;
+    return isEnrolled && matchesFilter;
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem(`completed_quests_${character.id}`);
@@ -165,6 +142,25 @@ export default function QuestsPage({
         </div>
       </div>
 
+      {/* Course Filter */}
+      {enrolledCourses.length > 0 && (
+        <div className="flex items-center gap-4">
+          <Filter className="w-5 h-5 text-purple-300" />
+          <select
+            value={selectedCourseFilter}
+            onChange={(e) => setSelectedCourseFilter(e.target.value)}
+            className="bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-2 text-white focus:border-purple-400 focus:outline-none"
+          >
+            <option value="all">All Courses</option>
+            {enrolledCourses.map((course) => (
+              <option key={course._id} value={course._id}>
+                {course.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {availableQuests.length === 0 ? (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Scroll className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
@@ -183,11 +179,10 @@ export default function QuestsPage({
             return (
               <div
                 key={quest.id}
-                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${
-                  isCompleted
-                    ? 'border-green-400/50 opacity-75'
-                    : 'border-purple-400/30 hover:border-purple-400/50'
-                }`}
+                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${isCompleted
+                  ? 'border-green-400/50 opacity-75'
+                  : 'border-purple-400/30 hover:border-purple-400/50'
+                  }`}
               >
                 {isCompleted && (
                   <div className="flex items-center gap-2 text-green-400 mb-3">
@@ -213,8 +208,15 @@ export default function QuestsPage({
                 ) : null}
 
                 {/* {teacher && (
+                {quest.courseName && (
+                  <div className="text-sm text-purple-300 mb-2">
+                    {quest.courseName}
+                  </div>
+                )}
+
+                {teacher && (
                   <div className="text-sm text-purple-300 mb-4">
-                    By: {teacher.name}
+                    {teacher.name}
                   </div>
                 )} */}
 
@@ -238,11 +240,10 @@ export default function QuestsPage({
                 <button
                   onClick={() => onStartQuest && onStartQuest(quest)}
                   disabled={isCompleted}
-                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
-                    isCompleted
-                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
-                  }`}
+                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${isCompleted
+                    ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
+                    }`}
                 >
                   {isCompleted ? (
                     <>

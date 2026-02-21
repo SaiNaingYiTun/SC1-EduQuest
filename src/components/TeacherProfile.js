@@ -1,32 +1,55 @@
 import { useState } from 'react';
-import { User as UserIcon, Edit2, Save, LogOut, BookOpen, Key, RefreshCw } from 'lucide-react';
-import { User } from '../App';
-
+import { User as UserIcon, Edit2, Save, LogOut } from 'lucide-react';
+import { Character, useToast } from '../App';
+import { API_URL } from '../api';
 
 
 const defaultProfilePics = [
-  'https://images.unsplash.com/photo-1724435811349-32d27f4d5806?w=200',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-  'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+  '/avatars/avatar1.png',
+  '/avatars/avatar2.png',
+  '/avatars/avatar3.png',
+  '/avatars/avatar4.png',
 ];
-
-export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
+export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name || '');
   const [subjects, setSubjects] = useState(user.subjects || '');
   const [selectedAvatar, setSelectedAvatar] = useState(user.profilePic || defaultProfilePics[0]);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const toast = useToast();
 
-  const handleSave = () => {
-    onUpdateUser({
-      name,
-      subjects,
-      profilePic: selectedAvatar
-    });
-    setIsEditing(false);
+
+
+
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/${user.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          name,
+          subjects, // string from input, backend will store as [subjects]
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast(data?.message || 'Failed to save profile', 'error');
+        return;
+      }
+
+      onUpdateUser(data);
+
+      setIsEditing(false);
+      setShowAvatarPicker(false);
+      toast('Profile updated!', 'success');
+    } catch (err) {
+      toast('Failed to save profile', 'error');
+    }
   };
 
   const handleCancel = () => {
@@ -37,41 +60,134 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
     setShowAvatarPicker(false);
   };
 
-  const handleRegenerateOTP = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let otp = '';
-    for (let i = 0; i < 8; i++) {
-      otp += chars.charAt(Math.floor(Math.random() * chars.length));
+
+
+
+  const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+  const UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+
+  //console.log("Cloudinary config:", CLOUD_NAME, UPLOAD_PRESET);
+
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+
+    // Optional: basic validation
+    if (!file.type.startsWith("image/")) {
+      toast("Please upload an image file.", "error");
+      return;
     }
-    onUpdateUser({ otpCode: otp });
-    alert('New OTP code generated!');
+    if (file.size > 2 * 1024 * 1024) {
+      toast("Image too large (max 2MB).", "error");
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      // optional folder override (if not set in preset)
+      // formData.append("folder", "eduquest/avatars");
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error("Cloudinary error:", data);
+        toast(data?.error?.message || "Upload failed", "error");
+        return;
+      }
+
+      // Cloudinary returns secure_url
+      const imageUrl = data.secure_url;
+
+      // Update UI immediately
+      setSelectedAvatar(imageUrl);
+
+      // Save to YOUR backend (MongoDB) so it persists for the user
+      await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+        body: JSON.stringify({ profilePic: imageUrl }),
+      });
+
+      // update app state
+      onUpdateUser({ profilePic: imageUrl });
+
+      toast("Profile picture updated!", "success");
+    } catch (err) {
+      console.error(err);
+      toast("Upload failed. Please try again.", "error");
+    }
   };
 
+ 
+
+
+
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Header */}
       <div className="text-center">
         <h2 className="text-4xl text-amber-400 mb-2">Teacher Profile</h2>
-        <p className="text-xl text-purple-200">Manage your account and course settings</p>
+        <p className="text-purple-200">
+          Update your profile details and avatar
+        </p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
+          <div className="text-purple-300 text-sm">Courses</div>
+          <div className="text-white text-2xl font-semibold">{stats?.courses ?? 0}</div>
+        </div>
+        <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
+          <div className="text-purple-300 text-sm">Students</div>
+          <div className="text-white text-2xl font-semibold">{stats?.students ?? 0}</div>
+        </div>
+        <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
+          <div className="text-purple-300 text-sm">Quests</div>
+          <div className="text-white text-2xl font-semibold">{stats?.quests ?? 0}</div>
+        </div>
       </div>
 
       {/* Profile Card */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <div className="flex items-start gap-8 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center gap-8 mb-8">
           {/* Avatar */}
-          <div className="relative">
-            <img
-              src={selectedAvatar}
-              alt="Profile"
-              className="w-32 h-32 rounded-full border-4 border-amber-400 object-cover"
-            />
-            {isEditing && (
-              <button
-                onClick={() => setShowAvatarPicker(!showAvatarPicker)}
-                className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-amber-600 hover:bg-amber-700 flex items-center justify-center border-2 border-white shadow-lg transition-all"
-              >
-                <Edit2 className="w-5 h-5 text-white" />
-              </button>
-            )}
+          <div className="flex justify-center md:justify-start">
+            <div className="relative">
+              <img
+                src={selectedAvatar}
+                alt="Profile"
+                className="w-32 h-32 rounded-full border-4 border-amber-400 object-cover object-center shadow-lg"
+              />
+              {isEditing && (
+                <button
+                  onClick={() => setShowAvatarPicker((v) => !v)}
+                  className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full
+                             bg-amber-600 hover:bg-amber-700 flex items-center justify-center
+                             border-2 border-white shadow-lg transition-all"
+                  title="Change avatar"
+                  type="button"
+                >
+                  <Edit2 className="w-5 h-5 text-white" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Info */}
@@ -88,29 +204,34 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
                     placeholder="Enter your name"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-purple-100 mb-2">Subject/Course Name</label>
+                  <label className="block text-purple-100 mb-2">Faculty / Department</label>
                   <input
                     type="text"
                     value={subjects}
                     onChange={(e) => setSubjects(e.target.value)}
                     className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
-                    placeholder="Enter your subject or course name"
+                    placeholder="e.g., Computer Science"
                   />
                 </div>
               </div>
             ) : (
               <>
-                <h3 className="text-3xl text-white mb-2">{user.name}</h3>
+                <h3 className="text-3xl text-white mb-1">{user.name}</h3>
                 <div className="text-purple-200 mb-4">@{user.username}</div>
-                <div className="flex gap-4">
+
+                <div className="flex flex-wrap gap-3">
                   <div className="bg-amber-600/20 px-4 py-2 rounded-lg border border-amber-400/30">
                     <div className="text-sm text-amber-300">Role</div>
                     <div className="text-white">Teacher</div>
                   </div>
+
                   <div className="bg-purple-600/20 px-4 py-2 rounded-lg border border-purple-400/30">
-                    <div className="text-sm text-purple-300">Subject</div>
-                    <div className="text-white">{user.subjects}</div>
+                    <div className="text-sm text-purple-300">Faculty</div>
+                    <div className="text-white">
+                      {Array.isArray(user.subjects) ? (user.subjects[0] || 'Not set') : (user.subjects || 'Not set')}
+                    </div>
                   </div>
                 </div>
               </>
@@ -119,10 +240,20 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
         </div>
 
         {/* Avatar Picker */}
-        {showAvatarPicker && (
-          <div className="mb-6 p-6 bg-slate-800/50 rounded-lg border-2 border-purple-400/30">
-            <h4 className="text-white mb-4">Choose Avatar</h4>
-            <div className="grid grid-cols-6 gap-4">
+        {showAvatarPicker && isEditing && (
+          <div className="mb-6 p-6 bg-slate-800/50 rounded-xl border-2 border-purple-400/30">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-white">Choose an avatar</h4>
+              <button
+                onClick={() => setShowAvatarPicker(false)}
+                className="text-sm text-purple-200 hover:text-white"
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-4">
               {defaultProfilePics.map((pic, index) => (
                 <button
                   key={index}
@@ -130,13 +261,54 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
                     setSelectedAvatar(pic);
                     setShowAvatarPicker(false);
                   }}
-                  className={`rounded-full overflow-hidden border-4 transition-all hover:scale-110 ${
-                    selectedAvatar === pic ? 'border-amber-400' : 'border-purple-400/30'
-                  }`}
+                  className={`w-16 h-16 rounded-full overflow-hidden flex items-center justify-center
+                              border-4 transition-all hover:scale-105
+                              ${selectedAvatar === pic ? 'border-amber-400' : 'border-purple-400/30'}`}
+                  type="button"
                 >
-                  <img src={pic} alt={`Avatar ${index + 1}`} className="w-full h-full object-cover" />
+                  <img
+                    src={pic}
+                    alt="Avatar"
+                    onError={(e) => (e.currentTarget.src = defaultProfilePics[0])}
+                    className="w-full h-full object-cover object-center"
+                  />
                 </button>
               ))}
+            </div>
+
+            {/* Upload from device */}
+            <div className="mt-5">
+              <label className="text-sm text-purple-200 block mb-2">Upload from device</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="w-full text-white"
+              />
+              <div className="text-xs text-purple-300 mt-2">
+                PNG/JPG, max 2MB
+              </div>
+            </div>
+
+            {/* Optional direct URL (keep if you still want it) */}
+            <div className="mt-5">
+              <label className="text-sm text-purple-200 block mb-2">Or paste image URL</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  className="flex-1 bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
+                  value={selectedAvatar}
+                  onChange={(e) => setSelectedAvatar(e.target.value)}
+                />
+                <button
+                  onClick={() => setShowAvatarPicker(false)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-all"
+                  type="button"
+                >
+                  Set
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -147,14 +319,17 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
             <>
               <button
                 onClick={handleSave}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+                className="flex-1 bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-700 hover:to-green-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+                type="button"
               >
                 <Save className="w-5 h-5" />
                 Save Changes
               </button>
+
               <button
                 onClick={handleCancel}
                 className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                type="button"
               >
                 Cancel
               </button>
@@ -163,6 +338,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
             <button
               onClick={() => setIsEditing(true)}
               className="flex-1 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+              type="button"
             >
               <Edit2 className="w-5 h-5" />
               Edit Profile
@@ -171,54 +347,10 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
         </div>
       </div>
 
-      {/* Course Settings */}
-      <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Course Settings</h3>
-        
-        <div className="space-y-4">
-          <div className="bg-slate-800/30 rounded-lg p-6 border border-purple-400/20">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4 flex-1">
-                <BookOpen className="w-8 h-8 text-amber-400 mt-1" />
-                <div className="flex-1">
-                  <div className="text-white mb-1">Subject Name</div>
-                  <div className="text-2xl text-amber-400 mb-2">{user.subjects}</div>
-                  <div className="text-sm text-purple-300">
-                    This is the course that students will see when they join your class
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-slate-800/30 rounded-lg p-6 border-2 border-amber-400/30">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4 flex-1">
-                <Key className="w-8 h-8 text-amber-400 mt-1" />
-                <div className="flex-1">
-                  <div className="text-white mb-1">Class OTP Code</div>
-                  <div className="text-3xl text-amber-400 tracking-wider mb-2">{user.otpCode}</div>
-                  <div className="text-sm text-purple-300">
-                    Share this code with students so they can join your class. Students need your username and this OTP to enroll.
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={handleRegenerateOTP}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2 ml-4"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Regenerate
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Account Settings */}
+      {/* Account Info */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
         <h3 className="text-2xl text-amber-400 mb-6">Account Information</h3>
-        
+
         <div className="space-y-4">
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">
@@ -241,10 +373,11 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout }) {
         </div>
       </div>
 
-      {/* Logout Button */}
+      {/* Logout */}
       <button
         onClick={onLogout}
         className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+        type="button"
       >
         <LogOut className="w-5 h-5" />
         Logout

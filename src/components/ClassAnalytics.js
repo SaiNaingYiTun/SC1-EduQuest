@@ -3,7 +3,7 @@ import { User, Character } from '../App';
 
 
 
-export default function ClassAnalytics({ students, characters }) {
+export default function ClassAnalytics({ students, characters,selectedCourse }) {
   // Calculate analytics
   const totalStudents = students.length;
   const studentsWithCharacters = students.filter(s => s.characterId).length;
@@ -52,6 +52,7 @@ export default function ClassAnalytics({ students, characters }) {
       <div className="text-center">
         <h2 className="text-4xl text-amber-400 mb-2">Class Analytics</h2>
         <p className="text-xl text-purple-200">Track your class performance</p>
+        
       </div>
 
       {totalStudents === 0 ? (
