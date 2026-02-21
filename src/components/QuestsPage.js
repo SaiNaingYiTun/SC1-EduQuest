@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
-
 export default function QuestsPage({
   character,
   onUpdateCharacter,
@@ -12,23 +11,15 @@ export default function QuestsPage({
   courses = [],
   onStartQuest
 }) {
-
   const [completedQuests, setCompletedQuests] = useState([]);
-  const [selectedCourseFilter, setSelectedCourseFilter] = useState('all'); // 'all' or courseId
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
 
+  const getId = (value) => String(value?._id ?? value?.id ?? value ?? '');
   const enrolledCourseIds = studentClasses.map(String);
-  
-  // Get courses student is enrolled in
-  const enrolledCourses = courses.filter(course => 
-    enrolledCourseIds.includes(String(course._id))
-  );
 
-  // Filter quests by enrolled courses and selected filter
-  const availableQuests = quests.filter(quest => {
-    const isEnrolled = enrolledCourseIds.includes(String(quest.courseId));
-    const matchesFilter = selectedCourseFilter === 'all' || String(quest.courseId) === selectedCourseFilter;
-    return isEnrolled && matchesFilter;
-  });
+  const enrolledCourses = courses.filter((course) =>
+    enrolledCourseIds.includes(getId(course._id))
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem(`completed_quests_${character.id}`);
@@ -36,62 +27,6 @@ export default function QuestsPage({
       setCompletedQuests(JSON.parse(saved));
     }
   }, [character.id]);
-
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
-    // const quest = quests.find(q => q.id === questId);
-    // if (!quest) return;
-
-    // Use both real quests and mock quests
-    const allQuests = [...MOCK_QUESTS, ...(quests || [])];
-    const quest = allQuests.find(q => q.id === questId);
-    if (!quest) return;
-
-    const percentage = (score / totalQuestions) * 100;
-    const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
-
-    // Update character
-    const newXp = character.xp + xpEarned;
-    const newLevel = Math.floor(newXp / 100) + 1;
-    const leveledUp = newLevel > character.level;
-
-    onUpdateCharacter(character.id, {
-      xp: newXp,
-      level: newLevel,
-      maxXp: newLevel * 100
-    });
-
-    // Mark quest as completed
-    const newCompleted = [...completedQuests, questId];
-    setCompletedQuests(newCompleted);
-    localStorage.setItem(`completed_quests_${character.id}`, JSON.stringify(newCompleted));
-
-    // Check for achievements
-    if (completedQuests.length === 0) {
-      onUnlockAchievement('first_quest');
-    }
-    if (percentage === 100) {
-      onUnlockAchievement('perfect_score');
-    }
-    if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
-      onUnlockAchievement('speed_demon');
-    }
-    if (newLevel >= 5) {
-      onUnlockAchievement('level_5');
-    }
-    if (newLevel >= 10) {
-      onUnlockAchievement('level_10');
-    }
-
-    // Show results
-    let itemsText = '';
-    if (itemsEarned.length > 0) {
-      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
-    }
-
-    alert(
-      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
-    );
-  };
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -106,32 +41,16 @@ export default function QuestsPage({
     }
   };
 
-  const hasRealQuests = Array.isArray(quests) && quests.length > 0;
+  const availableQuests = (Array.isArray(quests) ? quests : []).filter((quest) => {
+    const questCourseId = getId(quest.courseId);
+    if (!questCourseId) return false;
 
-  // Always include mock quests; add real quests if present
-  const sourceQuests = [
-    ...MOCK_QUESTS,
-    ...(hasRealQuests ? quests : [])
-  ];
+    const isEnrolled = enrolledCourseIds.includes(questCourseId);
+    const matchesCourseFilter =
+      selectedCourseFilter === 'all' || questCourseId === selectedCourseFilter;
 
-  // Only filter real quests by class; mock quests are always visible
-  const availableQuests = sourceQuests.filter((quest) => {
-    if (quest.teacherId?.startsWith('mock')) return true;      // keep mock
-    if (!hasRealQuests) return true;                           // only mock
-    return studentClasses.includes(quest.teacherId);           // real quests
+    return isEnrolled && matchesCourseFilter;
   });
-
-  // const sourceQuests = quests && quests.length > 0 ? quests : MOCK_QUESTS;
-
-  // const availableQuests =
-  //   quests && quests.length > 0
-  //     ? sourceQuests.filter((quest) => studentClasses.includes(quest.teacherId))
-  //     : sourceQuests;
-
-  // Filter quests based on student's classes
-  // const availableQuests = quests.filter(quest => 
-  //   studentClasses.includes(quest.teacherId)
-  // );
 
   return (
     <div className="space-y-8">
@@ -142,7 +61,6 @@ export default function QuestsPage({
         </div>
       </div>
 
-      {/* Course Filter */}
       {enrolledCourses.length > 0 && (
         <div className="flex items-center gap-4">
           <Filter className="w-5 h-5 text-purple-300" />
@@ -166,23 +84,26 @@ export default function QuestsPage({
           <Scroll className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
           <h3 className="text-2xl text-white mb-2">No Quests Available</h3>
           <p className="text-purple-200">
-            Join a class to access quests created by your teachers!
+            No real quests are assigned to your enrolled classes yet.
           </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {availableQuests.map((quest) => {
-            const isCompleted = completedQuests.includes(quest.id);
-            const teacher = teachers.find(t => t.id === quest.teacherId);
+            const questId = getId(quest.id || quest._id);
+            const teacherId = getId(quest.teacherId);
+            const isCompleted = completedQuests.includes(questId);
+            const teacher = teachers.find((t) => getId(t.id || t._id) === teacherId);
             const difficultyColor = getDifficultyColor(quest.difficulty);
 
             return (
               <div
-                key={quest.id}
-                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${isCompleted
-                  ? 'border-green-400/50 opacity-75'
-                  : 'border-purple-400/30 hover:border-purple-400/50'
-                  }`}
+                key={questId}
+                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${
+                  isCompleted
+                    ? 'border-green-400/50 opacity-75'
+                    : 'border-purple-400/30 hover:border-purple-400/50'
+                }`}
               >
                 {isCompleted && (
                   <div className="flex items-center gap-2 text-green-400 mb-3">
@@ -193,7 +114,9 @@ export default function QuestsPage({
 
                 <div className="flex items-start justify-between mb-4">
                   <Scroll className="w-12 h-12 text-amber-400" />
-                  <span className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50 font-pixel`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50 font-pixel`}
+                  >
                     {quest.difficulty}
                   </span>
                 </div>
@@ -201,24 +124,11 @@ export default function QuestsPage({
                 <h3 className="text-xl text-white mb-2 font-pixel">{quest.title}</h3>
                 <p className="text-purple-200 mb-4 font-pixel">{quest.description}</p>
 
-                {teacher || quest.teacherId?.startsWith('mock') ? (
+                {teacher && (
                   <div className="text-sm text-purple-300 mb-4 font-pixel">
-                    By: {teacher ? teacher.name : 'Demo Dungeon Master'}
-                  </div>
-                ) : null}
-
-                {/* {teacher && (
-                {quest.courseName && (
-                  <div className="text-sm text-purple-300 mb-2">
-                    {quest.courseName}
+                    By: {teacher.name}
                   </div>
                 )}
-
-                {teacher && (
-                  <div className="text-sm text-purple-300 mb-4">
-                    {teacher.name}
-                  </div>
-                )} */}
 
                 <div className="flex items-center gap-4 mb-4 text-sm text-purple-200 font-pixel">
                   <div className="flex items-center gap-1">
@@ -240,10 +150,11 @@ export default function QuestsPage({
                 <button
                   onClick={() => onStartQuest && onStartQuest(quest)}
                   disabled={isCompleted}
-                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${isCompleted
-                    ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
-                    }`}
+                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    isCompleted
+                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
+                  }`}
                 >
                   {isCompleted ? (
                     <>
