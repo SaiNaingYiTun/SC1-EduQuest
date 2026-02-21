@@ -6,12 +6,12 @@ import { Character } from '../App';
 const mockLeaderboard = [
   { id: '1', name: 'DragonSlayer99', class: 'Warrior', level: 15, xp: 1450, avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?w=100' },
   { id: '2', name: 'WizardMaster', class: 'Mage', level: 14, xp: 1380, avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?w=100' },
-  { id: '3', name: 'ShadowNinja', class: 'Rogue', level: 13, xp: 1250, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
-  { id: '4', name: 'HolyKnight', class: 'Cleric', level: 12, xp: 1150, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
+  { id: '3', name: 'ShadowNinja', class: 'Archer', level: 13, xp: 1250, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
+  { id: '4', name: 'HolyKnight', class: 'Necromancer', level: 12, xp: 1150, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
   { id: '5', name: 'BraveHero', class: 'Warrior', level: 11, xp: 1050, avatar: 'https://images.unsplash.com/photo-1635921481467-fba710b8e65c?w=100' },
   { id: '6', name: 'MysticSage', class: 'Mage', level: 10, xp: 950, avatar: 'https://images.unsplash.com/photo-1511174944925-a99f10911d45?w=100' },
-  { id: '7', name: 'SwiftArcher', class: 'Rogue', level: 9, xp: 850, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
-  { id: '8', name: 'LightBearer', class: 'Cleric', level: 8, xp: 750, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
+  { id: '7', name: 'SwiftArcher', class: 'Archer', level: 9, xp: 850, avatar: 'https://images.unsplash.com/photo-1562008752-2459495a0c05?w=100' },
+  { id: '8', name: 'LightBearer', class: 'Necromancer', level: 8, xp: 750, avatar: 'https://images.unsplash.com/photo-1659489727971-4bbee4d4b312?w=100' },
 ];
 
 export default function LeaderboardPage({ character }) {

@@ -7,6 +7,7 @@ export class BaseCharacter {
     this.config = config;
     this.isAttacking = false;
     this.isDead = false;
+    this.isTakingHit = false;
     this.currentAnim = null;
   }
 

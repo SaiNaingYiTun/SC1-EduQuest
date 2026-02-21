@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { Character } from '../App';
 
-
 import warriorSprite from '../sprites/characters/hero_warrior.png';
 import mageSprite from '../sprites/characters/hero_mage.png';
-import rogueSprite from '../sprites/characters/hero_rogue.png';
-import clericSprite from '../sprites/characters/hero_cleric.png';
+import archerSprite from '../sprites/characters/hero_rogue.png';
+import necromancerSprite from '../sprites/characters/hero_cleric.png';
 
 const characterClasses = [
   {
@@ -26,19 +25,19 @@ const characterClasses = [
     color: 'purple'
   },
   {
-    id: 'rogue',
-    name: 'Rogue',
-    description: 'Quick and cunning, solves problems with agility',
-    icon: '🗡️',
-    avatar: rogueSprite,
+    id: 'archer',
+    name: 'Archer',
+    description: 'Precise and agile, strikes enemies from afar',
+    icon: '🏹',
+    avatar: archerSprite,
     color: 'green'
   },
   {
-    id: 'cleric',
-    name: 'Cleric',
-    description: 'Devoted and supportive, helps others succeed',
-    icon: '✨',
-    avatar: clericSprite,
+    id: 'necromancer',
+    name: 'Necromancer',
+    description: 'Dark spellcaster who drains foes with forbidden magic',
+    icon: '☠️',
+    avatar: necromancerSprite,
     color: 'yellow'
   }
 ];
@@ -54,7 +53,7 @@ export default function CharacterSelection({ onCharacterCreated, userId }) {
     }
 
     const selectedClassData = characterClasses.find(c => c.id === selectedClass);
-    
+
     const character = {
       id: `char_${userId}_${Date.now()}`,
       name: characterName,
@@ -105,8 +104,8 @@ export default function CharacterSelection({ onCharacterCreated, userId }) {
               )}
 
               <div className="mb-4 flex items-end justify-center h-40">
-                <img 
-                  src={charClass.avatar} 
+                <img
+                  src={charClass.avatar}
                   alt={charClass.name}
                   className="h-32 w-32 [image-rendering:pixelated]"
                 />

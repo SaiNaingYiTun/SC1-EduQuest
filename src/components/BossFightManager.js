@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { Warrior } from './characters/Warrior';
-// import { Mage } from './characters/Mage';
-// import { Rogue } from './characters/Rogue';
-// import { Cleric } from './characters/Cleric';
+import { Mage } from './characters/Mage';
+import { Archer } from './characters/Archer';
+import { Necromancer } from './characters/Necromancer';
 import { Boss } from './characters/Boss';
 
 export class BossFightManager {
@@ -25,18 +25,69 @@ export class BossFightManager {
     this.playerHpLabel = null;
     this.bossHpLabel = null;
     this.combatText = null;
+    this.debugGraphics = null;
+    this.chestLayer = null;
+    this.chestCollider = null;
+    this.chestPromptText = null;
+    this.bossDefeated = false;
+    this.awaitingChestPickup = false;
+    
+    // Hit detection
+    this.playerAttackHitbox = null;
+    this.bossAttackHitbox = null;
+    this.lastPlayerAttackTime = 0;
+    this.lastBossAttackTime = 0;
+    this.bossAttackTimer = 0;
+    this.bossAttackCooldown = 3000; // Boss attacks every 3 seconds
+    this.playerAttackActive = false;
+    this.bossAttackActive = false;
+    this.playerAttackHasHit = false;
+    this.bossAttackHasHit = false;
+    this.pendingPlayerDamage = 0;
+    this.pendingBossDamage = 0;
+    this.activeArcherArrows = [];
+    this.archerArrowSpeed = 650;
+    this.archerArrowRange = 900;
+    this.archerArrowHitbox = { width: 28, height: 8, offsetX: 10, offsetY: 0 };
+    this.activeNecromancerProjectiles = [];
+    this.necromancerProjectileSpeed = 520;
+    this.necromancerProjectileRange = 860;
+    this.necromancerProjectileHitbox = { width: 20, height: 20, offsetX: 10, offsetY: 16 };
   }
 
   start() {
     this.scene.children.removeAll(true);
 
-    // Tilemap setup
-    const map = this.scene.make.tilemap({ key: 'map1' });
-    const tileset = map.addTilesetImage('bwtiles1', 'bwtiles1');
-    const groundLayer = map.createLayer('ground', tileset, 0, 0);
-    groundLayer.setDepth(-5);
+    // ✅ Create debug graphics
+    this.debugGraphics = this.scene.add.graphics();
+    this.debugGraphics.setDepth(1000);
 
-    groundLayer.setCollision([1, 2, 3, 12, 13, 14, 23, 24, 25, 26, 34, 35, 36]);
+    // Tilemap setup (new boss map)
+    const map = this.scene.make.tilemap({ key: 'bmap1' });
+    const bwtiles1 = map.addTilesetImage('bwtiles1', 'bwtiles1');
+    const door = map.addTilesetImage('door', 'door');
+    const bg2Tileset = map.addTilesetImage('bg2', 'bg2');
+    const tree = map.addTilesetImage('tree', 'tree');
+    const extra = map.addTilesetImage('extra', 'extra');
+    const extra2 = map.addTilesetImage('extra2', 'extra2');
+    const tilesets = [bwtiles1, door, bg2Tileset, tree, extra, extra2].filter(Boolean);
+
+    const bg1Layer = map.createLayer('bg1', tilesets, 0, 0);
+    const bg2Layer = map.createLayer('bg2', tilesets, 0, 0);
+    this.chestLayer = map.createLayer('chest', tilesets, 0, 0);
+    const groundLayer = map.createLayer('ground', tilesets, 0, 0);
+
+    if (bg1Layer) bg1Layer.setDepth(-7);
+    if (bg2Layer) bg2Layer.setDepth(-6);
+    if (this.chestLayer) {
+      this.chestLayer.setDepth(-5);
+      this.chestLayer.setVisible(false);
+    }
+    if (groundLayer) {
+      groundLayer.setDepth(-4);
+      groundLayer.setCollisionByProperty({ collides: true });
+      groundLayer.setCollisionByExclusion([-1]);
+    }
 
     this.scene.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
@@ -47,7 +98,7 @@ export class BossFightManager {
     const bossSpawnY = 100;
 
     // Background
-    const bg = this.scene.add.rectangle(640, 360, 1280, 736, 0x1a0d2e);
+    const bg = this.scene.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
     bg.setDepth(-10);
 
     this.scene.add
@@ -58,14 +109,14 @@ export class BossFightManager {
       })
       .setOrigin(0.5);
 
-    this.combatText = this.scene.add
-      .text(640, 530, 'Press ENTER to attack', {
-        fontSize: '22px',
-        color: '#fbbf24',
-        fontFamily: 'monospace',
-      })
-      .setOrigin(0.5)
-      .setDepth(20);
+    // this.combatText = this.scene.add
+    //   .text(640, 530, 'Press ENTER to attack', {
+    //     fontSize: '22px',
+    //     color: '#fbbf24',
+    //     fontFamily: 'monospace',
+    //   })
+    //   .setOrigin(0.5)
+    //   .setDepth(20);
 
     // Create boss
     this.bossCharacter = new Boss(this.scene, bossSpawnX, bossSpawnY);
@@ -74,6 +125,10 @@ export class BossFightManager {
 
     // Create player based on class
     this.createPlayer(playerSpawnX, playerSpawnY, groundLayer);
+
+    // Create attack hitboxes (invisible zones)
+    this.createAttackHitboxes();
+    this.createAttackOverlaps();
 
     // HP bars
     this.hpBarPlayer = this.scene.add.graphics();
@@ -105,15 +160,15 @@ export class BossFightManager {
       case 'Warrior':
         this.playerCharacter = new Warrior(this.scene, spawnX, spawnY);
         break;
-      // case 'Mage':
-      //   this.playerCharacter = new Mage(this.scene, spawnX, spawnY);
-      //   break;
-      // case 'Rogue':
-      //   this.playerCharacter = new Rogue(this.scene, spawnX, spawnY);
-      //   break;
-      // case 'Cleric':
-      //   this.playerCharacter = new Cleric(this.scene, spawnX, spawnY);
-      //   break;
+      case 'Mage':
+        this.playerCharacter = new Mage(this.scene, spawnX, spawnY);
+        break;
+      case 'Archer':
+        this.playerCharacter = new Archer(this.scene, spawnX, spawnY);
+        break;
+      case 'Necromancer':
+        this.playerCharacter = new Necromancer(this.scene, spawnX, spawnY);
+        break;
       default:
         this.playerCharacter = new Warrior(this.scene, spawnX, spawnY);
     }
@@ -122,7 +177,359 @@ export class BossFightManager {
     this.playerCharacter.setupPhysics(groundLayer);
   }
 
-  update() {
+  createAttackHitboxes() {
+    // Player attack hitbox (in front of player)
+    this.playerAttackHitbox = this.scene.add.rectangle(0, 0, 90, 80);
+    this.playerAttackHitbox.setAlpha(0);
+    this.scene.physics.add.existing(this.playerAttackHitbox);
+    this.playerAttackHitbox.body.setAllowGravity(false);
+    this.playerAttackHitbox.body.setEnable(false);
+
+    // Boss attack hitbox (in front of boss)
+    this.bossAttackHitbox = this.scene.add.rectangle(0, 0, 120, 100);
+    this.bossAttackHitbox.setAlpha(0);
+    this.scene.physics.add.existing(this.bossAttackHitbox);
+    this.bossAttackHitbox.body.setAllowGravity(false);
+    this.bossAttackHitbox.body.setEnable(false);
+  }
+
+  createAttackOverlaps() {
+    this.scene.physics.add.overlap(
+      this.playerAttackHitbox,
+      this.bossCharacter.sprite,
+      this.handlePlayerAttackHit,
+      null,
+      this
+    );
+
+    this.scene.physics.add.overlap(
+      this.bossAttackHitbox,
+      this.playerCharacter.sprite,
+      this.handleBossAttackHit,
+      null,
+      this
+    );
+  }
+
+  spawnArcherArrow(playerSprite, playerCenter, damage) {
+    if (!this.scene.textures.exists('archer_arrowMove')) return;
+
+    const direction = playerSprite.flipX ? -1 : 1;
+    const startX = playerCenter.x + direction * 28;
+    const startY = playerCenter.y - 8;
+
+    const arrow = this.scene.physics.add.sprite(startX, startY, 'archer_arrowMove');
+    arrow.setDepth(6);
+    arrow.setScale(2);
+    arrow.setFlipX(direction < 0);
+    arrow.body.setAllowGravity(false);
+    arrow.body.setSize(this.archerArrowHitbox.width, this.archerArrowHitbox.height);
+    arrow.body.setOffset(this.archerArrowHitbox.offsetX, this.archerArrowHitbox.offsetY);
+    arrow.body.setVelocityX(direction * this.archerArrowSpeed);
+    if (this.scene.anims.exists('archer_arrow_move_anim')) {
+      arrow.play('archer_arrow_move_anim');
+    }
+
+    arrow.setData('damage', damage);
+    arrow.setData('startX', startX);
+    arrow.setData('direction', direction);
+
+    this.scene.physics.add.overlap(
+      arrow,
+      this.bossCharacter.sprite,
+      () => this.handleArcherArrowHit(arrow),
+      null,
+      this
+    );
+
+    this.activeArcherArrows.push(arrow);
+  }
+
+  spawnNecromancerProjectile(playerSprite, playerCenter, damage) {
+    if (!this.scene.textures.exists('necromancer_moving')) return;
+
+    const direction = playerSprite.flipX ? -1 : 1;
+    const startX = playerCenter.x + direction * 44;
+    const startY = playerCenter.y - 12;
+
+    const projectile = this.scene.physics.add.sprite(startX, startY, 'necromancer_moving');
+    projectile.setDepth(6);
+    projectile.setScale(1.3);
+    projectile.setFlipX(direction < 0);
+    projectile.body.setAllowGravity(false);
+    projectile.body.setSize(this.necromancerProjectileHitbox.width, this.necromancerProjectileHitbox.height);
+    projectile.body.setOffset(this.necromancerProjectileHitbox.offsetX, this.necromancerProjectileHitbox.offsetY);
+    projectile.body.setVelocityX(direction * this.necromancerProjectileSpeed);
+    projectile.setData('damage', damage);
+    projectile.setData('startX', startX);
+    projectile.setData('state', 'moving');
+
+    if (this.scene.anims.exists('necromancer_projectile_move_anim')) {
+      projectile.play('necromancer_projectile_move_anim');
+    }
+
+    this.scene.physics.add.overlap(
+      projectile,
+      this.bossCharacter.sprite,
+      () => this.handleNecromancerProjectileHit(projectile),
+      null,
+      this
+    );
+
+    this.activeNecromancerProjectiles.push(projectile);
+  }
+
+  handleArcherArrowHit(arrow) {
+    if (!arrow || !arrow.active || !this.bossCharacter || !this.bossCharacter.sprite) return;
+
+    const damage = Number(arrow.getData('damage')) || 0;
+    this.cleanupArcherArrow(arrow);
+
+    this.bossHP -= damage;
+    this.bossCharacter.takeDamage(damage);
+
+    this.scene.tweens.add({
+      targets: this.bossCharacter.sprite,
+      alpha: 0.5,
+      duration: 100,
+      yoyo: true,
+    });
+
+    this.updateHPBars();
+
+    if (this.bossHP <= 0) {
+      this.triggerBossDefeatSequence();
+    }
+  }
+
+  handleNecromancerProjectileHit(projectile) {
+    if (!projectile || !projectile.active || !this.bossCharacter || !this.bossCharacter.sprite) return;
+    if (projectile.getData('state') !== 'moving') return;
+
+    const damage = Number(projectile.getData('damage')) || 0;
+    projectile.setData('state', 'exploding');
+    projectile.body.setVelocity(0, 0);
+    projectile.body.setEnable(false);
+    projectile.setFlipX(false);
+
+    this.bossHP -= damage;
+    this.bossCharacter.takeDamage(damage);
+    this.scene.tweens.add({
+      targets: this.bossCharacter.sprite,
+      alpha: 0.5,
+      duration: 100,
+      yoyo: true,
+    });
+    this.updateHPBars();
+
+    if (this.scene.anims.exists('necromancer_projectile_explode_anim')) {
+      projectile.play('necromancer_projectile_explode_anim');
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_projectile_explode_anim';
+      const done = () => this.cleanupNecromancerProjectile(projectile);
+      projectile.once(eventKey, done);
+      this.scene.time.delayedCall(450, () => {
+        if (projectile.active) {
+          projectile.off(eventKey, done);
+          done();
+        }
+      });
+    } else {
+      this.cleanupNecromancerProjectile(projectile);
+    }
+
+    if (this.bossHP <= 0) {
+      this.triggerBossDefeatSequence();
+    }
+  }
+
+  cleanupArcherArrow(arrow) {
+    if (!arrow) return;
+    this.activeArcherArrows = this.activeArcherArrows.filter((a) => a !== arrow);
+    if (arrow.active) {
+      arrow.destroy();
+    }
+  }
+
+  cleanupNecromancerProjectile(projectile) {
+    if (!projectile) return;
+    this.activeNecromancerProjectiles = this.activeNecromancerProjectiles.filter((p) => p !== projectile);
+    if (projectile.active) {
+      projectile.destroy();
+    }
+  }
+
+  // ✅ Helper function to draw debug boxes
+  drawDebugBox(graphics, sprite, color) {
+    if (!sprite || !sprite.body) return;
+
+    const body = sprite.body;
+    graphics.lineStyle(2, color, 1);
+    graphics.strokeRect(
+      body.x,
+      body.y,
+      body.width,
+      body.height
+    );
+  }
+
+  getBodyCenter(gameObject) {
+    if (!gameObject || !gameObject.body) return null;
+    const { center } = gameObject.body;
+    return { x: center.x, y: center.y };
+  }
+
+  handlePlayerAttackHit() {
+    if (!this.playerAttackActive || this.playerAttackHasHit) return;
+    if (!this.bossCharacter || !this.bossCharacter.sprite) return;
+    if (this.bossDefeated) return;
+
+    const damage = this.pendingPlayerDamage;
+    this.playerAttackHasHit = true;
+
+    this.bossHP -= damage;
+    this.bossCharacter.takeDamage(damage);
+
+    this.scene.tweens.add({
+      targets: this.bossCharacter.sprite,
+      alpha: 0.5,
+      duration: 100,
+      yoyo: true,
+    });
+
+    this.updateHPBars();
+
+    if (this.bossHP <= 0) {
+      this.triggerBossDefeatSequence();
+      this.playerAttackActive = false;
+      this.playerAttackHitbox.body.setEnable(false);
+    }
+  }
+
+  triggerBossDefeatSequence() {
+    if (this.bossDefeated) return;
+    this.bossDefeated = true;
+    this.awaitingChestPickup = true;
+    this.bossHP = 0;
+    this.updateHPBars();
+
+    this.playerAttackActive = false;
+    if (this.playerAttackHitbox?.body) this.playerAttackHitbox.body.setEnable(false);
+    this.bossAttackActive = false;
+    if (this.bossAttackHitbox?.body) this.bossAttackHitbox.body.setEnable(false);
+
+    const afterBossDeath = () => {
+      if (!this.chestLayer || !this.playerCharacter?.sprite) {
+        this.complete(true);
+        return;
+      }
+
+      this.chestLayer.setVisible(true);
+      this.chestLayer.setCollisionByExclusion([-1]);
+
+      if (this.chestPromptText && this.chestPromptText.active) {
+        this.chestPromptText.destroy();
+      }
+      this.chestPromptText = this.scene.add
+        .text(640, 540, 'Chest unlocked! Go collide with it to finish.', {
+          fontSize: '22px',
+          color: '#fbbf24',
+          fontFamily: 'monospace',
+        })
+        .setOrigin(0.5)
+        .setDepth(30);
+
+      this.chestCollider = this.scene.physics.add.collider(
+        this.playerCharacter.sprite,
+        this.chestLayer,
+        () => this.handleChestCollected(),
+        null,
+        this
+      );
+    };
+
+    if (this.bossCharacter && typeof this.bossCharacter.die === 'function') {
+      this.bossCharacter.die(() => {
+        this.scene.time.delayedCall(500, afterBossDeath);
+      });
+    } else {
+      this.scene.time.delayedCall(500, afterBossDeath);
+    }
+  }
+
+  handleChestCollected() {
+    if (!this.awaitingChestPickup) return;
+    this.awaitingChestPickup = false;
+
+    if (this.chestCollider) {
+      this.chestCollider.destroy();
+      this.chestCollider = null;
+    }
+    if (this.chestPromptText && this.chestPromptText.active) {
+      this.chestPromptText.destroy();
+      this.chestPromptText = null;
+    }
+
+    this.complete(true);
+  }
+
+  handleBossAttackHit() {
+    if (!this.bossAttackActive || this.bossAttackHasHit) return;
+    if (!this.playerCharacter || !this.playerCharacter.sprite) return;
+
+    const damage = this.pendingBossDamage;
+    this.bossAttackHasHit = true;
+
+    this.playerHP -= damage;
+    if (this.playerHP < 0) this.playerHP = 0;
+    this.playerCharacter.takeDamage(damage);
+
+    this.scene.tweens.add({
+      targets: this.playerCharacter.sprite,
+      alpha: 0.5,
+      duration: 100,
+      yoyo: true,
+    });
+
+    this.updateHPBars();
+
+    if (this.playerHP <= 0) {
+      this.bossAttackActive = false;
+      this.bossAttackHitbox.body.setEnable(false);
+      if (this.playerCharacter && typeof this.playerCharacter.die === 'function') {
+        this.playerCharacter.die(() => {
+          this.scene.time.delayedCall(400, () => this.complete(false));
+        });
+      } else {
+        this.scene.time.delayedCall(1200, () => this.complete(false));
+      }
+    }
+  }
+
+  activatePlayerHitbox(duration = 140) {
+    this.playerAttackActive = true;
+    this.playerAttackHasHit = false;
+    this.playerAttackHitbox.body.updateFromGameObject();
+    this.playerAttackHitbox.body.setEnable(true);
+
+    this.scene.time.delayedCall(duration, () => {
+      this.playerAttackActive = false;
+      this.playerAttackHitbox.body.setEnable(false);
+    });
+  }
+
+  activateBossHitbox(duration = 140) {
+    this.bossAttackActive = true;
+    this.bossAttackHasHit = false;
+    this.bossAttackHitbox.body.updateFromGameObject();
+    this.bossAttackHitbox.body.setEnable(true);
+
+    this.scene.time.delayedCall(duration, () => {
+      this.bossAttackActive = false;
+      this.bossAttackHitbox.body.setEnable(false);
+    });
+  }
+
+  update(time, delta) {
     if (this.playerCharacter) {
       this.playerCharacter.update();
     }
@@ -131,7 +538,88 @@ export class BossFightManager {
       this.bossCharacter.update();
     }
 
-    if (!this.attackKey || this.isAttacking) return;
+    // Cleanup archer projectiles that traveled too far or out of world bounds
+    if (this.activeArcherArrows.length > 0) {
+      const worldWidth = this.scene.physics.world.bounds.width;
+      this.activeArcherArrows = this.activeArcherArrows.filter((arrow) => {
+        if (!arrow || !arrow.active) return false;
+
+        const startX = Number(arrow.getData('startX')) || arrow.x;
+        const traveled = Math.abs(arrow.x - startX);
+        const offWorld = arrow.x < -50 || arrow.x > worldWidth + 50;
+        if (traveled > this.archerArrowRange || offWorld) {
+          arrow.destroy();
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Cleanup necromancer projectiles that traveled too far or out of world bounds
+    if (this.activeNecromancerProjectiles.length > 0) {
+      const worldWidth = this.scene.physics.world.bounds.width;
+      this.activeNecromancerProjectiles = this.activeNecromancerProjectiles.filter((projectile) => {
+        if (!projectile || !projectile.active) return false;
+        if (projectile.getData('state') === 'exploding') return true;
+
+        const startX = Number(projectile.getData('startX')) || projectile.x;
+        const traveled = Math.abs(projectile.x - startX);
+        const offWorld = projectile.x < -50 || projectile.x > worldWidth + 50;
+        if (traveled > this.necromancerProjectileRange || offWorld) {
+          projectile.destroy();
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // Update boss AI attack timer
+    if (!this.bossDefeated) {
+      this.bossAttackTimer += Number.isFinite(delta) ? delta : 0;
+      if (this.bossAttackTimer >= this.bossAttackCooldown && !this.bossCharacter.isAttacking) {
+        this.bossAttackTimer = 0;
+        this.bossAttack();
+      }
+    }
+
+    // ✅ Draw debug collision boxes
+    if (this.debugGraphics) {
+      this.debugGraphics.clear();
+
+      // Draw player collision box (green)
+      if (this.playerCharacter && this.playerCharacter.sprite) {
+        this.drawDebugBox(this.debugGraphics, this.playerCharacter.sprite, 0x00ff00);
+      }
+
+      // Draw boss collision box (red)
+      if (this.bossCharacter && this.bossCharacter.sprite) {
+        this.drawDebugBox(this.debugGraphics, this.bossCharacter.sprite, 0xff0000);
+      }
+
+      // Draw attack hitboxes when active
+      if (this.playerAttackHitbox.body.enable) {
+        this.drawDebugBox(this.debugGraphics, this.playerAttackHitbox, 0x00ffff);
+      }
+      if (this.bossAttackHitbox.body.enable) {
+        this.drawDebugBox(this.debugGraphics, this.bossAttackHitbox, 0xff00ff);
+      }
+      if (this.activeArcherArrows.length > 0) {
+        this.activeArcherArrows.forEach((arrow) => {
+          if (arrow && arrow.active && arrow.body) {
+            this.drawDebugBox(this.debugGraphics, arrow, 0x22d3ee);
+          }
+        });
+      }
+      if (this.activeNecromancerProjectiles.length > 0) {
+        this.activeNecromancerProjectiles.forEach((projectile) => {
+          if (projectile && projectile.active && projectile.body && projectile.body.enable) {
+            this.drawDebugBox(this.debugGraphics, projectile, 0xa855f7);
+          }
+        });
+      }
+    }
+
+    if (!this.attackKey) return;
 
     if (Phaser.Input.Keyboard.JustDown(this.attackKey)) {
       this.playerAttack();
@@ -139,84 +627,72 @@ export class BossFightManager {
   }
 
   playerAttack() {
+    const now = Date.now();
+    const attackRate = this.playerCharacter.getAttackRate();
+    if (now - this.lastPlayerAttackTime < attackRate) return;
+
+    const damage = this.playerCharacter.getDamage();
+
+    const playerSprite = this.playerCharacter.sprite;
+    const playerCenter = this.getBodyCenter(playerSprite);
+    if (!playerCenter) return;
+
     this.isAttacking = true;
+    this.lastPlayerAttackTime = now;
 
-    let damage = this.playerCharacter.getDamage();
-    let isCrit = false;
+    const playerHitboxHalfWidth = this.playerAttackHitbox.width / 2;
+    const playerBodyHalfWidth = playerSprite.body.width / 2;
+    const playerDirection = playerSprite.flipX ? -1 : 1;
+    const offsetX = playerDirection * (playerBodyHalfWidth + playerHitboxHalfWidth + 8);
 
-    // Check for Rogue critical hit
-    if (this.character.class === 'Rogue') {
-      isCrit = Math.random() < this.playerCharacter.getCritChance();
-      damage = this.playerCharacter.getDamage(isCrit);
-      
-      if (isCrit) {
-        this.combatText.setText('CRITICAL HIT!');
-      } else {
-        this.combatText.setText(`${this.character.class} attacks!`);
-      }
-    } else {
-      this.combatText.setText(`${this.character.class} attacks!`);
-    }
+    this.playerAttackHitbox.setPosition(playerCenter.x + offsetX, playerCenter.y);
 
     this.playerCharacter.attack(() => {
-      this.bossHP -= damage;
-      this.bossCharacter.takeDamage(damage);
-
-      // Cleric healing
-      if (this.character.class === 'Cleric') {
-        const healAmount = this.playerCharacter.getHealAmount();
-        this.playerHP = Math.min(this.maxPlayerHP, this.playerHP + healAmount);
+      if (this.character.class === 'Archer') {
+        this.spawnArcherArrow(playerSprite, playerCenter, damage);
+      } else if (this.character.class === 'Necromancer') {
+        this.spawnNecromancerProjectile(playerSprite, playerCenter, damage);
+      } else {
+        this.pendingPlayerDamage = damage;
+        this.activatePlayerHitbox(140);
       }
+      this.isAttacking = false;
 
-      this.updateHPBars();
-      this.finishPlayerTurn(this.playerCharacter.getAttackRate());
+      const idleKey = this.character.class === 'Mage'
+        ? 'mage_idle_anim'
+        : this.character.class === 'Archer'
+          ? 'archer_idle_anim'
+          : this.character.class === 'Necromancer'
+            ? 'necromancer_idle_anim'
+          : 'warrior_idle_anim';
+      if (this.playerCharacter.sprite && this.scene.anims.exists(idleKey)) {
+        this.playerCharacter.sprite.play(idleKey, true);
+      }
     });
   }
-
-  finishPlayerTurn(delay) {
-    if (this.bossHP <= 0) {
-      this.combatText.setText('Victory! Boss Defeated!');
-      this.scene.time.delayedCall(1200, () => this.complete(true));
-      return;
-    }
-    this.scene.time.delayedCall(delay, () => this.bossAttack());
-  }
-
   bossAttack() {
-    // ✅ Check if boss is already attacking
-    if (!this.bossCharacter) return;
-    const currentKey = this.bossCharacter.sprite?.anims?.currentAnim?.key;
-    if (this.bossCharacter.sprite?.anims?.isPlaying && currentKey && currentKey !== 'boss_idle_anim') {
-      console.log('Boss still animating:', currentKey);
-      return;
-    }
+    if (!this.bossCharacter || this.bossCharacter.isAttacking) return;
 
-    this.combatText.setText('Boss attacks!');
+    const bossSprite = this.bossCharacter.sprite;
+    const bossCenter = this.getBodyCenter(bossSprite);
+    if (!bossCenter) return;
 
-    // ✅ Use the Boss class attack method with callback
+    const bossHitboxHalfWidth = this.bossAttackHitbox.width / 2;
+    const bossBodyHalfWidth = bossSprite.body.width / 2;
+    const bossDirection = bossSprite.flipX ? -1 : 1;
+    const offsetX = bossDirection * (bossBodyHalfWidth + bossHitboxHalfWidth + 8);
+
+    this.bossAttackHitbox.setPosition(bossCenter.x + offsetX, bossCenter.y);
+
     this.bossCharacter.attack((damage) => {
-      this.playerHP -= damage;
-      if (this.playerHP < 0) this.playerHP = 0;
+      this.pendingBossDamage = damage;
+      this.activateBossHitbox(140);
 
-      this.playerCharacter.takeDamage(damage);
-      this.updateHPBars();
-
-      // ✅ Return boss to idle AFTER attack completes
       if (this.bossCharacter.sprite && this.scene.anims.exists('boss_idle_anim')) {
         this.bossCharacter.sprite.play('boss_idle_anim', true);
       }
-
-      if (this.playerHP <= 0) {
-        this.combatText.setText('You have been defeated!');
-        this.scene.time.delayedCall(1200, () => this.complete(false));
-        return;
-      }
-
-      this.isAttacking = false;
-      this.combatText.setText('Press ENTER to attack');
     });
   }
-
   updateHPBars() {
     // Player bar
     this.hpBarPlayer.clear();
@@ -271,6 +747,37 @@ export class BossFightManager {
     }
     if (this.bossCharacter) {
       this.bossCharacter.destroy();
+    }
+    if (this.debugGraphics) {
+      this.debugGraphics.destroy();
+    }
+    if (this.playerAttackHitbox) {
+      this.playerAttackHitbox.destroy();
+    }
+    if (this.bossAttackHitbox) {
+      this.bossAttackHitbox.destroy();
+    }
+    if (this.chestCollider) {
+      this.chestCollider.destroy();
+    }
+    if (this.chestPromptText) {
+      this.chestPromptText.destroy();
+    }
+    if (this.activeArcherArrows.length > 0) {
+      this.activeArcherArrows.forEach((arrow) => {
+        if (arrow && arrow.active) {
+          arrow.destroy();
+        }
+      });
+      this.activeArcherArrows = [];
+    }
+    if (this.activeNecromancerProjectiles.length > 0) {
+      this.activeNecromancerProjectiles.forEach((projectile) => {
+        if (projectile && projectile.active) {
+          projectile.destroy();
+        }
+      });
+      this.activeNecromancerProjectiles = [];
     }
   }
 }

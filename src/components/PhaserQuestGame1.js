@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { BossFightManager } from './BossFightManager';
 import { Warrior } from './characters/Warrior';
+import { Mage } from './characters/Mage';
+import { Archer } from './characters/Archer';
+import { Necromancer } from './characters/Necromancer';
 import { Boss } from './characters/Boss';
+import { CHARACTER_CONFIG } from './characters/constants/characterConfig';
 
 export default function PhaserQuestGame({ quest, character, onQuestComplete, onBack }) {
   const gameRef = useRef(null);
@@ -17,36 +21,95 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       phaserGameRef.current = null;
     }
 
-    // Quest game state
     let currentQuestionIndex = 0;
     let score = 0;
     let timeRemaining = quest.timeLimit || 300;
     let gameState = 'intro';
-    let selectedAnswer = null;
     const maxPlayerHP = quest.questions.length * 100;
     let playerHP = 0;
     const bossMaxHP = quest.questions.length * 100;
     let itemsEarned = [];
 
-    // Quiz mini-game state
+    let quizPlayerCharacter = null;
     let quizPlayer = null;
     let quizNPC = null;
+    let quizNpcTitleText = null;
     let answerObjects = [];
+    let darkThings = [];
     let questionTextObj = null;
     let answerTextObjs = [];
     let currentQuestion = null;
     let hasAnswered = false;
     let questionShown = false;
-    let cursors = null;
+    let doorUnlocked = false;
+    let isTransitioning = false;
     let promptText = null;
+    let quizGroundLayer = null;
+    let quizDoorLayer = null;
+    let quizAttackKey = null;
+    let quizAttackHitbox = null;
+    let quizAttackActive = false;
+    let quizAttackHasHit = false;
+    let lastQuizAttackTime = 0;
+    let activeQuizArrows = [];
+    let activeQuizProjectiles = [];
+    let debugGraphics = null;
 
-    // UI elements
     let dialogueBox;
     let dialogueText;
     let timerText;
 
-    // Boss fight manager
     let bossFightManager = null;
+    let lastQuizMapKey = null;
+
+    const resolvedCharacterConfig = CHARACTER_CONFIG[character.class] || CHARACTER_CONFIG.Warrior;
+    const QUEST_MASTER_CONFIG = {
+      textureKey: 'qm_idle',
+      animationKey: 'qm_idle_anim',
+      spriteSheetPath: 'assets/sprites/quest_master/Idle.png',
+      frameWidth: 155,
+      frameHeight: 155,
+      // If true, animation uses all available frames in the loaded sheet.
+      useAutoFrameRange: true,
+      animationStart: 0,
+      animationEnd: 7,
+      animationFrameRate: 8,
+      scale: 1.2,
+      bodySize: { width: 40, height: 84 },
+      titleText: 'Quest Master',
+      titleOffsetY: 64,
+    };
+    const QUIZ_MAP_CONFIG = {
+      qmap1: {
+        // Edit these manually per character for this map.
+        // Warrior stays exactly the same as your current setup.
+        playerSpawns: {
+          Warrior: { x: 140, y: 620 },
+          Mage: { x: 140, y: 580 },
+          Archer: { x: 140, y: 600 },
+          Necromancer: { x: 140, y:590 },
+        },
+        questMasterSpawn: { x: 280, y: 500 }, // same as current code
+      },
+      qmap2: {
+        playerSpawns: {
+          Warrior: { x: 60, y: 230 },
+          Mage: { x: 60, y: 190 },
+          Archer: { x: 60, y: 210 },
+          Necromancer: { x: 60, y: 200 },
+        },
+        questMasterSpawn: { x: 340, y: 215 },
+      },
+      qmap3: {
+        playerSpawns: {
+          Warrior: { x: 480, y: 600 },
+          Mage: { x: 480, y: 560 },
+          Archer: { x: 480, y: 580 },
+          Necromancer: { x: 480, y: 570 },
+        },
+        questMasterSpawn: { x: 620, y: 470 },
+      },
+    };
 
     const formatTime = (seconds) => {
       const mins = Math.floor(seconds / 60);
@@ -63,6 +126,22 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       return arr;
     };
 
+    const pickRandomQuizMapKey = () => {
+      const keys = Object.keys(QUIZ_MAP_CONFIG);
+      if (keys.length <= 1) return keys[0];
+      const pool = lastQuizMapKey ? keys.filter((key) => key !== lastQuizMapKey) : keys;
+      const next = Phaser.Utils.Array.GetRandom(pool);
+      lastQuizMapKey = next;
+      return next;
+    };
+
+    const getMapPlayerSpawn = (mapConfig, className) => {
+      if (!mapConfig) return { x: 140, y: 620 };
+      const classSpawn = mapConfig.playerSpawns?.[className];
+      if (classSpawn) return classSpawn;
+      return mapConfig.playerSpawns?.Warrior || { x: 140, y: 620 };
+    };
+
     const showIntroDialogue = function () {
       gameState = 'intro';
 
@@ -74,9 +153,11 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         `You have entered: ${quest.title}`,
         `${quest.description}`,
         `Answer ${quest.questions.length} questions correctly to gain HP!`,
-        `Move with WASD keys. Talk to NPC to get the question!`,
-        `Then collide with the correct answer letter!`,
-        `Finally face the BOSS!`,
+        'Move with A/D and jump with W. Talk to NPC to get the question!',
+        'Attack the correct dark thing with ENTER.',
+        'If a dark thing touches you, you retry the question.',
+        'After answering correctly, go collide with the door to continue.',
+        'Finally face the BOSS!',
         'Click to begin your quest...',
       ];
 
@@ -93,7 +174,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setOrigin(0.5);
 
       const continueText = this.add
-        .text(1150, 680, '▼', {
+        .text(1150, 600, 'v', {
           fontSize: '24px',
           color: '#fbbf24',
         })
@@ -101,7 +182,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       this.tweens.add({
         targets: continueText,
-        y: 690,
+        y: 610,
         duration: 500,
         yoyo: true,
         repeat: -1,
@@ -123,33 +204,405 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       this.input.once('pointerdown', advanceMessage);
     };
 
+    const drawDebugBox = function (graphics, sprite, color) {
+      if (!sprite || !sprite.body) return;
+      const body = sprite.body;
+      graphics.lineStyle(2, color, 1);
+      graphics.strokeRect(body.x, body.y, body.width, body.height);
+    };
+
+    const createQuizAttackHitbox = function () {
+      quizAttackHitbox = this.add.rectangle(0, 0, 90, 80);
+      quizAttackHitbox.setAlpha(0);
+      this.physics.add.existing(quizAttackHitbox);
+      quizAttackHitbox.body.setAllowGravity(false);
+      quizAttackHitbox.body.setEnable(false);
+    };
+
+    const activateQuizHitbox = function (duration = 140) {
+      if (!quizAttackHitbox || !quizAttackHitbox.body) return;
+      quizAttackActive = true;
+      quizAttackHasHit = false;
+      quizAttackHitbox.body.updateFromGameObject();
+      quizAttackHitbox.body.setEnable(true);
+
+      this.time.delayedCall(duration, () => {
+        quizAttackActive = false;
+        if (quizAttackHitbox && quizAttackHitbox.body) {
+          quizAttackHitbox.body.setEnable(false);
+        }
+      });
+    };
+
+    const hideAllDarkThings = function () {
+      darkThings.forEach((darkThing) => {
+        if (darkThing && darkThing.active) {
+          darkThing.body.setEnable(false);
+          darkThing.setVisible(false);
+        }
+      });
+      answerObjects.forEach((obj) => {
+        if (obj.indicator && obj.indicator.active) {
+          obj.indicator.setVisible(false);
+        }
+      });
+    };
+
+    const beginRetryQuestion = function (message) {
+      if (isTransitioning || gameState !== 'quiz') return;
+      isTransitioning = true;
+
+      if (quizPlayer && quizPlayer.body) {
+        quizPlayer.body.setVelocity(0, 0);
+      }
+
+      const retryText = this.add
+        .text(640, 400, message, {
+          fontSize: '34px',
+          color: '#ef4444',
+          fontFamily: 'monospace',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5)
+        .setDepth(200);
+
+      this.tweens.add({
+        targets: retryText,
+        alpha: 0,
+        duration: 1200,
+        delay: 900,
+      });
+
+      this.time.delayedCall(1800, () => {
+        retryText.destroy();
+        startQuizMiniGame.call(this);
+      });
+    };
+
+    const resolveAnswerHit = function (answerObj) {
+      if (!answerObj || hasAnswered || isTransitioning || gameState !== 'quiz') return;
+
+      const isCorrect = answerObj.isCorrect;
+      hasAnswered = true;
+
+      if (answerObj.indicator && answerObj.indicator.active) {
+        answerObj.indicator.setColor(isCorrect ? '#10b981' : '#ef4444');
+      }
+
+      answerTextObjs.forEach((textObj, idx) => {
+        if (!textObj || !textObj.active) return;
+        if (idx === answerObj.index) {
+          textObj.setBackgroundColor(isCorrect ? '#10b981' : '#ef4444');
+        }
+        if (answerObjects[idx]?.isCorrect) {
+          textObj.setBackgroundColor('#10b981');
+        }
+      });
+
+      if (isCorrect) {
+        score += 1;
+        playerHP += 100;
+        doorUnlocked = true;
+        hideAllDarkThings.call(this);
+
+        const okText = this.add
+          .text(640, 400, 'CORRECT! Door unlocked. Go to the door.', {
+            fontSize: '38px',
+            color: '#10b981',
+            fontFamily: 'monospace',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+          .setDepth(200);
+
+        this.tweens.add({
+          targets: okText,
+          alpha: 0,
+          duration: 1400,
+          delay: 1100,
+        });
+
+        if (promptText) {
+          promptText.setText('Correct. Go collide with the door to continue.');
+          promptText.setColor('#22c55e');
+        }
+      } else {
+        beginRetryQuestion.call(this, 'WRONG TARGET! Retrying question...');
+      }
+    };
+
+    const handleDarkThingContact = function () {
+      if (hasAnswered || isTransitioning || gameState !== 'quiz') return;
+      beginRetryQuestion.call(this, 'HIT BY DARK THING! Retrying question...');
+    };
+
+    const handleDarkThingMeleeHit = function (answerObj) {
+      if (!quizAttackActive || quizAttackHasHit || hasAnswered || isTransitioning || !answerObj) return;
+      quizAttackHasHit = true;
+      resolveAnswerHit.call(this, answerObj);
+    };
+
+    const spawnQuizArcherArrow = function (playerSprite, playerCenter) {
+      if (!this.textures.exists('archer_arrowMove')) return;
+
+      const direction = playerSprite.flipX ? -1 : 1;
+      const startX = playerCenter.x + direction * 28;
+      const startY = playerCenter.y - 8;
+
+      const arrow = this.physics.add.sprite(startX, startY, 'archer_arrowMove');
+      arrow.setDepth(7);
+      arrow.setScale(2);
+      arrow.setFlipX(direction < 0);
+      arrow.body.setAllowGravity(false);
+      arrow.body.setVelocityX(direction * 650);
+      arrow.body.setSize(28, 8);
+      arrow.body.setOffset(10, 0);
+      arrow.setData('startX', startX);
+
+      if (this.anims.exists('archer_arrow_move_anim')) {
+        arrow.play('archer_arrow_move_anim');
+      }
+
+      answerObjects.forEach((obj) => {
+        if (!obj.sprite || !obj.sprite.active) return;
+        this.physics.add.overlap(
+          arrow,
+          obj.sprite,
+          () => {
+            if (!arrow.active || hasAnswered || isTransitioning) return;
+            arrow.destroy();
+            activeQuizArrows = activeQuizArrows.filter((a) => a !== arrow);
+            resolveAnswerHit.call(this, obj);
+          },
+          null,
+          this
+        );
+      });
+
+      activeQuizArrows.push(arrow);
+    };
+
+    const spawnQuizNecromancerProjectile = function (playerSprite, playerCenter) {
+      if (!this.textures.exists('necromancer_moving')) return;
+
+      const direction = playerSprite.flipX ? -1 : 1;
+      const startX = playerCenter.x + direction * 44;
+      const startY = playerCenter.y - 12;
+
+      const projectile = this.physics.add.sprite(startX, startY, 'necromancer_moving');
+      projectile.setDepth(7);
+      projectile.setScale(1.3);
+      projectile.setFlipX(direction < 0);
+      projectile.body.setAllowGravity(false);
+      projectile.body.setVelocityX(direction * 520);
+      projectile.body.setSize(20, 20);
+      projectile.body.setOffset(10, 16);
+      projectile.setData('startX', startX);
+      projectile.setData('state', 'moving');
+
+      if (this.anims.exists('necromancer_projectile_move_anim')) {
+        projectile.play('necromancer_projectile_move_anim');
+      }
+
+      answerObjects.forEach((obj) => {
+        if (!obj.sprite || !obj.sprite.active) return;
+        this.physics.add.overlap(
+          projectile,
+          obj.sprite,
+          () => {
+            if (!projectile.active || projectile.getData('state') !== 'moving' || hasAnswered || isTransitioning) return;
+            projectile.setData('state', 'exploding');
+            projectile.body.setEnable(false);
+            projectile.body.setVelocity(0, 0);
+
+            if (this.anims.exists('necromancer_projectile_explode_anim')) {
+              projectile.play('necromancer_projectile_explode_anim');
+              const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_projectile_explode_anim';
+              projectile.once(eventKey, () => {
+                if (projectile.active) projectile.destroy();
+              });
+            } else {
+              projectile.destroy();
+            }
+
+            activeQuizProjectiles = activeQuizProjectiles.filter((p) => p !== projectile);
+            resolveAnswerHit.call(this, obj);
+          },
+          null,
+          this
+        );
+      });
+
+      activeQuizProjectiles.push(projectile);
+    };
+
+    const handleDoorCollision = function () {
+      if (!doorUnlocked || isTransitioning || gameState !== 'quiz') return;
+      isTransitioning = true;
+      if (quizPlayer && quizPlayer.body) {
+        quizPlayer.body.setVelocity(0, 0);
+      }
+      nextQuestion.call(this);
+    };
+
+    const showQuestion = function () {
+      if (hasAnswered || isTransitioning) return;
+
+      if (!questionShown) {
+        questionShown = true;
+        if (promptText) {
+          promptText.setText('Question revealed. Attack the correct dark thing.');
+        }
+      }
+
+      if (!questionTextObj || !questionTextObj.active) {
+        questionTextObj = this.add
+          .text(640, 120, `Q${currentQuestionIndex + 1}: ${currentQuestion.question}`, {
+            fontSize: '22px',
+            color: '#ffffff',
+            fontFamily: 'monospace',
+            align: 'center',
+            wordWrap: { width: 1100 },
+            backgroundColor: '#2d1b4e',
+            padding: { x: 20, y: 15 },
+          })
+          .setOrigin(0.5)
+          .setDepth(100);
+      }
+
+      if (answerTextObjs.length === 0) {
+        const startY = 200;
+        const lineHeight = 35;
+
+        answerObjects.forEach((answerObj, index) => {
+          const answerText = this.add
+            .text(100, startY + index * lineHeight, `${answerObj.letterChar}. ${answerObj.answerText}`, {
+              fontSize: '18px',
+              color: '#ffffff',
+              fontFamily: 'monospace',
+              backgroundColor: '#1a0d2e',
+              padding: { x: 10, y: 5 },
+            })
+            .setDepth(100);
+
+          answerTextObjs.push(answerText);
+        });
+      } else {
+        answerTextObjs.forEach((textObj) => {
+          if (textObj && textObj.active) {
+            textObj.setVisible(true);
+          }
+        });
+      }
+
+      if (questionTextObj && questionTextObj.active) {
+        questionTextObj.setVisible(true);
+      }
+    };
+
+    const hideQuestion = function () {
+      if (hasAnswered || isTransitioning) return;
+
+      if (questionTextObj && questionTextObj.active) {
+        questionTextObj.setVisible(false);
+      }
+
+      answerTextObjs.forEach((textObj) => {
+        if (textObj && textObj.active) {
+          textObj.setVisible(false);
+        }
+      });
+    };
+
+    const updateQuizPlayerCombat = function () {
+      if (!quizPlayerCharacter || !quizPlayer || !quizAttackKey || gameState !== 'quiz' || isTransitioning) return;
+      if (hasAnswered) return;
+      if (!Phaser.Input.Keyboard.JustDown(quizAttackKey)) return;
+
+      const now = Date.now();
+      const attackRate = quizPlayerCharacter.getAttackRate();
+      if (now - lastQuizAttackTime < attackRate) return;
+      lastQuizAttackTime = now;
+
+      const playerCenter = quizPlayer.body?.center
+        ? { x: quizPlayer.body.center.x, y: quizPlayer.body.center.y }
+        : { x: quizPlayer.x, y: quizPlayer.y };
+
+      const target = answerObjects
+        .filter((obj) => obj.sprite && obj.sprite.active)
+        .sort((a, b) => Phaser.Math.Distance.Between(playerCenter.x, playerCenter.y, a.sprite.x, a.sprite.y) - Phaser.Math.Distance.Between(playerCenter.x, playerCenter.y, b.sprite.x, b.sprite.y))[0];
+
+      if (!target) return;
+
+      const hitboxHalfWidth = quizAttackHitbox.width / 2;
+      const bodyHalfWidth = quizPlayer.body.width / 2;
+      const direction = quizPlayer.flipX ? -1 : 1;
+      const offsetX = direction * (bodyHalfWidth + hitboxHalfWidth + 8);
+      quizAttackHitbox.setPosition(playerCenter.x + offsetX, playerCenter.y);
+
+      quizPlayerCharacter.attack(() => {
+        if (character.class === 'Archer') {
+          spawnQuizArcherArrow.call(this, quizPlayer, playerCenter);
+        } else if (character.class === 'Necromancer') {
+          spawnQuizNecromancerProjectile.call(this, quizPlayer, playerCenter);
+        } else {
+          activateQuizHitbox.call(this, 140);
+        }
+      });
+    };
+
     const startQuizMiniGame = function () {
       gameState = 'quiz';
       hasAnswered = false;
       questionShown = false;
+      doorUnlocked = false;
+      isTransitioning = false;
+      activeQuizArrows = [];
+      activeQuizProjectiles = [];
 
-      // Clear scene
       this.children.removeAll(true);
+      darkThings = [];
+      answerTextObjs = [];
+      questionTextObj = null;
 
-      // ✅ Disable gravity for quiz phase
-      this.physics.world.gravity.y = 0;
+      debugGraphics = this.add.graphics();
+      debugGraphics.setDepth(1000);
 
-      // Create tilemap
-      const map = this.make.tilemap({ key: 'map0' });
-      const tileset = map.addTilesetImage('quiz_tiles', 'quiz_tiles');
-      const groundLayer = map.createLayer('simple_ground', tileset, 0, 0);
-      groundLayer.setDepth(-5);
+      this.physics.world.gravity.y = 600;
 
-      // Set collision for ground tiles
-      groundLayer.setCollision([10, 11, 22, 34, 35, 36]);
+      const selectedQuizMapKey = pickRandomQuizMapKey();
+      const selectedQuizMapConfig = QUIZ_MAP_CONFIG[selectedQuizMapKey] || QUIZ_MAP_CONFIG.qmap1;
+
+      const map = this.make.tilemap({ key: selectedQuizMapKey });
+      const bwtiles1 = map.addTilesetImage('bwtiles1', 'bwtiles1');
+      const extra = map.addTilesetImage('extra', 'extra');
+      const tree = map.addTilesetImage('tree', 'tree');
+      const doorTiles = map.addTilesetImage('door', 'door');
+      const tilesets = [bwtiles1, extra, tree, doorTiles].filter(Boolean);
+
+      const mapBackgroundImage = this.add.image(0, 0, 'qmap_background');
+      mapBackgroundImage.setOrigin(0, 0);
+      mapBackgroundImage.setDepth(-6);
+
+      const bgLayer = map.createLayer('bg', tilesets, 0, 0);
+      quizGroundLayer = map.createLayer('ground', tilesets, 0, 0);
+      quizDoorLayer = map.createLayer('door', tilesets, 0, 0);
+
+      if (bgLayer) bgLayer.setDepth(-5);
+      if (quizGroundLayer) {
+        quizGroundLayer.setDepth(-4);
+        quizGroundLayer.setCollisionByExclusion([-1]);
+      }
+      if (quizDoorLayer) {
+        quizDoorLayer.setDepth(-3);
+        quizDoorLayer.setCollisionByExclusion([-1]);
+      }
 
       this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
-      // Background
-      const bg = this.add.rectangle(640, 360, 1280, 736, 0x1a0d2e);
+      const bg = this.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
       bg.setDepth(-10);
 
-      // Timer
       timerText = this.add
         .text(640, 40, `Time: ${formatTime(timeRemaining)}`, {
           fontSize: '28px',
@@ -159,7 +612,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setOrigin(0.5)
         .setDepth(100);
 
-      // Question counter
       this.add
         .text(100, 40, `Question ${currentQuestionIndex + 1}/${quest.questions.length}`, {
           fontSize: '24px',
@@ -169,29 +621,27 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setOrigin(0, 0.5)
         .setDepth(100);
 
-      // Get objects from map (answer positions)
-      const objectLayer = map.getObjectLayer('objects');
-      const answerPositions = objectLayer.objects.map(obj => ({ x: obj.x, y: obj.y }));
+      const objectLayer = map.getObjectLayer('answers');
+      const answerPositions = objectLayer?.objects?.map((obj) => ({ x: obj.x, y: obj.y })) || [];
 
-      console.log('Found answer positions:', answerPositions);
-
-      // Create quiz NPC (Wizard)
-      quizNPC = this.physics.add.sprite(640, 300, 'qm_idle');
-      quizNPC.setScale(2.5);
+      quizNPC = this.physics.add.sprite(
+        selectedQuizMapConfig.questMasterSpawn.x,
+        selectedQuizMapConfig.questMasterSpawn.y,
+        QUEST_MASTER_CONFIG.textureKey
+      );
+      quizNPC.setScale(QUEST_MASTER_CONFIG.scale);
       quizNPC.body.setImmovable(true);
       quizNPC.body.setAllowGravity(false);
-      quizNPC.body.setSize(40, 50);
-      quizNPC.body.setOffset(30, 50);
+      // Centered body avoids hardcoded offsets breaking when spawn/scale changes.
+      quizNPC.body.setSize(QUEST_MASTER_CONFIG.bodySize.width, QUEST_MASTER_CONFIG.bodySize.height, true);
       quizNPC.setDepth(5);
 
-      // Play wizard idle animation
-      if (this.anims.exists('qm_idle_anim')) {
-        quizNPC.play('qm_idle_anim');
+      if (this.anims.exists(QUEST_MASTER_CONFIG.animationKey)) {
+        quizNPC.play(QUEST_MASTER_CONFIG.animationKey);
       }
 
-      // Add NPC name label
-      this.add
-        .text(640, 240, 'Quest Master', {
+      quizNpcTitleText = this.add
+        .text(quizNPC.x, quizNPC.y - QUEST_MASTER_CONFIG.titleOffsetY, QUEST_MASTER_CONFIG.titleText, {
           fontSize: '20px',
           color: '#a78bfa',
           fontFamily: 'monospace',
@@ -200,52 +650,47 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setOrigin(0.5)
         .setDepth(6);
 
-      // Create player character with 4-directional movement
-      const playerStartX = 100;
-      const playerStartY = 360;
-      
-      quizPlayer = this.physics.add.sprite(playerStartX, playerStartY, 'warrior_idle');
-      quizPlayer.setScale(2);
-      quizPlayer.setDepth(5);
-      quizPlayer.body.setAllowGravity(false);
-      quizPlayer.body.setCollideWorldBounds(true);
-      quizPlayer.body.setSize(40, 40);
-      quizPlayer.body.setOffset(48, 50);
+      const selectedPlayerSpawn = getMapPlayerSpawn(selectedQuizMapConfig, character.class);
+      const playerStartX = selectedPlayerSpawn.x;
+      const playerStartY = selectedPlayerSpawn.y;
 
-      // Add collision with tilemap
-      this.physics.add.collider(quizPlayer, groundLayer);
-
-      // Setup WASD controls
-      cursors = {
-        up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-        down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-        left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-        right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      };
-
-      // Play idle animation
-      if (this.anims.exists('warrior_idle_anim')) {
-        quizPlayer.play('warrior_idle_anim');
+      switch (character.class) {
+        case 'Warrior':
+          quizPlayerCharacter = new Warrior(this, playerStartX, playerStartY);
+          break;
+        case 'Mage':
+          quizPlayerCharacter = new Mage(this, playerStartX, playerStartY);
+          break;
+        case 'Archer':
+          quizPlayerCharacter = new Archer(this, playerStartX, playerStartY);
+          break;
+        case 'Necromancer':
+          quizPlayerCharacter = new Necromancer(this, playerStartX, playerStartY);
+          break;
+        default:
+          quizPlayerCharacter = new Warrior(this, playerStartX, playerStartY);
       }
 
-      // Add NPC collision/overlap to show question
-      this.physics.add.overlap(
-        quizPlayer,
-        quizNPC,
-        () => showQuestion.call(this),
-        null,
-        this
-      );
+      quizPlayerCharacter.create(playerStartX, playerStartY);
+      quizPlayer = quizPlayerCharacter.sprite;
+      quizPlayer.setScale(resolvedCharacterConfig.scale || 2.5);
+      quizPlayer.body.setCollideWorldBounds(true);
 
-      // Get current question
+      if (quizGroundLayer) {
+        this.physics.add.collider(quizPlayer, quizGroundLayer);
+      }
+      if (quizDoorLayer) {
+        this.physics.add.collider(quizPlayer, quizDoorLayer, () => handleDoorCollision.call(this), null, this);
+      }
+
+      quizAttackKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+      createQuizAttackHitbox.call(this);
+
+      this.physics.add.overlap(quizPlayer, quizNPC, () => showQuestion.call(this), null, this);
+
       currentQuestion = quest.questions[currentQuestionIndex];
+      const shuffledOptions = shuffleArray(currentQuestion.options.map((text, originalIndex) => ({ text, originalIndex })));
 
-      // Shuffle options and assign to map objects
-      const shuffledOptions = shuffleArray(
-        currentQuestion.options.map((text, originalIndex) => ({ text, originalIndex }))
-      );
-
-      // Create answer objects at map positions (only show letters)
       answerObjects = [];
 
       shuffledOptions.forEach((opt, index) => {
@@ -253,56 +698,56 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
         const pos = answerPositions[index];
         const x = pos.x;
-        const y = pos.y;
+        const y = pos.y - 16;
 
-        // Create container for answer
-        const container = this.add.container(x, y);
-
-        // Answer box
-        const box = this.add.rectangle(0, 0, 120, 120, 0x4c1d95, 1);
-        box.setStrokeStyle(4, 0x7c3aed);
-
-        // Letter label (only show the letter)
-        const letter = this.add
-          .text(0, 0, String.fromCharCode(65 + index), {
-            fontSize: '64px',
+        const indicator = this.add
+          .text(x, y - 42, String.fromCharCode(65 + index), {
+            fontSize: '34px',
             color: '#fbbf24',
             fontFamily: 'monospace',
             fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 4,
           })
-          .setOrigin(0.5);
+          .setOrigin(0.5)
+          .setDepth(8);
 
-        container.add([box, letter]);
-        container.setDepth(10);
+        const darkThing = this.physics.add.sprite(x, y, 'dark_thing');
+        darkThing.setScale(1.5);
+        darkThing.setDepth(6);
+        darkThing.body.setAllowGravity(false);
+        darkThing.body.setImmovable(true);
+        darkThing.body.setSize(25, 21);
+        darkThing.body.setOffset(2, 7);
+        darkThing.play('dark_thing_row1_anim');
 
-        // Create physics body for collision
-        const collisionZone = this.add.rectangle(x, y, 120, 120);
-        this.physics.add.existing(collisionZone, true);
-
-        // Store answer data
-        answerObjects.push({
-          container,
-          collisionZone,
-          isCorrect: opt.originalIndex === currentQuestion.correctAnswer,
-          index: index,
-          box,
-          letter: String.fromCharCode(65 + index),
-          answerText: opt.text,
+        this.tweens.add({
+          targets: [darkThing, indicator],
+          x: x + 24,
+          duration: 700 + index * 80,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
         });
 
-        // Add overlap detection (only works after question is shown)
-        this.physics.add.overlap(
-          quizPlayer,
-          collisionZone,
-          () => handleAnswerCollision.call(this, answerObjects.find(obj => obj.collisionZone === collisionZone)),
-          null,
-          this
-        );
+        const answerObj = {
+          indicator,
+          sprite: darkThing,
+          isCorrect: opt.originalIndex === currentQuestion.correctAnswer,
+          index,
+          letterChar: String.fromCharCode(65 + index),
+          answerText: opt.text,
+        };
+
+        answerObjects.push(answerObj);
+        darkThings.push(darkThing);
+
+        this.physics.add.overlap(quizPlayer, darkThing, () => handleDarkThingContact.call(this), null, this);
+        this.physics.add.overlap(quizAttackHitbox, darkThing, () => handleDarkThingMeleeHit.call(this, answerObj), null, this);
       });
 
-      // Add instructions
       promptText = this.add
-        .text(640, 680, '💬 Move to the Quest Master to receive your question!', {
+        .text(640, 610, 'Move to the Quest Master to receive your question.', {
           fontSize: '20px',
           color: '#10b981',
           fontFamily: 'monospace',
@@ -311,187 +756,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setDepth(100);
     };
 
-    const showQuestion = function () {
-      if (questionShown || hasAnswered) return;
-
-      questionShown = true;
-
-      // Update prompt
-      if (promptText) {
-        promptText.setText('📝 Question revealed! Collide with the correct answer letter!');
-      }
-
-      // Display question
-      questionTextObj = this.add
-        .text(640, 120, `Q${currentQuestionIndex + 1}: ${currentQuestion.question}`, {
-          fontSize: '22px',
-          color: '#ffffff',
-          fontFamily: 'monospace',
-          align: 'center',
-          wordWrap: { width: 1100 },
-          backgroundColor: '#2d1b4e',
-          padding: { x: 20, y: 15 },
-        })
-        .setOrigin(0.5)
-        .setDepth(100);
-
-      // Display answer options with letters
-      answerTextObjs = [];
-      const startY = 200;
-      const lineHeight = 35;
-
-      answerObjects.forEach((answerObj, index) => {
-        const answerText = this.add
-          .text(100, startY + index * lineHeight, `${answerObj.letter}. ${answerObj.answerText}`, {
-            fontSize: '18px',
-            color: '#ffffff',
-            fontFamily: 'monospace',
-            backgroundColor: '#1a0d2e',
-            padding: { x: 10, y: 5 },
-          })
-          .setDepth(100);
-
-        answerTextObjs.push(answerText);
-      });
-    };
-
-    const handleAnswerCollision = function (answerObj) {
-      if (hasAnswered || gameState !== 'quiz' || !answerObj || !questionShown) return;
-
-      hasAnswered = true;
-
-      // Highlight selected answer
-      answerObj.box.setStrokeStyle(6, 0xfbbf24);
-
-      // Freeze player
-      if (quizPlayer) {
-        quizPlayer.body.setVelocity(0, 0);
-      }
-
-      // Check if correct
-      const isCorrect = answerObj.isCorrect;
-
-      if (isCorrect) {
-        score += 1;
-        playerHP += 100;
-        answerObj.box.setFillStyle(0x10b981);
-
-        // Flash effect
-        this.tweens.add({
-          targets: answerObj.container,
-          scaleX: 1.2,
-          scaleY: 1.2,
-          duration: 200,
-          yoyo: true,
-        });
-      } else {
-        answerObj.box.setFillStyle(0xef4444);
-
-        // Shake effect
-        this.tweens.add({
-          targets: answerObj.container,
-          x: answerObj.container.x - 10,
-          duration: 50,
-          yoyo: true,
-          repeat: 5,
-        });
-
-        // Show correct answer
-        answerObjects.forEach((obj) => {
-          if (obj.isCorrect) {
-            obj.box.setFillStyle(0x10b981);
-            obj.box.setStrokeStyle(6, 0x22c55e);
-          }
-        });
-      }
-
-      // Highlight the selected answer in the text list
-      answerTextObjs.forEach((textObj, idx) => {
-        if (idx === answerObj.index) {
-          textObj.setBackgroundColor(isCorrect ? '#10b981' : '#ef4444');
-        }
-        if (answerObjects[idx].isCorrect) {
-          textObj.setBackgroundColor('#10b981');
-        }
-      });
-
-      // Show feedback
-      const feedbackText = this.add
-        .text(640, 400, isCorrect ? '✓ CORRECT! +100 HP' : '✗ INCORRECT!', {
-          fontSize: '48px',
-          color: isCorrect ? '#10b981' : '#ef4444',
-          fontFamily: 'monospace',
-          fontStyle: 'bold',
-        })
-        .setOrigin(0.5)
-        .setDepth(200);
-
-      this.tweens.add({
-        targets: feedbackText,
-        alpha: 0,
-        duration: 1500,
-        delay: 1000,
-      });
-
-      // Move to next question
-      this.time.delayedCall(2500, () => {
-        feedbackText.destroy();
-        nextQuestion.call(this);
-      });
-    };
-
-    const updateQuizPlayerMovement = function () {
-      if (!quizPlayer || hasAnswered || gameState !== 'quiz') return;
-
-      const speed = 200;
-
-      // Reset velocity
-      quizPlayer.body.setVelocity(0);
-
-      // Horizontal movement
-      if (cursors.left.isDown) {
-        quizPlayer.body.setVelocityX(-speed);
-        quizPlayer.setFlipX(true);
-        if (this.anims.exists('warrior_run_anim')) {
-          quizPlayer.play('warrior_run_anim', true);
-        }
-      } else if (cursors.right.isDown) {
-        quizPlayer.body.setVelocityX(speed);
-        quizPlayer.setFlipX(false);
-        if (this.anims.exists('warrior_run_anim')) {
-          quizPlayer.play('warrior_run_anim', true);
-        }
-      }
-
-      // Vertical movement
-      if (cursors.up.isDown) {
-        quizPlayer.body.setVelocityY(-speed);
-        if (this.anims.exists('warrior_run_anim') && !cursors.left.isDown && !cursors.right.isDown) {
-          quizPlayer.play('warrior_run_anim', true);
-        }
-      } else if (cursors.down.isDown) {
-        quizPlayer.body.setVelocityY(speed);
-        if (this.anims.exists('warrior_run_anim') && !cursors.left.isDown && !cursors.right.isDown) {
-          quizPlayer.play('warrior_run_anim', true);
-        }
-      }
-
-      // Idle animation
-      if (!cursors.left.isDown && !cursors.right.isDown && !cursors.up.isDown && !cursors.down.isDown) {
-        if (this.anims.exists('warrior_idle_anim')) {
-          quizPlayer.play('warrior_idle_anim', true);
-        }
-      }
-
-      // Normalize diagonal movement
-      if (quizPlayer.body.velocity.x !== 0 && quizPlayer.body.velocity.y !== 0) {
-        quizPlayer.body.velocity.normalize().scale(speed);
-      }
-    };
-
     const nextQuestion = function () {
       currentQuestionIndex++;
-
       if (currentQuestionIndex >= quest.questions.length) {
         startBossFight.call(this);
       } else {
@@ -501,8 +767,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
     const startBossFight = function () {
       gameState = 'boss';
-
-      // ✅ Re-enable gravity for boss fight
       this.physics.world.gravity.y = 600;
 
       bossFightManager = new BossFightManager(this, {
@@ -521,53 +785,88 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     };
 
     const preloadQuestScene = function () {
-      console.log('=== PRELOAD START ===');
-
-      // Preload character sprites
       Warrior.preload(this);
+      Mage.preload(this);
+      Archer.preload(this);
+      Necromancer.preload(this);
       Boss.preload(this);
 
-      // ✅ Preload wizard sprite for Quest Master
-      this.load.spritesheet('qm_idle', 'assets/sprites/quest_master/Idle.png', {
-        frameWidth: 100,
-        frameHeight: 100,
+      this.load.spritesheet(QUEST_MASTER_CONFIG.textureKey, QUEST_MASTER_CONFIG.spriteSheetPath, {
+        frameWidth: QUEST_MASTER_CONFIG.frameWidth,
+        frameHeight: QUEST_MASTER_CONFIG.frameHeight,
       });
 
-      // Quiz tilemap
-      this.load.tilemapTiledJSON('map0', 'assets/maps/map0.json');
-      this.load.image('quiz_tiles', 'assets/maps/tiles/quiz_tiles.png');
+      this.load.spritesheet('dark_thing', 'assets/sprites/quiz_monsters/dark_thing.png', {
+        frameWidth: 32,
+        frameHeight: 32,
+      });
 
-      // Boss fight tilemap
-      this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
+      this.load.tilemapTiledJSON('qmap1', 'assets/maps/qmap1.json');
+      this.load.tilemapTiledJSON('qmap2', 'assets/maps/qmap2.json');
+      this.load.tilemapTiledJSON('qmap3', 'assets/maps/qmap3.json');
+      this.load.tilemapTiledJSON('bmap1', 'assets/maps/bmap1.json');
       this.load.image('bwtiles1', 'assets/maps/tiles/bwtiles1.png');
+      this.load.image('extra', 'assets/maps/tiles/extra.png');
+      this.load.image('tree', 'assets/maps/tiles/tree.png');
+      this.load.image('door', 'assets/maps/tiles/door.png');
+      this.load.image('bg2', 'assets/maps/tiles/bg2.png');
+      this.load.image('extra2', 'assets/maps/tiles/extra2.png');
+      this.load.image('qmap_background', 'assets/maps/tiles/background.png');
 
-      console.log('=== PRELOAD QUEUED ===');
+      this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
     };
 
     const createQuestScene = function () {
-      console.log('=== CREATE START ===');
-
       setIsLoading(false);
 
-      // Create animations
-      console.log('Creating animations...');
       Warrior.createAnimations(this);
+      Mage.createAnimations(this);
+      Archer.createAnimations(this);
+      Necromancer.createAnimations(this);
       Boss.createAnimations(this);
 
-      // ✅ Create wizard idle animation
-      if (!this.anims.exists('qm_idle_anim')) {
-        this.anims.create({
-          key: 'qm_idle_anim',
-          frames: this.anims.generateFrameNumbers('qm_idle', { start: 0, end: 7 }),
-          frameRate: 8,
-          repeat: -1,
-        });
-        console.log('Created qm_idle_anim');
+      if (!this.anims.exists(QUEST_MASTER_CONFIG.animationKey)) {
+        const qmTexture = this.textures.get(QUEST_MASTER_CONFIG.textureKey);
+        const qmFrameTotal = qmTexture?.frameTotal || 0;
+        if (qmFrameTotal > 1) {
+          let start = QUEST_MASTER_CONFIG.animationStart;
+          let end = Math.min(QUEST_MASTER_CONFIG.animationEnd, qmFrameTotal - 1);
+
+          if (QUEST_MASTER_CONFIG.useAutoFrameRange) {
+            start = 0;
+            end = qmFrameTotal - 1;
+          } else if (start >= end) {
+            // Fallback if configured range is invalid for the new sprite sheet.
+            start = 0;
+            end = qmFrameTotal - 1;
+          }
+
+          this.anims.create({
+            key: QUEST_MASTER_CONFIG.animationKey,
+            frames: this.anims.generateFrameNumbers(QUEST_MASTER_CONFIG.textureKey, {
+              start,
+              end,
+            }),
+            frameRate: QUEST_MASTER_CONFIG.animationFrameRate,
+            repeat: -1,
+          });
+        } else {
+          console.warn(
+            `Quest Master animation not created. frameTotal=${qmFrameTotal}. ` +
+            `Check QUEST_MASTER_CONFIG.frameWidth/frameHeight for ${QUEST_MASTER_CONFIG.textureKey}.`
+          );
+        }
       }
 
-      console.log('Animations created');
+      if (!this.anims.exists('dark_thing_row1_anim')) {
+        this.anims.create({
+          key: 'dark_thing_row1_anim',
+          frames: this.anims.generateFrameNumbers('dark_thing', { start: 0, end: 2 }),
+          frameRate: 6,
+          repeat: -1,
+        });
+      }
 
-      // Start timer
       this.time.addEvent({
         delay: 1000,
         callback: () => {
@@ -583,13 +882,90 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       showIntroDialogue.call(this);
     };
 
-    const updateQuestScene = function () {
+    const updateQuestScene = function (time, delta) {
       if (gameState === 'quiz') {
-        updateQuizPlayerMovement.call(this);
+        if (quizPlayerCharacter) {
+          quizPlayerCharacter.update();
+        }
+
+        updateQuizPlayerCombat.call(this);
+
+        if (!hasAnswered && quizPlayer && quizNPC) {
+          const isOverlappingQuestMaster = this.physics.overlap(quizPlayer, quizNPC);
+          if (isOverlappingQuestMaster) {
+            showQuestion.call(this);
+          } else {
+            hideQuestion.call(this);
+          }
+        }
+
+        if (quizNPC && quizNpcTitleText && quizNpcTitleText.active) {
+          quizNpcTitleText.setPosition(quizNPC.x, quizNPC.y - QUEST_MASTER_CONFIG.titleOffsetY);
+        }
+
+        if (activeQuizArrows.length > 0) {
+          activeQuizArrows = activeQuizArrows.filter((arrow) => {
+            if (!arrow || !arrow.active) return false;
+            const startX = Number(arrow.getData('startX')) || arrow.x;
+            const traveled = Math.abs(arrow.x - startX);
+            if (traveled > 900) {
+              arrow.destroy();
+              return false;
+            }
+            return true;
+          });
+        }
+
+        if (activeQuizProjectiles.length > 0) {
+          activeQuizProjectiles = activeQuizProjectiles.filter((projectile) => {
+            if (!projectile || !projectile.active) return false;
+            if (projectile.getData('state') === 'exploding') return true;
+            const startX = Number(projectile.getData('startX')) || projectile.x;
+            const traveled = Math.abs(projectile.x - startX);
+            if (traveled > 860) {
+              projectile.destroy();
+              return false;
+            }
+            return true;
+          });
+        }
+
+        if (debugGraphics) {
+          debugGraphics.clear();
+
+          if (quizPlayer && quizPlayer.body) {
+            drawDebugBox(debugGraphics, quizPlayer, 0x00ff00);
+          }
+          if (quizNPC && quizNPC.body) {
+            drawDebugBox(debugGraphics, quizNPC, 0x0000ff);
+          }
+
+          answerObjects.forEach((obj) => {
+            if (obj.sprite && obj.sprite.active && obj.sprite.body) {
+              drawDebugBox(debugGraphics, obj.sprite, 0xff0000);
+            }
+          });
+
+          if (quizAttackHitbox && quizAttackHitbox.body && quizAttackHitbox.body.enable) {
+            drawDebugBox(debugGraphics, quizAttackHitbox, 0x00ffff);
+          }
+
+          activeQuizArrows.forEach((arrow) => {
+            if (arrow && arrow.active && arrow.body) {
+              drawDebugBox(debugGraphics, arrow, 0x22d3ee);
+            }
+          });
+
+          activeQuizProjectiles.forEach((projectile) => {
+            if (projectile && projectile.active && projectile.body && projectile.body.enable) {
+              drawDebugBox(debugGraphics, projectile, 0xa855f7);
+            }
+          });
+        }
       }
 
       if (gameState === 'boss' && bossFightManager) {
-        bossFightManager.update();
+        bossFightManager.update(time, delta);
       }
     };
 
@@ -597,10 +973,10 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       gameState = 'complete';
       this.children.removeAll(true);
 
-      const bg = this.add.rectangle(640, 360, 1280, 720, 0x1a0d2e);
+      const bg = this.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
       bg.setDepth(-10);
 
-      const resultBg = this.add.rectangle(640, 360, 900, 600, 0x2d1b4e, 1);
+      const resultBg = this.add.rectangle(640, 320, 900, 560, 0x2d1b4e, 1);
       resultBg.setStrokeStyle(4, 0xa78bfa);
 
       this.add
@@ -638,9 +1014,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       if (victory) {
         const victoryItems = [
-          { id: `item_${Date.now()}_1`, name: 'Legendary Sword', description: 'Legendary weapon', icon: '⚔️', rarity: 'epic' },
-          { id: `item_${Date.now()}_2`, name: 'Dragon Scale Armor', description: 'Impenetrable armor', icon: '🛡️', rarity: 'epic' },
-          { id: `item_${Date.now()}_3`, name: 'Crown of Wisdom', description: 'Grants knowledge', icon: '👑', rarity: 'legendary' },
+          { id: `item_${Date.now()}_1`, name: 'Legendary Sword', description: 'Legendary weapon', icon: 'Sword', rarity: 'epic' },
+          { id: `item_${Date.now()}_2`, name: 'Dragon Scale Armor', description: 'Impenetrable armor', icon: 'Shield', rarity: 'epic' },
+          { id: `item_${Date.now()}_3`, name: 'Crown of Wisdom', description: 'Grants knowledge', icon: 'Crown', rarity: 'legendary' },
         ];
         const item = victoryItems[Math.floor(Math.random() * victoryItems.length)];
         itemsEarned.push(item);
@@ -667,7 +1043,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       type: Phaser.AUTO,
       parent: gameRef.current,
       width: 1280,
-      height: 736,
+      height: 640,
       pixelArt: true,
       physics: {
         default: 'arcade',
@@ -686,8 +1062,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         create: function () {
           createQuestScene.call(this);
         },
-        update: function () {
-          updateQuestScene.call(this);
+        update: function (time, delta) {
+          updateQuestScene.call(this, time, delta);
         },
       },
       backgroundColor: '#1a0d2e',

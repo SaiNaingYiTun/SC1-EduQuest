@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { BossFightManager } from './BossFightManager';
 import { Warrior } from './characters/Warrior';
+import { Mage } from './characters/Mage';
+import { Archer } from './characters/Archer';
+import { Necromancer } from './characters/Necromancer';
 import { Boss } from './characters/Boss';
 
 export default function PhaserQuestGame({ quest, character, onQuestComplete, onBack }) {
@@ -70,8 +73,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       let messageIndex = 0;
 
-      dialogueText = this.add
-        .text(640, 600, messages[messageIndex], {
+      dialogueText = this.add        .text(640, 600, messages[messageIndex], {
           fontSize: '18px',
           color: '#ffffff',
           fontFamily: 'monospace',
@@ -80,8 +82,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         })
         .setOrigin(0.5);
 
-      const continueText = this.add
-        .text(1150, 680, '▼', {
+      const continueText = this.add        .text(1150, 600, '▼', {
           fontSize: '24px',
           color: '#fbbf24',
         })
@@ -89,7 +90,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       this.tweens.add({
         targets: continueText,
-        y: 690,
+        y: 610,
         duration: 500,
         yoyo: true,
         repeat: -1,
@@ -119,16 +120,14 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       const questionBg = this.add.rectangle(640, 180, 1100, 180, 0x2d1b4e, 1);
       questionBg.setStrokeStyle(4, 0xa78bfa);
 
-      questionText = this.add
-        .text(640, 140, `Question ${currentQuestionIndex + 1}/${quest.questions.length}`, {
+      questionText = this.add        .text(640, 140, `Question ${currentQuestionIndex + 1}/${quest.questions.length}`, {
           fontSize: '22px',
           color: '#fbbf24',
           fontFamily: 'monospace',
         })
         .setOrigin(0.5);
 
-      const qText = this.add
-        .text(640, 195, question.question, {
+      const qText = this.add        .text(640, 195, question.question, {
           fontSize: '20px',
           color: '#ffffff',
           fontFamily: 'monospace',
@@ -161,8 +160,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         button.setStrokeStyle(3, 0x7c3aed);
         button.setInteractive({ useHandCursor: true });
 
-        const label = this.add
-          .text(0, 0, `${String.fromCharCode(65 + index)}. ${opt.text}`, {
+        const label = this.add        .text(0, 0, `${String.fromCharCode(65 + index)}. ${opt.text}`, {
             fontSize: '18px',
             color: '#ffffff',
             fontFamily: 'monospace',
@@ -207,16 +205,14 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       const message = isCorrect ? 'Correct! +100 HP' : 'Incorrect! No HP gained';
       const color = isCorrect ? '#10b981' : '#ef4444';
 
-      const msgText = this.add
-        .text(640, 320, message, {
+      const msgText = this.add        .text(640, 320, message, {
           fontSize: '36px',
           color,
           fontFamily: 'monospace',
         })
         .setOrigin(0.5);
 
-      const hpText = this.add
-        .text(640, 410, `Player HP: ${playerHP}/${maxPlayerHP}`, {
+      const hpText = this.add        .text(640, 410, `Player HP: ${playerHP}/${maxPlayerHP}`, {
           fontSize: '28px',
           color: '#ffffff',
           fontFamily: 'monospace',
@@ -258,25 +254,33 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     const preloadQuestScene = function () {
       // Preload character sprites
       Warrior.preload(this);
+      Mage.preload(this);
+      Archer.preload(this);
+      Necromancer.preload(this);
       Boss.preload(this);
 
       // Tilemap
       this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
+      this.load.tilemapTiledJSON('bmap1', 'assets/maps/bmap1.json');
       this.load.image('bwtiles1', 'assets/maps/tiles/bwtiles1.png');
+      this.load.image('door', 'assets/maps/tiles/door.png');
+      this.load.image('bg2', 'assets/maps/tiles/bg2.png');
+      this.load.image('tree', 'assets/maps/tiles/tree.png');
+      this.load.image('extra', 'assets/maps/tiles/extra.png');
+      this.load.image('extra2', 'assets/maps/tiles/extra2.png');
     };
 
     const createQuestScene = function () {
       setIsLoading(false);
 
-      const bg = this.add.rectangle(640, 360, 1280, 720, 0x1a0d2e);
+      const bg = this.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
       bg.setDepth(-10);
 
       const stars = this.add.graphics();
       stars.fillStyle(0xffffff, 0.8);
-      for (let i = 0; i < 100; i++) stars.fillRect(Math.random() * 1280, Math.random() * 720, 2, 2);
+      for (let i = 0; i < 100; i++) stars.fillRect(Math.random() * 1280, Math.random() * 640, 2, 2);
 
-      timerText = this.add
-        .text(640, 40, `Time: ${formatTime(timeRemaining)}`, {
+      timerText = this.add        .text(640, 40, `Time: ${formatTime(timeRemaining)}`, {
           fontSize: '28px',
           color: '#fbbf24',
           fontFamily: 'monospace',
@@ -295,6 +299,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
       // Create animations
       Warrior.createAnimations(this);
+      Mage.createAnimations(this);
+      Archer.createAnimations(this);
+      Necromancer.createAnimations(this);
       Boss.createAnimations(this);
 
       showIntroDialogue.call(this);
@@ -310,30 +317,27 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       gameState = 'complete';
       this.children.removeAll(true);
 
-      const bg = this.add.rectangle(640, 360, 1280, 720, 0x1a0d2e);
+      const bg = this.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
       bg.setDepth(-10);
 
-      const resultBg = this.add.rectangle(640, 360, 900, 600, 0x2d1b4e, 1);
+      const resultBg = this.add.rectangle(640, 320, 900, 560, 0x2d1b4e, 1);
       resultBg.setStrokeStyle(4, 0xa78bfa);
 
-      this.add
-        .text(640, 120, victory ? 'VICTORY!' : 'Quest Failed!', {
+      this.add        .text(640, 120, victory ? 'VICTORY!' : 'Quest Failed!', {
           fontSize: '54px',
           color: victory ? '#10b981' : '#ef4444',
           fontFamily: 'monospace',
         })
         .setOrigin(0.5);
 
-      this.add
-        .text(640, 220, `Questions Answered: ${score}/${quest.questions.length}`, {
+      this.add        .text(640, 220, `Questions Answered: ${score}/${quest.questions.length}`, {
           fontSize: '32px',
           color: '#ffffff',
           fontFamily: 'monospace',
         })
         .setOrigin(0.5);
 
-      this.add
-        .text(640, 280, `Final HP: ${playerHP > 0 ? playerHP : 0}/${maxPlayerHP}`, {
+      this.add        .text(640, 280, `Final HP: ${playerHP > 0 ? playerHP : 0}/${maxPlayerHP}`, {
           fontSize: '28px',
           color: '#fbbf24',
           fontFamily: 'monospace',
@@ -341,8 +345,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         .setOrigin(0.5);
 
       const percentage = Math.round((score / quest.questions.length) * 100);
-      this.add
-        .text(640, 340, `Accuracy: ${percentage}%`, {
+      this.add        .text(640, 340, `Accuracy: ${percentage}%`, {
           fontSize: '28px',
           color: percentage >= 70 ? '#10b981' : '#f59e0b',
           fontFamily: 'monospace',
@@ -358,8 +361,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         const item = victoryItems[Math.floor(Math.random() * victoryItems.length)];
         itemsEarned.push(item);
 
-        this.add
-          .text(640, 420, `Boss Dropped: ${item.icon} ${item.name}!`, {
+        this.add        .text(640, 420, `Boss Dropped: ${item.icon} ${item.name}!`, {
             fontSize: '24px',
             color: '#a78bfa',
             fontFamily: 'monospace',
@@ -380,7 +382,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       type: Phaser.AUTO,
       parent: gameRef.current,
       width: 1280,
-      height: 736,
+      height: 640,
       pixelArt: true,
       physics: {
         default: 'arcade',
@@ -435,3 +437,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     </div>
   );
 }
+
+
+

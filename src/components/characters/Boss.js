@@ -26,6 +26,16 @@ export class Boss extends BaseCharacter {
       frameHeight: 200,
     });
 
+    scene.load.spritesheet('boss_take_hit', 'assets/sprites/war_boss/Take_Hit.png', {
+      frameWidth: 200,
+      frameHeight: 200,
+    });
+
+    scene.load.spritesheet('boss_death', 'assets/sprites/war_boss/Death.png', {
+      frameWidth: 200,
+      frameHeight: 200,
+    });
+
     console.log('Boss sprites queued for loading');
   }
 
@@ -36,11 +46,15 @@ export class Boss extends BaseCharacter {
     const idleTex = scene.textures.get('boss_idle');
     const attack1Tex = scene.textures.get('boss_attack_1');
     const attack2Tex = scene.textures.get('boss_attack_2');
+    const takeHitTex = scene.textures.get('boss_take_hit');
+    const deathTex = scene.textures.get('boss_death');
 
     console.log('Boss texture info:', {
       idle: idleTex.frameTotal,
       attack1: attack1Tex.frameTotal,
-      attack2: attack2Tex.frameTotal
+      attack2: attack2Tex.frameTotal,
+      takeHit: takeHitTex.frameTotal,
+      death: deathTex.frameTotal
     });
 
     // Create idle animation
@@ -79,6 +93,28 @@ export class Boss extends BaseCharacter {
     } else {
       console.error('❌ Cannot create boss_attack_2_anim - frameTotal:', attack2Tex.frameTotal);
     }
+
+    // Create take hit animation
+    if (!scene.anims.exists('boss_take_hit_anim') && takeHitTex.frameTotal > 1) {
+      scene.anims.create({
+        key: 'boss_take_hit_anim',
+        frames: scene.anims.generateFrameNumbers('boss_take_hit', { start: 0, end: Math.min(2, takeHitTex.frameTotal - 1) }),
+        frameRate: 10,
+        repeat: 0,
+      });
+      console.log('✅ Created boss_take_hit_anim');
+    }
+
+    // Create death animation
+    if (!scene.anims.exists('boss_death_anim') && deathTex.frameTotal > 1) {
+      scene.anims.create({
+        key: 'boss_death_anim',
+        frames: scene.anims.generateFrameNumbers('boss_death', { start: 0, end: Math.min(5, deathTex.frameTotal - 1) }),
+        frameRate: 8,
+        repeat: 0,
+      });
+      console.log('✅ Created boss_death_anim');
+    }
   }
 
   create(x, y) {
@@ -105,7 +141,7 @@ export class Boss extends BaseCharacter {
     if (!this.sprite || this.isDead) return;
 
     // Keep idle animation playing when not attacking
-    if (!this.isAttacking) {
+    if (!this.isAttacking && !this.isTakingHit) {
       const currentKey = this.sprite.anims.currentAnim?.key;
       if (!this.sprite.anims.isPlaying || currentKey !== 'boss_idle_anim') {
         if (this.scene.anims.exists('boss_idle_anim')) {
@@ -116,7 +152,7 @@ export class Boss extends BaseCharacter {
   }
 
   attack(onComplete) {
-    if (!this.sprite || this.isAttacking) return;
+    if (!this.sprite || this.isAttacking || this.isDead || this.isTakingHit) return;
 
     this.isAttacking = true;
     console.log('🔥 Boss attack initiated');
@@ -170,7 +206,73 @@ export class Boss extends BaseCharacter {
   }
 
   takeDamage(amount) {
+    if (!this.sprite || this.isDead || this.isTakingHit) return;
+
     console.log(`Boss took ${amount} damage`);
+    
+    this.isTakingHit = true;
+
+    // Play take hit animation if available
+    if (this.scene.anims.exists('boss_take_hit_anim')) {
+      this.sprite.play('boss_take_hit_anim');
+      
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'boss_take_hit_anim';
+      
+      const completeHandler = () => {
+        this.isTakingHit = false;
+        
+        // Return to idle or stay dead
+        if (!this.isDead && this.scene.anims.exists('boss_idle_anim')) {
+          this.sprite.play('boss_idle_anim', true);
+        }
+      };
+
+      this.sprite.once(eventKey, completeHandler);
+
+      // Fallback
+      this.scene.time.delayedCall(500, () => {
+        if (this.isTakingHit) {
+          this.sprite.off(eventKey, completeHandler);
+          completeHandler();
+        }
+      });
+    } else {
+      // No animation, just flash
+      this.isTakingHit = false;
+    }
+  }
+
+  die(onComplete) {
+    if (this.isDead) return;
+
+    this.isDead = true;
+    this.isAttacking = false;
+    this.isTakingHit = false;
+
+    console.log('💀 Boss death initiated');
+
+    // Play death animation if available
+    if (this.scene.anims.exists('boss_death_anim')) {
+      this.sprite.play('boss_death_anim');
+      
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'boss_death_anim';
+      
+      const completeHandler = () => {
+        console.log('✅ Boss death animation completed');
+        if (onComplete) onComplete();
+      };
+
+      this.sprite.once(eventKey, completeHandler);
+
+      // Fallback
+      this.scene.time.delayedCall(1500, () => {
+        this.sprite.off(eventKey, completeHandler);
+        completeHandler();
+      });
+    } else {
+      // No animation, immediate callback
+      if (onComplete) onComplete();
+    }
   }
 
   getAttacks() {
