@@ -123,16 +123,16 @@ export default function LeaderboardPage({
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-4xl text-amber-400 mb-2">Leaderboard</h2>
-        <p className="text-xl text-purple-200">Compete with fellow adventurers in your class</p>
+        <h2 className="text-4xl text-amber-400 mb-2 font-pixel">Leaderboard</h2>
+        <p className="text-xl text-purple-200 font-pixel">Compete with fellow adventurers in your class</p>
       </div>
 
       <div className="max-w-md mx-auto">
-        <label className="block text-purple-200 mb-2">Course</label>
+        <label className="block text-purple-200 mb-2 font-pixel">Course</label>
         <select
           value={selectedCourseId}
           onChange={(e) => setSelectedCourseId(e.target.value)}
-          className="w-full px-3 py-2 rounded-lg bg-slate-900/80 border border-purple-400/40 text-white"
+          className="w-full px-3 py-2 rounded-lg bg-slate-900/80 border border-purple-400/40 text-white font-pixel"
           disabled={enrolledCourses.length === 0}
         >
           {enrolledCourses.length === 0 ? (
@@ -148,17 +148,17 @@ export default function LeaderboardPage({
       </div>
 
       {error && (
-        <div className="bg-red-500/10 border border-red-400/40 text-red-200 rounded-xl px-4 py-3">
+        <div className="bg-red-500/10 border border-red-400/40 text-red-200 rounded-xl px-4 py-3 font-pixel">
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="text-center text-purple-200">Loading leaderboard...</div>
+        <div className="text-center text-purple-200 font-pixel">Loading leaderboard...</div>
       )}
 
       {!loading && !error && selectedCourseId && allPlayers.length === 0 && (
-        <div className="text-center text-purple-200">No ranked students in this course yet.</div>
+        <div className="text-center text-purple-200 font-pixel">No ranked students in this course yet.</div>
       )}
 
       {!loading && !error && allPlayers.length > 0 && (
@@ -168,13 +168,13 @@ export default function LeaderboardPage({
               <div className="flex items-center gap-4">
                 <div className="text-4xl">🏆</div>
                 <div>
-                  <div className="text-purple-200">Your Rank</div>
-                  <div className="text-3xl text-white">{currentPlayerRank > 0 ? `#${currentPlayerRank}` : 'Unranked'}</div>
+                  <div className="text-purple-200 font-pixel">Your Rank</div>
+                  <div className="text-3xl text-white font-pixel">{currentPlayerRank > 0 ? `#${currentPlayerRank}` : 'Unranked'}</div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-purple-200">Level {currentPlayer?.level ?? character?.level ?? 1}</div>
-                <div className="text-white">{currentPlayer?.xp ?? character?.xp ?? 0} XP</div>
+                <div className="text-purple-200 font-pixel">Level {currentPlayer?.level ?? character?.level ?? 1}</div>
+                <div className="text-white font-pixel">{currentPlayer?.xp ?? character?.xp ?? 0} XP</div>
               </div>
             </div>
           </div>
@@ -201,14 +201,14 @@ export default function LeaderboardPage({
                         {renderAvatar(player, rank === 1 ? 'w-24 h-24' : 'w-20 h-20')}
                       </div>
 
-                      <h3 className={`${rank === 1 ? 'text-2xl' : 'text-xl'} text-white mb-1 ${
+                      <h3 className={`${rank === 1 ? 'text-2xl' : 'text-xl'} text-white mb-1 font-pixel ${
                         isCurrentPlayer ? 'text-amber-400' : ''
                       }`}>
                         {player.name}
                         {isCurrentPlayer && ' (You)'}
                       </h3>
-                      <div className="text-purple-200 mb-2">{player.class}</div>
-                      <div className="flex items-center justify-center gap-3 text-sm">
+                      <div className="text-purple-200 mb-2 font-pixel">{player.class}</div>
+                      <div className="flex items-center justify-center gap-3 text-sm font-pixel">
                         <div className="flex items-center gap-1">
                           <Star className="w-4 h-4 text-amber-400" />
                           <span className="text-white">Lv. {player.level}</span>
@@ -224,7 +224,7 @@ export default function LeaderboardPage({
 
           {allPlayers.length > 3 && (
             <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 border-purple-400/30 backdrop-blur-sm">
-              <h3 className="text-2xl text-amber-400 mb-6">Rankings</h3>
+              <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Rankings</h3>
 
               <div className="space-y-3">
                 {allPlayers.slice(3).map((player, index) => {
@@ -248,19 +248,19 @@ export default function LeaderboardPage({
                         {renderAvatar(player, 'w-12 h-12')}
 
                         <div className="flex-1">
-                          <div className={`text-white ${isCurrentPlayer ? 'text-amber-400' : ''}`}>
+                          <div className={`text-white font-pixel ${isCurrentPlayer ? 'text-amber-400' : ''}`}>
                             {player.name}
                             {isCurrentPlayer && ' (You)'}
                           </div>
-                          <div className="text-sm text-purple-200">{player.class}</div>
+                          <div className="text-sm text-purple-200 font-pixel">{player.class}</div>
                         </div>
 
                         <div className="text-right">
-                          <div className="flex items-center gap-2 text-white">
+                          <div className="flex items-center gap-2 text-white font-pixel">
                             <Star className="w-4 h-4 text-amber-400" />
                             <span>Lv. {player.level}</span>
                           </div>
-                          <div className="text-sm text-purple-300">{player.xp} XP</div>
+                          <div className="text-sm text-purple-300 font-pixel">{player.xp} XP</div>
                         </div>
                       </div>
                     </div>

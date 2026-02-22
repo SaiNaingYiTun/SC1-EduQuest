@@ -196,17 +196,17 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
       {/* Page title row */}
       <div className="flex items-end justify-between gap-4 mb-6">
         <div>
-          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+          <div className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight font-pixel">
             Courses
           </div>
-          <div className="text-sm text-white/60 mt-1">
+          <div className="text-sm text-white/60 mt-1 font-pixel">
             Create courses, edit details, and manage enrollment.
           </div>
         </div>
 
         <div className="hidden sm:flex items-center gap-2 text-xs text-white/60">
-          <span className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/5">
-            Total courses: <span className="ml-1 text-white font-semibold">{courses.length}</span>
+          <span className="inline-flex items-center px-3 py-1 rounded-full border border-white/10 bg-white/5 font-pixel">
+            Total courses: <span className="ml-1 text-white font-semibold font-pixel">{courses.length}</span>
           </span>
         </div>
       </div>
@@ -214,8 +214,8 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
       {/* Add Course (dark glass) */}
       <div className="rounded-2xl border border-white/10 bg-slate-950/45 backdrop-blur-xl shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] p-6 mb-10">
         <div className="flex items-center justify-between gap-4 mb-4">
-          <h3 className="text-lg font-semibold text-white">Add New Course</h3>
-          <span className="text-xs text-white/50">Name + Section required</span>
+          <h3 className="text-lg font-semibold text-white font-pixel">Add New Course</h3>
+          <span className="text-xs text-white/50 font-pixel">Name + Section required</span>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -251,8 +251,8 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
       {/* Courses grid */}
       {courses.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-10 text-center">
-          <p className="text-white/70 text-lg">You haven't created any courses yet.</p>
-          <p className="text-white/40 text-sm mt-2">Use the form above to create your first course.</p>
+          <p className="text-white/70 text-lg font-pixel">You haven't created any courses yet.</p>
+          <p className="text-white/40 text-sm mt-2 font-pixel">Use the form above to create your first course.</p>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 gap-6">
@@ -287,10 +287,10 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                   <div className={`absolute left-0 top-6 bottom-6 w-1.5 ${colorClass[color]} rounded-r`} />
 
                   <div className="pl-4">
-                    <div className="text-xl sm:text-2xl font-extrabold tracking-wide text-white">
+                    <div className="text-xl sm:text-2xl font-extrabold tracking-wide text-white font-pixel">
                       {course.name}
                     </div>
-                    <div className="text-sm text-white/60 mt-2">
+                    <div className="text-sm text-white/60 mt-2 font-pixel">
                       SECTION {course.section || "-"}
                     </div>
 
@@ -303,7 +303,7 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                     </div>
 
                     {status === COURSE_STATUS.REJECTED && course.rejectionReason && (
-                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-200">
+                      <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-200 font-pixel">
                         <strong>Rejection reason:</strong> {course.rejectionReason}
                       </div>
                     )}
@@ -319,7 +319,7 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                           {loadingStudents ? "…" : count}
                         </div>
                       ) : (
-                        <div className="text-xs text-white/40">
+                        <div className="text-xs text-white/40 font-pixel">
                           {COURSE_STATUS_MESSAGES[status]}
                         </div>
                       )}
@@ -383,24 +383,30 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
               ✕
             </button>
 
-            <h3 className="text-2xl font-extrabold mb-1">
+            <h3 className="text-2xl font-extrabold mb-1 font-pixel">
               {selectedCourse.name}{" "}
               {selectedCourse.section ? (
                 <span className="text-white/60 font-semibold">({selectedCourse.section})</span>
               ) : null}
             </h3>
 
-            <div className="mb-4 text-white/70">
+            {selectedCourse && (
+              <div className="mb-4 text-white/70 font-pixel">
+                <span className="font-semibold text-white">Course OTP Code:</span> {selectedCourse.otpCode}
+              </div>
+            )}
+
+            <div className="mb-4 text-white/70 font-pixel">
               <span className="font-semibold text-white">Students:</span>{" "}
               {loadingStudents ? "Loading..." : selectedCourseStudents.length}
             </div>
 
-            <div className="mb-2 font-semibold text-white">Members</div>
+            <div className="mb-2 font-semibold text-white font-pixel">Members</div>
             <ul className="space-y-2 max-h-60 overflow-auto pr-1">
               {loadingStudents ? (
-                <li className="text-white/40">Loading...</li>
+                <li className="text-white/40 font-pixel">Loading...</li>
               ) : selectedCourseStudents.length === 0 ? (
-                <li className="text-white/40">No students enrolled.</li>
+                <li className="text-white/40 font-pixel">No students enrolled.</li>
               ) : (
                 selectedCourseStudents.map((stu) => (
                   <li
@@ -408,10 +414,10 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
                     className="flex items-center justify-between gap-3 rounded-xl
                                border border-white/10 bg-white/5 px-3 py-2"
                   >
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm font-medium text-white font-pixel">
                       {stu.name || stu.username}
                     </span>
-                    <span className="text-xs text-white/60">{stu.email}</span>
+                    <span className="text-xs text-white/60 font-pixel">{stu.email}</span>
                   </li>
                 ))
               )}
@@ -433,11 +439,11 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
               ✕
             </button>
 
-            <h3 className="text-xl font-extrabold mb-4">Edit Course</h3>
+            <h3 className="text-xl font-extrabold mb-4 font-pixel">Edit Course</h3>
 
             <div className="space-y-3">
               <div>
-                <label className="text-sm text-white/70">Course name</label>
+                <label className="text-sm text-white/70 font-pixel">Course name</label>
                 <input
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
@@ -447,7 +453,7 @@ export default function CourseManagement({ user, authFetch, onCoursesChange, onA
               </div>
 
               <div>
-                <label className="text-sm text-white/70">Section</label>
+                <label className="text-sm text-white/70 font-pixel">Section</label>
                 <input
                   value={editSection}
                   onChange={(e) => setEditSection(e.target.value)}

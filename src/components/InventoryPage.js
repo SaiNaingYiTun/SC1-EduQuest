@@ -33,17 +33,17 @@ export default function InventoryPage({ inventory = [] }) {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-4xl text-amber-400">Inventory</h2>
-          <p className="text-purple-200">Items earned from quests</p>
+          <h2 className="text-4xl text-amber-400 font-pixel">Inventory</h2>
+          <p className="text-purple-200 font-pixel">Items earned from quests</p>
         </div>
-        <div className="text-purple-200">{inventory.length} items</div>
+        <div className="text-purple-200 font-pixel">{inventory.length} items</div>
       </div>
 
       {inventory.length === 0 ? (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Package className="w-14 h-14 mx-auto mb-4 text-purple-400/60" />
-          <h3 className="text-2xl text-white mb-2">No Items Yet</h3>
-          <p className="text-purple-200">Complete quests to earn rewards.</p>
+          <h3 className="text-2xl text-white mb-2 font-pixel">No Items Yet</h3>
+          <p className="text-purple-200 font-pixel">Complete quests to earn rewards.</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -69,15 +69,15 @@ export default function InventoryPage({ inventory = [] }) {
                   </div>
 
                   <div className="flex-1">
-                    <div className="text-white font-semibold">
+                    <div className="text-white font-semibold font-pixel">
                       {item?.name || 'Unknown Item'}
                     </div>
-                    <div className="text-sm text-purple-200">
+                    <div className="text-sm text-purple-200 font-pixel">
                       {item?.description || 'No description available.'}
                     </div>
                   </div>
 
-                  <div className={`text-xs px-2 py-1 rounded-full uppercase tracking-wide ${theme.badge}`}>
+                  <div className={`text-xs px-2 py-1 rounded-full uppercase tracking-wide ${theme.badge} font-pixel`}>
                     {formatRarity(rarity)}
                   </div>
                 </div>
