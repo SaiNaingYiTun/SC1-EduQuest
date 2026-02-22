@@ -4,7 +4,7 @@ import { BossFightManager } from './BossFightManager';
 import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
-import { Necromancer } from './characters/Necromancer';
+import { Witch } from './characters/Witch';
 import { Boss } from './characters/Boss';
 import { CHARACTER_CONFIG } from './characters/constants/characterConfig';
 
@@ -54,6 +54,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     let activeQuizArrows = [];
     let activeQuizProjectiles = [];
     let debugGraphics = null;
+    const showDebugHitboxes = false;
 
     let dialogueBox;
     let dialogueText;
@@ -87,7 +88,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           Warrior: { x: 140, y: 620 },
           Mage: { x: 140, y: 580 },
           Archer: { x: 140, y: 600 },
-          Necromancer: { x: 140, y:590 },
+          Witch: { x: 140, y:590 },
         },
         questMasterSpawn: { x: 280, y: 500 }, // same as current code
       },
@@ -96,7 +97,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           Warrior: { x: 60, y: 230 },
           Mage: { x: 60, y: 190 },
           Archer: { x: 60, y: 210 },
-          Necromancer: { x: 60, y: 200 },
+          Witch: { x: 60, y: 200 },
         },
         questMasterSpawn: { x: 340, y: 215 },
       },
@@ -105,7 +106,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           Warrior: { x: 480, y: 600 },
           Mage: { x: 480, y: 560 },
           Archer: { x: 480, y: 580 },
-          Necromancer: { x: 480, y: 570 },
+          Witch: { x: 480, y: 570 },
         },
         questMasterSpawn: { x: 620, y: 470 },
       },
@@ -382,14 +383,14 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       activeQuizArrows.push(arrow);
     };
 
-    const spawnQuizNecromancerProjectile = function (playerSprite, playerCenter) {
-      if (!this.textures.exists('necromancer_moving')) return;
+    const spawnQuizwitchProjectile = function (playerSprite, playerCenter) {
+      if (!this.textures.exists('witch_moving')) return;
 
       const direction = playerSprite.flipX ? -1 : 1;
       const startX = playerCenter.x + direction * 44;
       const startY = playerCenter.y - 12;
 
-      const projectile = this.physics.add.sprite(startX, startY, 'necromancer_moving');
+      const projectile = this.physics.add.sprite(startX, startY, 'witch_moving');
       projectile.setDepth(7);
       projectile.setScale(1.3);
       projectile.setFlipX(direction < 0);
@@ -400,8 +401,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       projectile.setData('startX', startX);
       projectile.setData('state', 'moving');
 
-      if (this.anims.exists('necromancer_projectile_move_anim')) {
-        projectile.play('necromancer_projectile_move_anim');
+      if (this.anims.exists('witch_projectile_move_anim')) {
+        projectile.play('witch_projectile_move_anim');
       }
 
       answerObjects.forEach((obj) => {
@@ -415,9 +416,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
             projectile.body.setEnable(false);
             projectile.body.setVelocity(0, 0);
 
-            if (this.anims.exists('necromancer_projectile_explode_anim')) {
-              projectile.play('necromancer_projectile_explode_anim');
-              const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_projectile_explode_anim';
+            if (this.anims.exists('witch_projectile_explode_anim')) {
+              projectile.play('witch_projectile_explode_anim');
+              const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'witch_projectile_explode_anim';
               projectile.once(eventKey, () => {
                 if (projectile.active) projectile.destroy();
               });
@@ -543,8 +544,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       quizPlayerCharacter.attack(() => {
         if (character.class === 'Archer') {
           spawnQuizArcherArrow.call(this, quizPlayer, playerCenter);
-        } else if (character.class === 'Necromancer') {
-          spawnQuizNecromancerProjectile.call(this, quizPlayer, playerCenter);
+        } else if (character.class === 'Witch') {
+          spawnQuizwitchProjectile.call(this, quizPlayer, playerCenter);
         } else {
           activateQuizHitbox.call(this, 140);
         }
@@ -565,8 +566,10 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       answerTextObjs = [];
       questionTextObj = null;
 
-      debugGraphics = this.add.graphics();
-      debugGraphics.setDepth(1000);
+      if (showDebugHitboxes) {
+        debugGraphics = this.add.graphics();
+        debugGraphics.setDepth(1000);
+      }
 
       this.physics.world.gravity.y = 600;
 
@@ -664,8 +667,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         case 'Archer':
           quizPlayerCharacter = new Archer(this, playerStartX, playerStartY);
           break;
-        case 'Necromancer':
-          quizPlayerCharacter = new Necromancer(this, playerStartX, playerStartY);
+        case 'Witch':
+          quizPlayerCharacter = new Witch(this, playerStartX, playerStartY);
           break;
         default:
           quizPlayerCharacter = new Warrior(this, playerStartX, playerStartY);
@@ -788,7 +791,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Warrior.preload(this);
       Mage.preload(this);
       Archer.preload(this);
-      Necromancer.preload(this);
+      Witch.preload(this);
       Boss.preload(this);
 
       this.load.spritesheet(QUEST_MASTER_CONFIG.textureKey, QUEST_MASTER_CONFIG.spriteSheetPath, {
@@ -812,6 +815,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       this.load.image('bg2', 'assets/maps/tiles/bg2.png');
       this.load.image('extra2', 'assets/maps/tiles/extra2.png');
       this.load.image('qmap_background', 'assets/maps/tiles/background.png');
+      this.load.image('boss_healthbar_background', 'assets/sprites/healthbar/boss-healthbar_background.png');
+      this.load.image('boss_healthbar_fill', 'assets/sprites/healthbar/boss-healthbar.png');
+      this.load.image('boss_healthbar_icon', 'assets/sprites/healthbar/boss-healthbar_Icon.png');
 
       this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
     };
@@ -822,7 +828,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Warrior.createAnimations(this);
       Mage.createAnimations(this);
       Archer.createAnimations(this);
-      Necromancer.createAnimations(this);
+      Witch.createAnimations(this);
       Boss.createAnimations(this);
 
       if (!this.anims.exists(QUEST_MASTER_CONFIG.animationKey)) {
@@ -930,7 +936,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           });
         }
 
-        if (debugGraphics) {
+        if (showDebugHitboxes && debugGraphics) {
           debugGraphics.clear();
 
           if (quizPlayer && quizPlayer.body) {
@@ -1049,10 +1055,10 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         default: 'arcade',
         arcade: {
           gravity: { y: 600, x: 0 },
-          debug: true,
-          debugShowBody: true,
-          debugShowStaticBody: true,
-          debugShowVelocity: true,
+          debug: false,
+          debugShowBody: false,
+          debugShowStaticBody: false,
+          debugShowVelocity: false,
         },
       },
       scene: {
@@ -1098,3 +1104,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     </div>
   );
 }
+
+
+

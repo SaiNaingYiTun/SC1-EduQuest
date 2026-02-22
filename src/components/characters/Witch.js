@@ -2,14 +2,14 @@ import { BaseCharacter } from './BaseCharacter';
 import { CHARACTER_CONFIG } from './constants/characterConfig';
 import Phaser from 'phaser';
 
-export class Necromancer extends BaseCharacter {
+export class Witch extends BaseCharacter {
   constructor(scene, x, y) {
-    super(scene, x, y, CHARACTER_CONFIG.Necromancer);
+    super(scene, x, y, CHARACTER_CONFIG.Witch);
 
     this.movementState = {
       isRunning: false,
       direction: 0,
-      currentAnim: 'necromancer_idle_anim',
+      currentAnim: 'witch_idle_anim',
     };
 
     this.controls = {
@@ -22,9 +22,9 @@ export class Necromancer extends BaseCharacter {
   }
 
   static preload(scene) {
-    const config = CHARACTER_CONFIG.Necromancer;
+    const config = CHARACTER_CONFIG.Witch;
     Object.entries(config.sprites).forEach(([key, spriteData]) => {
-      scene.load.spritesheet(`necromancer_${key}`, spriteData.path, {
+      scene.load.spritesheet(`witch_${key}`, spriteData.path, {
         frameWidth: spriteData.frameWidth,
         frameHeight: spriteData.frameHeight,
       });
@@ -32,7 +32,7 @@ export class Necromancer extends BaseCharacter {
   }
 
   static createAnimations(scene) {
-    const config = CHARACTER_CONFIG.Necromancer;
+    const config = CHARACTER_CONFIG.Witch;
 
     Object.entries(config.animations).forEach(([_, animData]) => {
       if (scene.anims.exists(animData.key)) return;
@@ -62,7 +62,7 @@ export class Necromancer extends BaseCharacter {
   }
 
   create(x, y) {
-    this.sprite = this.scene.physics.add.sprite(x, y, 'necromancer_idle');
+    this.sprite = this.scene.physics.add.sprite(x, y, 'witch_idle');
     this.sprite.setOrigin(0.5, 1);
     this.sprite.setScale(this.config.scale);
     this.sprite.setDepth(5);
@@ -74,7 +74,7 @@ export class Necromancer extends BaseCharacter {
     this.sprite.body.setMaxVelocity(physics.maxVelocity.x, physics.maxVelocity.y);
 
     this.setupControls();
-    this.playAnimation('necromancer_idle_anim');
+    this.playAnimation('witch_idle_anim');
   }
 
   setupControls() {
@@ -141,13 +141,13 @@ export class Necromancer extends BaseCharacter {
 
     const isGrounded = body.blocked.down || body.touching.down;
     if (!isGrounded) {
-      if (body.velocity.y < 0) this.playAnimation('necromancer_jump_anim');
-      else this.playAnimation('necromancer_fall_anim');
+      if (body.velocity.y < 0) this.playAnimation('witch_jump_anim');
+      else this.playAnimation('witch_fall_anim');
       return;
     }
 
-    if (this.movementState.isRunning) this.playAnimation('necromancer_run_anim');
-    else this.playAnimation('necromancer_idle_anim');
+    if (this.movementState.isRunning) this.playAnimation('witch_run_anim');
+    else this.playAnimation('witch_idle_anim');
   }
 
   attack(onComplete) {
@@ -166,7 +166,7 @@ export class Necromancer extends BaseCharacter {
 
     const completeHandler = () => {
       this.isAttacking = false;
-      this.playAnimation('necromancer_idle_anim');
+      this.playAnimation('witch_idle_anim');
       if (onComplete) onComplete();
     };
 
@@ -189,20 +189,20 @@ export class Necromancer extends BaseCharacter {
   }
 
   takeDamage(amount) {
-    console.log(`Necromancer took ${amount} damage`);
+    console.log(`Witch took ${amount} damage`);
     if (!this.sprite || this.isDead || this.isTakingHit) return;
 
     this.isTakingHit = true;
     this.isAttacking = false;
     this.sprite.body.setVelocityX(0);
 
-    if (this.scene.anims.exists('necromancer_take_hit_anim')) {
-      this.sprite.play('necromancer_take_hit_anim');
+    if (this.scene.anims.exists('witch_take_hit_anim')) {
+      this.sprite.play('witch_take_hit_anim');
 
-      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_take_hit_anim';
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'witch_take_hit_anim';
       const completeHandler = () => {
         this.isTakingHit = false;
-        if (!this.isDead) this.playAnimation('necromancer_idle_anim');
+        if (!this.isDead) this.playAnimation('witch_idle_anim');
       };
 
       this.sprite.once(eventKey, completeHandler);
@@ -226,10 +226,10 @@ export class Necromancer extends BaseCharacter {
     this.isTakingHit = false;
     this.sprite.body.setVelocity(0, 0);
 
-    if (this.scene.anims.exists('necromancer_death_anim')) {
-      this.sprite.play('necromancer_death_anim');
+    if (this.scene.anims.exists('witch_death_anim')) {
+      this.sprite.play('witch_death_anim');
 
-      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_death_anim';
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'witch_death_anim';
       let done = false;
       const completeHandler = () => {
         if (done) return;
@@ -256,3 +256,5 @@ export class Necromancer extends BaseCharacter {
     super.destroy();
   }
 }
+
+

@@ -4,7 +4,7 @@ import { BossFightManager } from './BossFightManager';
 import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
-import { Necromancer } from './characters/Necromancer';
+import { Witch } from './characters/Witch';
 import { Boss } from './characters/Boss';
 
 export default function PhaserQuestGame({ quest, character, onQuestComplete, onBack }) {
@@ -256,7 +256,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Warrior.preload(this);
       Mage.preload(this);
       Archer.preload(this);
-      Necromancer.preload(this);
+      Witch.preload(this);
       Boss.preload(this);
 
       // Tilemap
@@ -268,6 +268,9 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       this.load.image('tree', 'assets/maps/tiles/tree.png');
       this.load.image('extra', 'assets/maps/tiles/extra.png');
       this.load.image('extra2', 'assets/maps/tiles/extra2.png');
+      this.load.image('boss_healthbar_background', 'assets/sprites/healthbar/boss-healthbar_background.png');
+      this.load.image('boss_healthbar_fill', 'assets/sprites/healthbar/boss-healthbar.png');
+      this.load.image('boss_healthbar_icon', 'assets/sprites/healthbar/boss-healthbar_Icon.png');
     };
 
     const createQuestScene = function () {
@@ -301,7 +304,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Warrior.createAnimations(this);
       Mage.createAnimations(this);
       Archer.createAnimations(this);
-      Necromancer.createAnimations(this);
+      Witch.createAnimations(this);
       Boss.createAnimations(this);
 
       showIntroDialogue.call(this);
@@ -388,10 +391,10 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         default: 'arcade',
         arcade: {
           gravity: { y: 600, x: 0 },
-          debug: true,
-          debugShowBody: true,
-          debugShowStaticBody: true,
-          debugShowVelocity: true,
+          debug: false,
+          debugShowBody: false,
+          debugShowStaticBody: false,
+          debugShowVelocity: false,
         },
       },
       scene: {
@@ -437,6 +440,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     </div>
   );
 }
+
+
 
 
 

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
-import { Necromancer } from './characters/Necromancer';
+import { Witch } from './characters/Witch';
 import { Boss } from './characters/Boss';
 
 export class BossFightManager {
@@ -24,8 +24,16 @@ export class BossFightManager {
     this.hpBarBoss = null;
     this.playerHpLabel = null;
     this.bossHpLabel = null;
+    this.bossHpBarIcon = null;
+    this.bossHpBarX = 0;
+    this.bossHpBarY = 0;
+    this.bossHpBarWidth = 0;
+    this.bossHpBarHeight = 0;
+    this.bossHpBarDisplayWidth = 0;
+    this.bossHpBarDisplayHeight = 0;
     this.combatText = null;
     this.debugGraphics = null;
+    this.showDebugHitboxes = false;
     this.chestLayer = null;
     this.chestCollider = null;
     this.chestPromptText = null;
@@ -49,18 +57,20 @@ export class BossFightManager {
     this.archerArrowSpeed = 650;
     this.archerArrowRange = 900;
     this.archerArrowHitbox = { width: 28, height: 8, offsetX: 10, offsetY: 0 };
-    this.activeNecromancerProjectiles = [];
-    this.necromancerProjectileSpeed = 520;
-    this.necromancerProjectileRange = 860;
-    this.necromancerProjectileHitbox = { width: 20, height: 20, offsetX: 10, offsetY: 16 };
+    this.activeWitchProjectiles = [];
+    this.witchProjectileSpeed = 520;
+    this.witchProjectileRange = 860;
+    this.witchProjectileHitbox = { width: 20, height: 20, offsetX: 10, offsetY: 16 };
   }
 
   start() {
     this.scene.children.removeAll(true);
 
     // ✅ Create debug graphics
-    this.debugGraphics = this.scene.add.graphics();
-    this.debugGraphics.setDepth(1000);
+    if (this.showDebugHitboxes) {
+      this.debugGraphics = this.scene.add.graphics();
+      this.debugGraphics.setDepth(1000);
+    }
 
     // Tilemap setup (new boss map)
     const map = this.scene.make.tilemap({ key: 'bmap1' });
@@ -102,12 +112,14 @@ export class BossFightManager {
     bg.setDepth(-10);
 
     this.scene.add
-      .text(640, 60, 'FINAL BOSS FIGHT!', {
-        fontSize: '52px',
+      .text(640, 612, 'FINAL BOSS FIGHT!', {
+        fontSize: '22px',
         color: '#ef4444',
         fontFamily: 'monospace',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(35);
 
     // this.combatText = this.scene.add
     //   .text(640, 530, 'Press ENTER to attack', {
@@ -132,23 +144,42 @@ export class BossFightManager {
 
     // HP bars
     this.hpBarPlayer = this.scene.add.graphics();
+    this.hpBarPlayer.setDepth(40);
     this.hpBarBoss = this.scene.add.graphics();
+    this.hpBarBoss.setDepth(40);
+
+    this.bossHpBarDisplayWidth = 360;
+    this.bossHpBarDisplayHeight = 12;
+    const hudCenterX = 640;
+    this.bossHpBarY = 40;
+    this.bossHpBarX = hudCenterX - this.bossHpBarDisplayWidth / 2;
+
+    this.bossHpBarIcon = this.scene.add
+      .image(this.bossHpBarX + 57, this.bossHpBarY, 'boss_healthbar_icon')
+      .setOrigin(0.5, 0.5)
+      .setScale(1)
+      .setDisplaySize(200, 50)
+      .setScrollFactor(0)
+      .setDepth(41);
 
     this.playerHpLabel = this.scene.add
-      .text(380, 570, `Player HP: ${this.playerHP}/${this.maxPlayerHP}`, {
-        fontSize: '16px',
+      .text(0, 0, `HP ${this.playerHP}/${this.maxPlayerHP}`, {
+        fontSize: '14px',
         color: '#ffffff',
         fontFamily: 'monospace',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(41);
 
     this.bossHpLabel = this.scene.add
-      .text(900, 570, `Boss HP: ${this.bossHP}/${this.bossMaxHP}`, {
+      .text(640, this.bossHpBarY + 22, `Boss HP: ${this.bossHP}/${this.bossMaxHP}`, {
         fontSize: '16px',
         color: '#ffffff',
         fontFamily: 'monospace',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(32);
 
     this.updateHPBars();
 
@@ -166,8 +197,8 @@ export class BossFightManager {
       case 'Archer':
         this.playerCharacter = new Archer(this.scene, spawnX, spawnY);
         break;
-      case 'Necromancer':
-        this.playerCharacter = new Necromancer(this.scene, spawnX, spawnY);
+      case 'Witch':
+        this.playerCharacter = new Witch(this.scene, spawnX, spawnY);
         break;
       default:
         this.playerCharacter = new Warrior(this.scene, spawnX, spawnY);
@@ -245,38 +276,38 @@ export class BossFightManager {
     this.activeArcherArrows.push(arrow);
   }
 
-  spawnNecromancerProjectile(playerSprite, playerCenter, damage) {
-    if (!this.scene.textures.exists('necromancer_moving')) return;
+  spawnWitchProjectile(playerSprite, playerCenter, damage) {
+    if (!this.scene.textures.exists('witch_moving')) return;
 
     const direction = playerSprite.flipX ? -1 : 1;
     const startX = playerCenter.x + direction * 44;
     const startY = playerCenter.y - 12;
 
-    const projectile = this.scene.physics.add.sprite(startX, startY, 'necromancer_moving');
+    const projectile = this.scene.physics.add.sprite(startX, startY, 'witch_moving');
     projectile.setDepth(6);
     projectile.setScale(1.3);
     projectile.setFlipX(direction < 0);
     projectile.body.setAllowGravity(false);
-    projectile.body.setSize(this.necromancerProjectileHitbox.width, this.necromancerProjectileHitbox.height);
-    projectile.body.setOffset(this.necromancerProjectileHitbox.offsetX, this.necromancerProjectileHitbox.offsetY);
-    projectile.body.setVelocityX(direction * this.necromancerProjectileSpeed);
+    projectile.body.setSize(this.witchProjectileHitbox.width, this.witchProjectileHitbox.height);
+    projectile.body.setOffset(this.witchProjectileHitbox.offsetX, this.witchProjectileHitbox.offsetY);
+    projectile.body.setVelocityX(direction * this.witchProjectileSpeed);
     projectile.setData('damage', damage);
     projectile.setData('startX', startX);
     projectile.setData('state', 'moving');
 
-    if (this.scene.anims.exists('necromancer_projectile_move_anim')) {
-      projectile.play('necromancer_projectile_move_anim');
+    if (this.scene.anims.exists('witch_projectile_move_anim')) {
+      projectile.play('witch_projectile_move_anim');
     }
 
     this.scene.physics.add.overlap(
       projectile,
       this.bossCharacter.sprite,
-      () => this.handleNecromancerProjectileHit(projectile),
+      () => this.handleWitchProjectileHit(projectile),
       null,
       this
     );
 
-    this.activeNecromancerProjectiles.push(projectile);
+    this.activeWitchProjectiles.push(projectile);
   }
 
   handleArcherArrowHit(arrow) {
@@ -302,7 +333,7 @@ export class BossFightManager {
     }
   }
 
-  handleNecromancerProjectileHit(projectile) {
+  handleWitchProjectileHit(projectile) {
     if (!projectile || !projectile.active || !this.bossCharacter || !this.bossCharacter.sprite) return;
     if (projectile.getData('state') !== 'moving') return;
 
@@ -322,10 +353,10 @@ export class BossFightManager {
     });
     this.updateHPBars();
 
-    if (this.scene.anims.exists('necromancer_projectile_explode_anim')) {
-      projectile.play('necromancer_projectile_explode_anim');
-      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'necromancer_projectile_explode_anim';
-      const done = () => this.cleanupNecromancerProjectile(projectile);
+    if (this.scene.anims.exists('witch_projectile_explode_anim')) {
+      projectile.play('witch_projectile_explode_anim');
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'witch_projectile_explode_anim';
+      const done = () => this.cleanupWitchProjectile(projectile);
       projectile.once(eventKey, done);
       this.scene.time.delayedCall(450, () => {
         if (projectile.active) {
@@ -334,7 +365,7 @@ export class BossFightManager {
         }
       });
     } else {
-      this.cleanupNecromancerProjectile(projectile);
+      this.cleanupWitchProjectile(projectile);
     }
 
     if (this.bossHP <= 0) {
@@ -350,9 +381,9 @@ export class BossFightManager {
     }
   }
 
-  cleanupNecromancerProjectile(projectile) {
+  cleanupWitchProjectile(projectile) {
     if (!projectile) return;
-    this.activeNecromancerProjectiles = this.activeNecromancerProjectiles.filter((p) => p !== projectile);
+    this.activeWitchProjectiles = this.activeWitchProjectiles.filter((p) => p !== projectile);
     if (projectile.active) {
       projectile.destroy();
     }
@@ -538,6 +569,8 @@ export class BossFightManager {
       this.bossCharacter.update();
     }
 
+    this.updateHPBars();
+
     // Cleanup archer projectiles that traveled too far or out of world bounds
     if (this.activeArcherArrows.length > 0) {
       const worldWidth = this.scene.physics.world.bounds.width;
@@ -555,17 +588,17 @@ export class BossFightManager {
       });
     }
 
-    // Cleanup necromancer projectiles that traveled too far or out of world bounds
-    if (this.activeNecromancerProjectiles.length > 0) {
+    // Cleanup Witch projectiles that traveled too far or out of world bounds
+    if (this.activeWitchProjectiles.length > 0) {
       const worldWidth = this.scene.physics.world.bounds.width;
-      this.activeNecromancerProjectiles = this.activeNecromancerProjectiles.filter((projectile) => {
+      this.activeWitchProjectiles = this.activeWitchProjectiles.filter((projectile) => {
         if (!projectile || !projectile.active) return false;
         if (projectile.getData('state') === 'exploding') return true;
 
         const startX = Number(projectile.getData('startX')) || projectile.x;
         const traveled = Math.abs(projectile.x - startX);
         const offWorld = projectile.x < -50 || projectile.x > worldWidth + 50;
-        if (traveled > this.necromancerProjectileRange || offWorld) {
+        if (traveled > this.witchProjectileRange || offWorld) {
           projectile.destroy();
           return false;
         }
@@ -583,7 +616,7 @@ export class BossFightManager {
     }
 
     // ✅ Draw debug collision boxes
-    if (this.debugGraphics) {
+    if (this.showDebugHitboxes && this.debugGraphics) {
       this.debugGraphics.clear();
 
       // Draw player collision box (green)
@@ -610,8 +643,8 @@ export class BossFightManager {
           }
         });
       }
-      if (this.activeNecromancerProjectiles.length > 0) {
-        this.activeNecromancerProjectiles.forEach((projectile) => {
+      if (this.activeWitchProjectiles.length > 0) {
+        this.activeWitchProjectiles.forEach((projectile) => {
           if (projectile && projectile.active && projectile.body && projectile.body.enable) {
             this.drawDebugBox(this.debugGraphics, projectile, 0xa855f7);
           }
@@ -650,8 +683,8 @@ export class BossFightManager {
     this.playerCharacter.attack(() => {
       if (this.character.class === 'Archer') {
         this.spawnArcherArrow(playerSprite, playerCenter, damage);
-      } else if (this.character.class === 'Necromancer') {
-        this.spawnNecromancerProjectile(playerSprite, playerCenter, damage);
+      } else if (this.character.class === 'Witch') {
+        this.spawnWitchProjectile(playerSprite, playerCenter, damage);
       } else {
         this.pendingPlayerDamage = damage;
         this.activatePlayerHitbox(140);
@@ -662,8 +695,8 @@ export class BossFightManager {
         ? 'mage_idle_anim'
         : this.character.class === 'Archer'
           ? 'archer_idle_anim'
-          : this.character.class === 'Necromancer'
-            ? 'necromancer_idle_anim'
+          : this.character.class === 'Witch'
+            ? 'witch_idle_anim'
           : 'warrior_idle_anim';
       if (this.playerCharacter.sprite && this.scene.anims.exists(idleKey)) {
         this.playerCharacter.sprite.play(idleKey, true);
@@ -694,36 +727,50 @@ export class BossFightManager {
     });
   }
   updateHPBars() {
-    // Player bar
+    // Player bar (follows player)
     this.hpBarPlayer.clear();
-    this.hpBarPlayer.fillStyle(0x1f2937, 1);
-    this.hpBarPlayer.fillRect(80, 590, 600, 35);
+    if (this.playerCharacter?.sprite?.body) {
+      const body = this.playerCharacter.sprite.body;
+      const barWidth = 92;
+      const barHeight = 10;
+      const barX = body.center.x - barWidth / 2;
+      const barY = body.y - 18;
 
-    const playerFrac = this.maxPlayerHP ? this.playerHP / this.maxPlayerHP : 0;
-    const pct = playerFrac * 100;
-    const playerBarColor = pct > 50 ? 0x10b981 : pct > 25 ? 0xf59e0b : 0xef4444;
+      const playerFrac = this.maxPlayerHP ? this.playerHP / this.maxPlayerHP : 0;
+      const pct = playerFrac * 100;
+      const playerBarColor = pct > 50 ? 0x10b981 : pct > 25 ? 0xf59e0b : 0xef4444;
 
-    this.hpBarPlayer.fillStyle(playerBarColor, 1);
-    this.hpBarPlayer.fillRect(83, 593, Math.max(0, Math.min(1, playerFrac)) * 594, 29);
+      this.hpBarPlayer.fillStyle(0x111827, 0.95);
+      this.hpBarPlayer.fillRect(barX, barY, barWidth, barHeight);
+      this.hpBarPlayer.fillStyle(playerBarColor, 1);
+      this.hpBarPlayer.fillRect(barX + 1, barY + 1, Math.max(0, Math.min(1, playerFrac)) * (barWidth - 2), barHeight - 2);
 
-    if (this.playerHpLabel) {
-      this.playerHpLabel.setText(`Player HP: ${Math.max(0, this.playerHP)}/${this.maxPlayerHP}`);
+      if (this.playerHpLabel) {
+        this.playerHpLabel.setPosition(body.center.x, barY - 10);
+      }
     }
 
-    // Boss bar
-    this.hpBarBoss.clear();
-    this.hpBarBoss.fillStyle(0x1f2937, 1);
-    this.hpBarBoss.fillRect(600, 590, 600, 35);
-
+    // Boss bar (top HUD, red)
     const bossFrac = this.bossMaxHP ? this.bossHP / this.bossMaxHP : 0;
-    const bpct = bossFrac * 100;
-    const bossBarColor = bpct > 50 ? 0x10b981 : bpct > 25 ? 0xf59e0b : 0xef4444;
-
-    this.hpBarBoss.fillStyle(bossBarColor, 1);
-    this.hpBarBoss.fillRect(603, 593, Math.max(0, Math.min(1, bossFrac)) * 594, 29);
+    if (this.hpBarBoss) {
+      const clamped = Math.max(0, Math.min(1, bossFrac));
+      this.hpBarBoss.clear();
+      this.hpBarBoss.fillStyle(0x111827, 0.95);
+      this.hpBarBoss.fillRect(this.bossHpBarX, this.bossHpBarY - this.bossHpBarDisplayHeight / 2, this.bossHpBarDisplayWidth, this.bossHpBarDisplayHeight);
+      this.hpBarBoss.fillStyle(0xef4444, 1);
+      this.hpBarBoss.fillRect(
+        this.bossHpBarX + 1,
+        this.bossHpBarY - this.bossHpBarDisplayHeight / 2 + 1,
+        (this.bossHpBarDisplayWidth - 2) * clamped,
+        this.bossHpBarDisplayHeight - 2
+      );
+    }
 
     if (this.bossHpLabel) {
       this.bossHpLabel.setText(`Boss HP: ${Math.max(0, this.bossHP)}/${this.bossMaxHP}`);
+    }
+    if (this.playerHpLabel) {
+      this.playerHpLabel.setText(`HP ${Math.max(0, this.playerHP)}/${this.maxPlayerHP}`);
     }
   }
 
@@ -751,6 +798,21 @@ export class BossFightManager {
     if (this.debugGraphics) {
       this.debugGraphics.destroy();
     }
+    if (this.hpBarPlayer) {
+      this.hpBarPlayer.destroy();
+    }
+    if (this.playerHpLabel) {
+      this.playerHpLabel.destroy();
+    }
+    if (this.bossHpLabel) {
+      this.bossHpLabel.destroy();
+    }
+    if (this.hpBarBoss) {
+      this.hpBarBoss.destroy();
+    }
+    if (this.bossHpBarIcon) {
+      this.bossHpBarIcon.destroy();
+    }
     if (this.playerAttackHitbox) {
       this.playerAttackHitbox.destroy();
     }
@@ -771,13 +833,15 @@ export class BossFightManager {
       });
       this.activeArcherArrows = [];
     }
-    if (this.activeNecromancerProjectiles.length > 0) {
-      this.activeNecromancerProjectiles.forEach((projectile) => {
+    if (this.activeWitchProjectiles.length > 0) {
+      this.activeWitchProjectiles.forEach((projectile) => {
         if (projectile && projectile.active) {
           projectile.destroy();
         }
       });
-      this.activeNecromancerProjectiles = [];
+      this.activeWitchProjectiles = [];
     }
   }
 }
+
+
