@@ -160,6 +160,9 @@ export const BOSS_CONFIG = {
   spriteKey: 'boss',
   animations: {
     idle: { key: 'boss_idle_anim', sheet: 'boss_idle', frameRate: 8, repeat: -1, frames: { start: 0, end: 7 } },
+    run: { key: 'boss_run_anim', sheet: 'boss_run', frameRate: 10, repeat: -1, frames: { start: 0, end: 7 } },
+    jump: { key: 'boss_jump_anim', sheet: 'boss_jump', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
+    fall: { key: 'boss_fall_anim', sheet: 'boss_fall', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
     attack1: { key: 'boss_attack_1_anim', sheet: 'boss_attack_1', frameRate: 12, repeat: 0, frames: { start: 0, end: 5 } },
     attack2: { key: 'boss_attack_2_anim', sheet: 'boss_attack_2', frameRate: 12, repeat: 0, frames: { start: 0, end: 5 } },
     takeHit: { key: 'boss_take_hit_anim', sheet: 'boss_take_hit', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
@@ -167,6 +170,9 @@ export const BOSS_CONFIG = {
   },
   sprites: {
     idle: { path: 'assets/sprites/war_boss/Idle.png', frameWidth: 200, frameHeight: 200 },
+    run: { path: 'assets/sprites/war_boss/Run.png', frameWidth: 200, frameHeight: 200 },
+    jump: { path: 'assets/sprites/war_boss/Jump.png', frameWidth: 200, frameHeight: 200 },
+    fall: { path: 'assets/sprites/war_boss/Fall.png', frameWidth: 200, frameHeight: 200 },
     attack1: { path: 'assets/sprites/war_boss/Attack1.png', frameWidth: 200, frameHeight: 200 },
     attack2: { path: 'assets/sprites/war_boss/Attack2.png', frameWidth: 200, frameHeight: 200 },
     takeHit: { path: 'assets/sprites/war_boss/Take_Hit.png', frameWidth: 200, frameHeight: 200 },

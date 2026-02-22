@@ -38,12 +38,7 @@ export default function QuestsPage({
   }, [character.id]);
 
   const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
-    // const quest = quests.find(q => q.id === questId);
-    // if (!quest) return;
-
-    // Use both real quests and mock quests
-    const allQuests = [...MOCK_QUESTS, ...(quests || [])];
-    const quest = allQuests.find(q => q.id === questId);
+    const quest = (quests || []).find(q => q.id === questId);
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
@@ -105,33 +100,6 @@ export default function QuestsPage({
         return 'gray';
     }
   };
-
-  const hasRealQuests = Array.isArray(quests) && quests.length > 0;
-
-  // Always include mock quests; add real quests if present
-  const sourceQuests = [
-    ...MOCK_QUESTS,
-    ...(hasRealQuests ? quests : [])
-  ];
-
-  // Only filter real quests by class; mock quests are always visible
-  const availableQuests = sourceQuests.filter((quest) => {
-    if (quest.teacherId?.startsWith('mock')) return true;      // keep mock
-    if (!hasRealQuests) return true;                           // only mock
-    return studentClasses.includes(quest.teacherId);           // real quests
-  });
-
-  // const sourceQuests = quests && quests.length > 0 ? quests : MOCK_QUESTS;
-
-  // const availableQuests =
-  //   quests && quests.length > 0
-  //     ? sourceQuests.filter((quest) => studentClasses.includes(quest.teacherId))
-  //     : sourceQuests;
-
-  // Filter quests based on student's classes
-  // const availableQuests = quests.filter(quest => 
-  //   studentClasses.includes(quest.teacherId)
-  // );
 
   return (
     <div className="space-y-8">
@@ -201,9 +169,9 @@ export default function QuestsPage({
                 <h3 className="text-xl text-white mb-2 font-pixel">{quest.title}</h3>
                 <p className="text-purple-200 mb-4 font-pixel">{quest.description}</p>
 
-                {teacher || quest.teacherId?.startsWith('mock') ? (
+                {teacher ? (
                   <div className="text-sm text-purple-300 mb-4 font-pixel">
-                    By: {teacher ? teacher.name : 'Demo Dungeon Master'}
+                    By: {teacher.name}
                   </div>
                 ) : null}
 

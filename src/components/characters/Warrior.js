@@ -182,6 +182,9 @@ export class Warrior extends BaseCharacter {
   attack(onComplete) {
     if (this.isAttacking || this.isTakingHit || this.isDead || !this.sprite) return;
 
+    const currentKey = this.sprite.anims?.currentAnim?.key || '';
+    if (this.sprite.anims?.isPlaying && currentKey.includes('_attack')) return;
+
     this.isAttacking = true;
     const attackAnim = Phaser.Utils.Array.GetRandom(this.config.combat.attacks);
 
@@ -202,6 +205,7 @@ export class Warrior extends BaseCharacter {
     }
 
     this.sprite.play(attackAnim);
+    this.currentAnim = attackAnim;
 
     const completeHandler = () => {
       this.isAttacking = false;
@@ -209,13 +213,16 @@ export class Warrior extends BaseCharacter {
       if (onComplete) onComplete();
     };
 
-    this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, completeHandler);
+    const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + attackAnim;
+    this.sprite.once(eventKey, completeHandler);
 
     // Fallback timeout
-    this.scene.time.delayedCall(2000, () => {
+    const fallbackMs = Math.max(250, Math.ceil(((anim?.msPerFrame || (1000 / (anim?.frameRate || 10))) * (anim?.frames?.length || 1)) + 100));
+
+    this.scene.time.delayedCall(fallbackMs, () => {
       if (this.isAttacking) {
         console.warn('Warrior attack animation timeout, forcing completion');
-        this.sprite.off(Phaser.Animations.Events.ANIMATION_COMPLETE, completeHandler);
+        this.sprite.off(eventKey, completeHandler);
         completeHandler();
       }
     });
@@ -303,3 +310,5 @@ export class Warrior extends BaseCharacter {
     super.destroy();
   }
 }
+
+

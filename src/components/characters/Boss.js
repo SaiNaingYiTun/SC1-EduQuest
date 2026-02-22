@@ -15,6 +15,18 @@ export class Boss extends BaseCharacter {
       frameWidth: 200,
       frameHeight: 200,
     });
+    scene.load.spritesheet('boss_run', 'assets/sprites/war_boss/Run.png', {
+      frameWidth: 200,
+      frameHeight: 200,
+    });
+    scene.load.spritesheet('boss_jump', 'assets/sprites/war_boss/Jump.png', {
+      frameWidth: 200,
+      frameHeight: 200,
+    });
+    scene.load.spritesheet('boss_fall', 'assets/sprites/war_boss/Fall.png', {
+      frameWidth: 200,
+      frameHeight: 200,
+    });
 
     scene.load.spritesheet('boss_attack_1', 'assets/sprites/war_boss/Attack1.png', {
       frameWidth: 200,
@@ -44,6 +56,9 @@ export class Boss extends BaseCharacter {
     
     // Wait for textures to be ready
     const idleTex = scene.textures.get('boss_idle');
+    const runTex = scene.textures.get('boss_run');
+    const jumpTex = scene.textures.get('boss_jump');
+    const fallTex = scene.textures.get('boss_fall');
     const attack1Tex = scene.textures.get('boss_attack_1');
     const attack2Tex = scene.textures.get('boss_attack_2');
     const takeHitTex = scene.textures.get('boss_take_hit');
@@ -51,6 +66,9 @@ export class Boss extends BaseCharacter {
 
     console.log('Boss texture info:', {
       idle: idleTex.frameTotal,
+      run: runTex.frameTotal,
+      jump: jumpTex.frameTotal,
+      fall: fallTex.frameTotal,
       attack1: attack1Tex.frameTotal,
       attack2: attack2Tex.frameTotal,
       takeHit: takeHitTex.frameTotal,
@@ -66,6 +84,33 @@ export class Boss extends BaseCharacter {
         repeat: -1,
       });
       console.log('✅ Created boss_idle_anim');
+    }
+
+    if (!scene.anims.exists('boss_run_anim') && runTex.frameTotal > 1) {
+      scene.anims.create({
+        key: 'boss_run_anim',
+        frames: scene.anims.generateFrameNumbers('boss_run', { start: 0, end: Math.min(7, runTex.frameTotal - 1) }),
+        frameRate: 10,
+        repeat: -1,
+      });
+    }
+
+    if (!scene.anims.exists('boss_jump_anim') && jumpTex.frameTotal > 1) {
+      scene.anims.create({
+        key: 'boss_jump_anim',
+        frames: scene.anims.generateFrameNumbers('boss_jump', { start: 0, end: Math.min(5, jumpTex.frameTotal - 1) }),
+        frameRate: 10,
+        repeat: 0,
+      });
+    }
+
+    if (!scene.anims.exists('boss_fall_anim') && fallTex.frameTotal > 1) {
+      scene.anims.create({
+        key: 'boss_fall_anim',
+        frames: scene.anims.generateFrameNumbers('boss_fall', { start: 0, end: Math.min(5, fallTex.frameTotal - 1) }),
+        frameRate: 10,
+        repeat: 0,
+      });
     }
 
     // Create attack 1 animation
@@ -139,19 +184,27 @@ export class Boss extends BaseCharacter {
 
   update() {
     if (!this.sprite || this.isDead) return;
+    if (this.isAttacking || this.isTakingHit) return;
 
-    // Keep idle animation playing when not attacking
-    if (!this.isAttacking && !this.isTakingHit) {
-      const currentKey = this.sprite.anims.currentAnim?.key;
-      if (!this.sprite.anims.isPlaying || currentKey !== 'boss_idle_anim') {
-        if (this.scene.anims.exists('boss_idle_anim')) {
-          this.sprite.play('boss_idle_anim');
-        }
-      }
+    const body = this.sprite.body;
+    if (!body) return;
+    const grounded = body.blocked.down || body.touching.down;
+    const movingX = Math.abs(body.velocity.x) > 5;
+    const currentKey = this.sprite.anims.currentAnim?.key;
+
+    let targetKey = 'boss_idle_anim';
+    if (!grounded) {
+      targetKey = body.velocity.y < 0 ? 'boss_jump_anim' : 'boss_fall_anim';
+    } else if (movingX) {
+      targetKey = 'boss_run_anim';
+    }
+
+    if ((!this.sprite.anims.isPlaying || currentKey !== targetKey) && this.scene.anims.exists(targetKey)) {
+      this.sprite.play(targetKey, true);
     }
   }
 
-  attack(onComplete) {
+  attack(onComplete, preferredAttackKey = null) {
     if (!this.sprite || this.isAttacking || this.isDead || this.isTakingHit) return;
 
     this.isAttacking = true;
@@ -170,7 +223,9 @@ export class Boss extends BaseCharacter {
       return;
     }
 
-    const attack = Phaser.Utils.Array.GetRandom(availableAttacks);
+    const attack =
+      (preferredAttackKey && availableAttacks.find((atk) => atk.key === preferredAttackKey)) ||
+      Phaser.Utils.Array.GetRandom(availableAttacks);
     console.log('Playing boss attack:', attack.key);
 
     // Play attack animation

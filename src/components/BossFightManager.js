@@ -47,6 +47,15 @@ export class BossFightManager {
     this.lastBossAttackTime = 0;
     this.bossAttackTimer = 0;
     this.bossAttackCooldown = 3000; // Boss attacks every 3 seconds
+    this.bossChaseSpeed = 125;
+    this.bossDashSpeed = 240;
+    this.bossJumpVelocity = -420;
+    this.bossJumpHeightThreshold = 220;
+    this.bossMeleeRange = 150;
+    this.bossDashRange = 320;
+    this.bossApproachRange = 560;
+    this.bossStopRange = 95;
+    this.bossActionLocked = false;
     this.playerAttackActive = false;
     this.bossAttackActive = false;
     this.playerAttackHasHit = false;
@@ -606,10 +615,17 @@ export class BossFightManager {
       });
     }
 
+    this.updateBossAI(delta);
+
     // Update boss AI attack timer
     if (!this.bossDefeated) {
       this.bossAttackTimer += Number.isFinite(delta) ? delta : 0;
-      if (this.bossAttackTimer >= this.bossAttackCooldown && !this.bossCharacter.isAttacking) {
+      if (
+        this.bossAttackTimer >= this.bossAttackCooldown &&
+        !this.bossCharacter.isAttacking &&
+        !this.bossCharacter.isTakingHit &&
+        !this.bossActionLocked
+      ) {
         this.bossAttackTimer = 0;
         this.bossAttack();
       }
@@ -660,18 +676,15 @@ export class BossFightManager {
   }
 
   playerAttack() {
-    const now = Date.now();
-    const attackRate = this.playerCharacter.getAttackRate();
-    if (now - this.lastPlayerAttackTime < attackRate) return;
+    if (!this.playerCharacter || !this.playerCharacter.sprite) return;
+    if (this.playerCharacter.isDead || this.playerCharacter.isTakingHit) return;
+    if (this.playerCharacter.isAttacking) return;
 
     const damage = this.playerCharacter.getDamage();
 
     const playerSprite = this.playerCharacter.sprite;
     const playerCenter = this.getBodyCenter(playerSprite);
     if (!playerCenter) return;
-
-    this.isAttacking = true;
-    this.lastPlayerAttackTime = now;
 
     const playerHitboxHalfWidth = this.playerAttackHitbox.width / 2;
     const playerBodyHalfWidth = playerSprite.body.width / 2;
@@ -689,7 +702,6 @@ export class BossFightManager {
         this.pendingPlayerDamage = damage;
         this.activatePlayerHitbox(140);
       }
-      this.isAttacking = false;
 
       const idleKey = this.character.class === 'Mage'
         ? 'mage_idle_anim'
@@ -701,14 +713,101 @@ export class BossFightManager {
       if (this.playerCharacter.sprite && this.scene.anims.exists(idleKey)) {
         this.playerCharacter.sprite.play(idleKey, true);
       }
+
     });
   }
   bossAttack() {
-    if (!this.bossCharacter || this.bossCharacter.isAttacking) return;
+    if (!this.bossCharacter || this.bossCharacter.isAttacking || this.bossActionLocked) return;
+
+    const playerSprite = this.playerCharacter?.sprite;
+    const bossSprite = this.bossCharacter.sprite;
+    if (!playerSprite || !bossSprite) return;
+
+    const distanceX = Math.abs(playerSprite.x - bossSprite.x);
+    this.bossActionLocked = true;
+
+    // Pattern 1: Heavy melee if very close
+    if (distanceX <= this.bossStopRange + 20) {
+      this.executeBossAttack('boss_attack_2_anim', 190, () => {
+        this.bossActionLocked = false;
+      });
+      this.bossAttackCooldown = 1400;
+      return;
+    }
+
+    // Pattern 2: Dash then slash at mid range
+    if (distanceX <= this.bossDashRange && Math.random() < 0.55) {
+      const dashDirection = playerSprite.x >= bossSprite.x ? 1 : -1;
+      bossSprite.setFlipX(dashDirection < 0);
+      bossSprite.body.setVelocityX(dashDirection * this.bossDashSpeed);
+      this.scene.time.delayedCall(180, () => {
+        if (!this.bossCharacter || !this.bossCharacter.sprite || this.bossCharacter.isDead) {
+          this.bossActionLocked = false;
+          return;
+        }
+        this.bossCharacter.sprite.body.setVelocityX(0);
+        this.executeBossAttack('boss_attack_1_anim', 140, () => {
+          this.bossActionLocked = false;
+        });
+      });
+      this.bossAttackCooldown = 1600;
+      return;
+    }
+
+    // Pattern 3: Quick melee while approaching
+    this.executeBossAttack('boss_attack_1_anim', 130, () => {
+      this.bossActionLocked = false;
+    });
+    this.bossAttackCooldown = distanceX > this.bossDashRange ? 1800 : 1500;
+  }
+
+  updateBossAI(_delta) {
+    if (this.bossDefeated || !this.bossCharacter || !this.playerCharacter) return;
+    const bossSprite = this.bossCharacter.sprite;
+    const playerSprite = this.playerCharacter.sprite;
+    if (!bossSprite || !playerSprite || !bossSprite.body) return;
+
+    const dx = playerSprite.x - bossSprite.x;
+    const dy = playerSprite.y - bossSprite.y;
+    const distanceX = Math.abs(dx);
+    const dir = dx >= 0 ? 1 : -1;
+    bossSprite.setFlipX(dir < 0);
+
+    if (this.bossCharacter.isAttacking || this.bossCharacter.isTakingHit || this.bossCharacter.isDead || this.bossActionLocked) {
+      bossSprite.body.setVelocityX(0);
+      return;
+    }
+
+    const grounded = bossSprite.body.blocked.down || bossSprite.body.touching.down;
+    if (grounded && dy < -this.bossJumpHeightThreshold && distanceX <= this.bossApproachRange) {
+      bossSprite.body.setVelocityY(this.bossJumpVelocity);
+    }
+
+    if (distanceX > this.bossMeleeRange && distanceX <= this.bossApproachRange) {
+      bossSprite.body.setVelocityX(dir * this.bossChaseSpeed);
+      return;
+    }
+
+    if (distanceX < this.bossStopRange) {
+      bossSprite.body.setVelocityX(0);
+      return;
+    }
+
+    bossSprite.body.setVelocityX(0);
+  }
+
+  executeBossAttack(attackKey, hitboxDuration = 140, onDone) {
+    if (!this.bossCharacter || this.bossCharacter.isAttacking) {
+      if (onDone) onDone();
+      return;
+    }
 
     const bossSprite = this.bossCharacter.sprite;
     const bossCenter = this.getBodyCenter(bossSprite);
-    if (!bossCenter) return;
+    if (!bossCenter) {
+      if (onDone) onDone();
+      return;
+    }
 
     const bossHitboxHalfWidth = this.bossAttackHitbox.width / 2;
     const bossBodyHalfWidth = bossSprite.body.width / 2;
@@ -717,14 +816,21 @@ export class BossFightManager {
 
     this.bossAttackHitbox.setPosition(bossCenter.x + offsetX, bossCenter.y);
 
+    const wasAttacking = this.bossCharacter.isAttacking;
     this.bossCharacter.attack((damage) => {
       this.pendingBossDamage = damage;
-      this.activateBossHitbox(140);
+      this.activateBossHitbox(hitboxDuration);
 
       if (this.bossCharacter.sprite && this.scene.anims.exists('boss_idle_anim')) {
         this.bossCharacter.sprite.play('boss_idle_anim', true);
       }
-    });
+      if (onDone) onDone();
+    }, attackKey);
+
+    // If attack didn't actually start, unlock so AI doesn't get stuck.
+    if (wasAttacking === this.bossCharacter.isAttacking && !this.bossCharacter.isAttacking) {
+      if (onDone) onDone();
+    }
   }
   updateHPBars() {
     // Player bar (follows player)
@@ -843,5 +949,3 @@ export class BossFightManager {
     }
   }
 }
-
-

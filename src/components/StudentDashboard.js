@@ -24,7 +24,7 @@ export default function StudentDashboard({
   onUnlockAchievement,
   quests,
   inventory,
-  onStartQuest
+  onStartQuest,
   courses,
   authFetch
 }) {

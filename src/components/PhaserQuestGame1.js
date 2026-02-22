@@ -50,7 +50,6 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     let quizAttackHitbox = null;
     let quizAttackActive = false;
     let quizAttackHasHit = false;
-    let lastQuizAttackTime = 0;
     let activeQuizArrows = [];
     let activeQuizProjectiles = [];
     let debugGraphics = null;
@@ -328,12 +327,45 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           promptText.setColor('#22c55e');
         }
       } else {
-        beginRetryQuestion.call(this, 'WRONG TARGET! Retrying question...');
+        doorUnlocked = true;
+        hideAllDarkThings.call(this);
+
+        if (questionTextObj && questionTextObj.active) {
+          questionTextObj.setVisible(false);
+        }
+        answerTextObjs.forEach((textObj) => {
+          if (textObj && textObj.active) textObj.setVisible(false);
+        });
+
+        const wrongText = this.add
+          .text(640, 400, 'WRONG! No HP gained. Go to the door.', {
+            fontSize: '34px',
+            color: '#f59e0b',
+            fontFamily: 'monospace',
+            fontStyle: 'bold',
+          })
+          .setOrigin(0.5)
+          .setDepth(200);
+
+        this.tweens.add({
+          targets: wrongText,
+          alpha: 0,
+          duration: 1400,
+          delay: 1100,
+        });
+
+        if (promptText) {
+          promptText.setText('Wrong answer. No HP reward. Go collide with the door to continue.');
+          promptText.setColor('#f59e0b');
+        }
       }
     };
 
     const handleDarkThingContact = function () {
-      if (hasAnswered || isTransitioning || gameState !== 'quiz') return;
+      // Only punish contact after a question has been revealed.
+      if (hasAnswered || isTransitioning || gameState !== 'quiz' || !questionShown) return;
+      hasAnswered = true;
+      hideAllDarkThings.call(this);
       beginRetryQuestion.call(this, 'HIT BY DARK THING! Retrying question...');
     };
 
@@ -515,15 +547,11 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       });
     };
 
-    const updateQuizPlayerCombat = function () {
-      if (!quizPlayerCharacter || !quizPlayer || !quizAttackKey || gameState !== 'quiz' || isTransitioning) return;
-      if (hasAnswered) return;
-      if (!Phaser.Input.Keyboard.JustDown(quizAttackKey)) return;
-
-      const now = Date.now();
-      const attackRate = quizPlayerCharacter.getAttackRate();
-      if (now - lastQuizAttackTime < attackRate) return;
-      lastQuizAttackTime = now;
+    const performQuizPlayerAttack = function () {
+      if (!quizPlayerCharacter || !quizPlayer || gameState !== 'quiz' || isTransitioning || hasAnswered) return;
+      if (quizPlayerCharacter.isDead || quizPlayerCharacter.isTakingHit || quizPlayerCharacter.isAttacking) return;
+      const currentKey = quizPlayer.anims?.currentAnim?.key || '';
+      if (quizPlayer.anims?.isPlaying && currentKey.includes('_attack')) return;
 
       const playerCenter = quizPlayer.body?.center
         ? { x: quizPlayer.body.center.x, y: quizPlayer.body.center.y }
@@ -549,7 +577,15 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
         } else {
           activateQuizHitbox.call(this, 140);
         }
+
       });
+    };
+
+    const updateQuizPlayerCombat = function () {
+      if (!quizPlayerCharacter || !quizPlayer || !quizAttackKey || gameState !== 'quiz' || isTransitioning) return;
+      if (hasAnswered) return;
+      if (!Phaser.Input.Keyboard.JustDown(quizAttackKey)) return;
+      performQuizPlayerAttack.call(this);
     };
 
     const startQuizMiniGame = function () {

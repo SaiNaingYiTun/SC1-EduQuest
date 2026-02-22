@@ -153,6 +153,9 @@ export class Witch extends BaseCharacter {
   attack(onComplete) {
     if (this.isAttacking || this.isTakingHit || this.isDead || !this.sprite) return;
 
+    const currentKey = this.sprite.anims?.currentAnim?.key || '';
+    if (this.sprite.anims?.isPlaying && currentKey.includes('_attack')) return;
+
     this.isAttacking = true;
     const attackAnim = Phaser.Utils.Array.GetRandom(this.config.combat.attacks);
 
@@ -163,6 +166,7 @@ export class Witch extends BaseCharacter {
     }
 
     this.sprite.play(attackAnim);
+    this.currentAnim = attackAnim;
 
     const completeHandler = () => {
       this.isAttacking = false;
@@ -170,11 +174,15 @@ export class Witch extends BaseCharacter {
       if (onComplete) onComplete();
     };
 
-    this.sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, completeHandler);
+    const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + attackAnim;
+    this.sprite.once(eventKey, completeHandler);
 
-    this.scene.time.delayedCall(2000, () => {
+    const anim = this.scene.anims.get(attackAnim);
+    const fallbackMs = Math.max(250, Math.ceil(((anim?.msPerFrame || (1000 / (anim?.frameRate || 10))) * (anim?.frames?.length || 1)) + 100));
+
+    this.scene.time.delayedCall(fallbackMs, () => {
       if (this.isAttacking) {
-        this.sprite.off(Phaser.Animations.Events.ANIMATION_COMPLETE, completeHandler);
+        this.sprite.off(eventKey, completeHandler);
         completeHandler();
       }
     });
@@ -256,5 +264,8 @@ export class Witch extends BaseCharacter {
     super.destroy();
   }
 }
+
+
+
 
 

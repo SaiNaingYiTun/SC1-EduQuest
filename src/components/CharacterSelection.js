@@ -14,7 +14,7 @@ const characterClasses = [
     description: 'Strong and brave, excels in combat challenges',
     icon: '\u2694\uFE0F',
     avatar: warriorSprite,
-    idle: { src: '/assets/sprites/warrior/Idle.png', frameWidth: 135, frameHeight: 135, frameCount: 10, frameRate: 10, scale: 2.5, offsetX: 0, offsetY: 150 },
+    idle: { src: '/assets/sprites/warrior/Idle.png', frameWidth: 135, frameHeight: 135, frameCount: 10, frameRate: 10, scale: 2.5, offsetX: 0, offsetY: 160 },
     color: 'red'
   },
   {
@@ -23,7 +23,7 @@ const characterClasses = [
     description: 'Wise and intelligent, masters arcane knowledge',
     icon: '\uD83D\uDD2E',
     avatar: mageSprite,
-    idle: { src: '/assets/sprites/mage/Idle.png', frameWidth: 231, frameHeight: 190, frameCount: 6, frameRate: 6, scale: 1.65, offsetX: -20, offsetY: 75 },
+    idle: { src: '/assets/sprites/mage/Idle.png', frameWidth: 231, frameHeight: 190, frameCount: 6, frameRate: 6, scale: 1.65, offsetX: -20, offsetY: 76 },
     color: 'purple'
   },
   {
@@ -32,7 +32,7 @@ const characterClasses = [
     description: 'Precise and agile, strikes enemies from afar',
     icon: '\uD83C\uDFF9',
     avatar: archerSprite,
-    idle: { src: '/assets/sprites/archer/Idle.png', frameWidth: 100, frameHeight: 100, frameCount: 10, frameRate: 10, scale: 1.8, offsetX: 8, offsetY: 90 },
+    idle: { src: '/assets/sprites/archer/Idle.png', frameWidth: 100, frameHeight: 100, frameCount: 10, frameRate: 10, scale: 1.8, offsetX: 8, offsetY: 100 },
     color: 'green'
   },
   {
@@ -98,7 +98,7 @@ export default function CharacterSelection({ onCharacterCreated, userId }) {
           />
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {characterClasses.map((charClass) => (
             <button
               key={charClass.id}
