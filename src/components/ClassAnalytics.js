@@ -50,16 +50,16 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h2 className="text-4xl text-amber-400 mb-2">Class Analytics</h2>
-        <p className="text-xl text-purple-200">Track your class performance</p>
+        <h2 className="text-4xl text-amber-400 mb-2 font-pixel">Class Analytics</h2>
+        <p className="text-xl text-purple-200 font-pixel">Track your class performance</p>
         
       </div>
 
       {totalStudents === 0 ? (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Users className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
-          <h3 className="text-2xl text-white mb-2">No Data Available</h3>
-          <p className="text-purple-200">
+          <h3 className="text-2xl text-white mb-2 font-pixel">No Data Available</h3>
+          <p className="text-purple-200 font-pixel">
             Add students to your class to view analytics
           </p>
         </div>
@@ -70,48 +70,48 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
             <div className="bg-gradient-to-br from-blue-600/20 to-purple-600/20 rounded-xl p-6 border-2 border-blue-400/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-2">
                 <Users className="w-8 h-8 text-blue-400" />
-                <div className="text-3xl text-white">{totalStudents}</div>
+                <div className="text-3xl text-white font-pixel">{totalStudents}</div>
               </div>
-              <div className="text-purple-200">Total Students</div>
+              <div className="text-purple-200 font-pixel">Total Students</div>
             </div>
 
             <div className="bg-gradient-to-br from-green-600/20 to-emerald-600/20 rounded-xl p-6 border-2 border-green-400/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-2">
                 <TrendingUp className="w-8 h-8 text-green-400" />
-                <div className="text-3xl text-white">{avgLevel}</div>
+                <div className="text-3xl text-white font-pixel">{avgLevel}</div>
               </div>
-              <div className="text-purple-200">Average Level</div>
+              <div className="text-purple-200 font-pixel">Average Level</div>
             </div>
 
             <div className="bg-gradient-to-br from-amber-600/20 to-orange-600/20 rounded-xl p-6 border-2 border-amber-400/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-2">
                 <Award className="w-8 h-8 text-amber-400" />
-                <div className="text-3xl text-white">{totalXP}</div>
+                <div className="text-3xl text-white font-pixel">{totalXP}</div>
               </div>
-              <div className="text-purple-200">Total XP Earned</div>
+              <div className="text-purple-200 font-pixel">Total XP Earned</div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-600/20 to-pink-600/20 rounded-xl p-6 border-2 border-purple-400/30 backdrop-blur-sm">
               <div className="flex items-center gap-3 mb-2">
                 <Target className="w-8 h-8 text-purple-400" />
-                <div className="text-3xl text-white">{studentsWithCharacters}</div>
+                <div className="text-3xl text-white font-pixel">{studentsWithCharacters}</div>
               </div>
-              <div className="text-purple-200">Active Characters</div>
+              <div className="text-purple-200 font-pixel">Active Characters</div>
             </div>
           </div>
 
           {/* Level Distribution */}
           <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-            <h3 className="text-2xl text-amber-400 mb-6">Level Distribution</h3>
+            <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Level Distribution</h3>
             
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-green-500"></div>
-                    <span className="text-white">Beginner (Level 1-3)</span>
+                    <span className="text-white font-pixel">Beginner (Level 1-3)</span>
                   </div>
-                  <span className="text-purple-200">{levelDistribution.beginner} students</span>
+                  <span className="text-purple-200 font-pixel">{levelDistribution.beginner} students</span>
                 </div>
                 <div className="bg-slate-800/50 rounded-full h-4 overflow-hidden">
                   <div
@@ -125,9 +125,9 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-blue-500"></div>
-                    <span className="text-white">Intermediate (Level 4-7)</span>
+                    <span className="text-white font-pixel">Intermediate (Level 4-7)</span>
                   </div>
-                  <span className="text-purple-200">{levelDistribution.intermediate} students</span>
+                  <span className="text-purple-200 font-pixel">{levelDistribution.intermediate} students</span>
                 </div>
                 <div className="bg-slate-800/50 rounded-full h-4 overflow-hidden">
                   <div
@@ -141,9 +141,9 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-purple-500"></div>
-                    <span className="text-white">Advanced (Level 8-10)</span>
+                    <span className="text-white font-pixel">Advanced (Level 8-10)</span>
                   </div>
-                  <span className="text-purple-200">{levelDistribution.advanced} students</span>
+                  <span className="text-purple-200 font-pixel">{levelDistribution.advanced} students</span>
                 </div>
                 <div className="bg-slate-800/50 rounded-full h-4 overflow-hidden">
                   <div
@@ -157,9 +157,9 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 rounded bg-amber-500"></div>
-                    <span className="text-white">Expert (Level 11+)</span>
+                    <span className="text-white font-pixel">Expert (Level 11+)</span>
                   </div>
-                  <span className="text-purple-200">{levelDistribution.expert} students</span>
+                  <span className="text-purple-200 font-pixel">{levelDistribution.expert} students</span>
                 </div>
                 <div className="bg-slate-800/50 rounded-full h-4 overflow-hidden">
                   <div
@@ -174,7 +174,7 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
           {/* Top Performers */}
           {topPerformers.length > 0 && (
             <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-              <h3 className="text-2xl text-amber-400 mb-6">Top Performers</h3>
+              <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Top Performers</h3>
               
               <div className="space-y-4">
                 {topPerformers.map((performer, index) => {
@@ -199,15 +199,15 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
                         />
                         
                         <div className="flex-1">
-                          <div className="text-white">{student.name}</div>
-                          <div className="text-sm text-purple-200">
+                          <div className="text-white font-pixel">{student.name}</div>
+                          <div className="text-sm text-purple-200 font-pixel">
                             {character.name} • {character.class}
                           </div>
                         </div>
                         
                         <div className="text-right">
-                          <div className="text-white">Level {character.level}</div>
-                          <div className="text-sm text-purple-200">{character.xp} XP</div>
+                          <div className="text-white font-pixel">Level {character.level}</div>
+                          <div className="text-sm text-purple-200 font-pixel">{character.xp} XP</div>
                         </div>
                       </div>
                     </div>
@@ -219,16 +219,16 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
 
           {/* Engagement Stats */}
           <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-            <h3 className="text-2xl text-amber-400 mb-6">Engagement</h3>
+            <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Engagement</h3>
             
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-slate-800/50 rounded-lg p-6 border-2 border-purple-400/30">
                 <div className="text-center">
-                  <div className="text-5xl text-green-400 mb-2">
+                  <div className="text-5xl text-green-400 mb-2 font-pixel">
                     {totalStudents > 0 ? ((studentsWithCharacters / totalStudents) * 100).toFixed(0) : 0}%
                   </div>
-                  <div className="text-purple-200">Character Creation Rate</div>
-                  <div className="text-sm text-purple-300 mt-2">
+                  <div className="text-purple-200 font-pixel">Character Creation Rate</div>
+                  <div className="text-sm text-purple-300 mt-2 font-pixel">
                     {studentsWithCharacters} of {totalStudents} students created characters
                   </div>
                 </div>
@@ -236,11 +236,11 @@ export default function ClassAnalytics({ students, characters,selectedCourse }) 
 
               <div className="bg-slate-800/50 rounded-lg p-6 border-2 border-purple-400/30">
                 <div className="text-center">
-                  <div className="text-5xl text-blue-400 mb-2">
+                  <div className="text-5xl text-blue-400 mb-2 font-pixel">
                     {studentsWithCharacters > 0 ? Math.round(totalXP / studentsWithCharacters) : 0}
                   </div>
-                  <div className="text-purple-200">Avg XP per Active Student</div>
-                  <div className="text-sm text-purple-300 mt-2">
+                  <div className="text-purple-200 font-pixel">Avg XP per Active Student</div>
+                  <div className="text-sm text-purple-300 mt-2 font-pixel">
                     Total {totalXP} XP earned across all students
                   </div>
                 </div>

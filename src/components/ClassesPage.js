@@ -62,15 +62,15 @@ export default function ClassesPage({
       {/* Header row (match Inventory style) */}
       <div className="mt-10 mb-5 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-extrabold text-amber-300">My Classes</h1>
-          <p className="text-sm text-white/60 mt-1">
+          <h1 className="text-3xl font-extrabold text-amber-300 font-pixel">My Classes</h1>
+          <p className="text-sm text-white/60 mt-1 font-pixel">
             Join approved classes and view your enrolled courses.
           </p>
         </div>
 
         <div className="text-sm text-white/60 flex items-center gap-2">
           <UsersRound className="w-4 h-4" />
-          <span>
+          <span className="font-pixel">
             Enrolled: <span className="text-white font-semibold">{myCourses.length}</span>
           </span>
         </div>
@@ -80,7 +80,7 @@ export default function ClassesPage({
       <Panel className="p-6">
         {/* top actions row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="text-white/70 text-sm">
+          <div className="text-white/70 text-sm font-pixel">
             {myCourses.length === 0
               ? "You are not enrolled in any class yet."
               : "Your enrolled classes are shown below."}
@@ -89,7 +89,7 @@ export default function ClassesPage({
           <button
             onClick={() => setShowJoinForm((v) => !v)}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full
-                       bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold
+                       bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold font-pixel
                        hover:brightness-110 active:brightness-95 transition"
             type="button"
           >
@@ -106,7 +106,7 @@ export default function ClassesPage({
                 type="text"
                 value={teacherUsername}
                 onChange={(e) => setTeacherUsername(e.target.value)}
-                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white
+                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-pixel
                            placeholder:text-white/40 focus:outline-none focus:ring-2
                            focus:ring-amber-400/60"
                 placeholder="Teacher Username"
@@ -116,7 +116,7 @@ export default function ClassesPage({
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.toUpperCase())}
-                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white uppercase
+                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white uppercase font-pixel
                            placeholder:text-white/40 focus:outline-none focus:ring-2
                            focus:ring-amber-400/60"
                 placeholder="OTP Code"
@@ -125,7 +125,7 @@ export default function ClassesPage({
               <button
                 type="submit"
                 className="px-5 py-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30
-                           text-emerald-100 font-semibold hover:bg-emerald-500/30 transition"
+                           text-emerald-100 font-semibold font-pixel hover:bg-emerald-500/30 transition"
               >
                 Join
               </button>
@@ -138,8 +138,8 @@ export default function ClassesPage({
           {myCourses.length === 0 ? (
             <div className="py-14 text-center">
               <BookOpen className="w-14 h-14 mx-auto mb-4 text-white/25" />
-              <h3 className="text-xl font-bold text-white mb-2">No Classes Yet</h3>
-              <p className="text-white/55">
+              <h3 className="text-xl font-bold text-white mb-2 font-pixel">No Classes Yet</h3>
+              <p className="text-white/55 font-pixel">
                 Click <span className="text-amber-300 font-semibold">Join New Class</span> to enroll.
               </p>
             </div>
@@ -160,23 +160,23 @@ export default function ClassesPage({
                     <div className="p-5">
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <div className="text-lg font-extrabold text-white">
+                          <div className="text-lg font-extrabold text-white font-pixel">
                             {course.name}
                           </div>
-                          <div className="text-xs text-white/55 mt-1">
+                          <div className="text-xs text-white/55 mt-1 font-pixel">
                             Section {course.section || "-"} • Approved
                           </div>
                         </div>
 
-                        <div className="text-xs px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
+                        <div className="text-xs px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/70 font-pixel">
                           Class
                         </div>
                       </div>
 
                       {teacher && (
                         <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
-                          <div className="text-sm font-semibold text-white">{teacher.name}</div>
-                          <div className="text-xs text-white/55">@{teacher.username}</div>
+                          <div className="text-sm font-semibold text-white font-pixel">{teacher.name}</div>
+                          <div className="text-xs text-white/55 font-pixel">@{teacher.username}</div>
                         </div>
                       )}
 
@@ -189,7 +189,7 @@ export default function ClassesPage({
                           }}
                           className="mt-4 w-full inline-flex items-center justify-center gap-2
                                      px-4 py-2.5 rounded-full
-                                     bg-red-500/15 border border-red-500/25 text-red-200 font-semibold
+                                     bg-red-500/15 border border-red-500/25 text-red-200 font-semibold font-pixel
                                      hover:bg-red-500/25 transition"
                           type="button"
                         >

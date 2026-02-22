@@ -107,11 +107,11 @@ export default function TeacherDashboard({
       <nav className="bg-gradient-to-r from-amber-900 to-orange-900 border-b-4 border-amber-400 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl text-amber-400">📚 Teacher Portal</h1>
+            <h1 className="text-3xl text-amber-400 font-pixel">📚 Teacher Portal</h1>
             <div className="flex items-center gap-4 text-white">
               <div className="text-right">
-                <div>{user.name}</div>
-                <div>{Array.isArray(user.subjects) ? (user.subjects[0] || 'Not set') : (user.subjects || 'Not set')}</div>
+                <div className="font-pixel">{user.name}</div>
+                <div className="font-pixel">{Array.isArray(user.subjects) ? (user.subjects[0] || 'Not set') : (user.subjects || 'Not set')}</div>
               </div>
               <div className="w-12 h-12 rounded-full  object-cover overflow-hidden">
                 {user.profilePic ? (
@@ -139,7 +139,7 @@ export default function TeacherDashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === tab.id
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap font-pixel ${activeTab === tab.id
                     ? 'bg-amber-500 text-white shadow-lg'
                     : 'bg-amber-800/50 text-amber-200 hover:bg-amber-700/50'
                     }`}
@@ -156,7 +156,7 @@ export default function TeacherDashboard({
       {/* Course Selector */}
       {showCourseSelector && (
         <div className="max-w-7xl mx-auto px-4 mt-6 mb-2">
-          <label className="text-amber-400 mr-2 font-semibold">Filter by Course:</label>
+          <label className="text-amber-400 mr-2 font-semibold font-pixel">Filter by Course:</label>
           <select
             value={selectedCourse?._id || ''}
             onChange={e => {
@@ -168,7 +168,7 @@ export default function TeacherDashboard({
                 setSelectedCourse(course || null);
               }
             }}
-            className="px-4 py-2 rounded border border-amber-400 bg-amber-50 text-amber-900"
+            className="px-4 py-2 rounded border border-amber-400 bg-amber-50 text-amber-900 font-pixel"
           >
             <option value="">All Courses</option>
             {courses.map(course => (
@@ -202,8 +202,8 @@ export default function TeacherDashboard({
             courses={Array.isArray(courses) ? courses : []}
             selectedCourseId={selectedCourse ? selectedCourse._id : ''}
             onRefreshStudents={async () => {
-              await onRefreshCourses?.();
-              await onRefreshAllUsers?.();
+              await onRefreshCourses?.(true);
+              await onRefreshAllUsers?.(true);
               await onRefreshStudentClasses?.();
             }}
 

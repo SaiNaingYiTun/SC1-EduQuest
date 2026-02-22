@@ -39,18 +39,27 @@ export default function StudentOverview({
   // Remove student from course
   const handleRemoveFromCourse = async (studentId, courseId) => {
     if (!courseId) return;
-    if (!window.confirm('Remove this student from the selected course?')) return;
     try {
-      await fetch(`${API_URL}/api/students/${studentId}/remove-course`, {
+      const res = await fetch(`${API_URL}/api/students/${studentId}/remove-course`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
       });
 
-      if (onRefreshStudents) await onRefreshStudents();
+      if (!res.ok) {
+        toast('Failed to remove student from course.', 'error');
+        return;
+      }
+
+      // Immediately refresh students to update UI
+      if (onRefreshStudents) {
+        await onRefreshStudents();
+      }
+
       toast('Removed from course', 'success');
 
     } catch (err) {
+      console.error('Remove error:', err);
       toast('Failed to remove student from course.', 'error');
     }
   };
@@ -133,7 +142,7 @@ export default function StudentOverview({
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-4xl text-amber-400">Student Overview</h2>
+        <h2 className="text-4xl text-amber-400 font-pixel">Student Overview</h2>
         <button
           onClick={handleOpenInvite}
           className=" bg-gradient-to-r from-indigo-500 to-purple-600
@@ -154,8 +163,8 @@ export default function StudentOverview({
       {displayedStudents.length === 0 ? (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Users className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
-          <h3 className="text-2xl text-white mb-2">No Students Enrolled</h3>
-          <p className="text-purple-200 mb-6">
+          <h3 className="text-2xl text-white mb-2 font-pixel">No Students Enrolled</h3>
+          <p className="text-purple-200 mb-6 font-pixel">
             Invite students to join your class or share your class code: <span className="text-amber-400 tracking-wider">{user.otpCode}</span>
           </p>
           <button
@@ -169,7 +178,7 @@ export default function StudentOverview({
         </div>
       ) : (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6">Enrolled Students ({displayedStudents.length})</h3>
+          <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Enrolled Students ({displayedStudents.length})</h3>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayedStudents.map((student) => {
               const character = student.characterId ? characters[student.characterId] : null;
@@ -201,8 +210,8 @@ export default function StudentOverview({
                       )}
 
                       <div className="flex-1 min-w-0">
-                        <div className="text-white truncate">{student.name}</div>
-                        <div className="text-sm text-purple-200 truncate">@{student.username}</div>
+                        <div className="text-white truncate font-pixel">{student.name}</div>
+                        <div className="text-sm text-purple-200 truncate font-pixel">@{student.username}</div>
 
                         {/* Courses badges (display-only) */}
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -215,7 +224,7 @@ export default function StudentOverview({
                                   className="inline-flex items-center
                            bg-gradient-to-r from-amber-500/90 to-orange-500/90
                            text-white text-xs font-medium px-3 py-1 rounded-full shadow
-                           border border-white/10"
+                           border border-white/10 font-pixel"
                                 >
                                   {course.name}{course.section ? ` (${course.section})` : ''}
                                 </span>
@@ -256,26 +265,26 @@ export default function StudentOverview({
                   {character ? (
                     <div className="space-y-3">
                       <div className="bg-slate-700/50 rounded-lg p-3 border border-purple-400/20">
-                        <div className="text-sm text-purple-300 mb-1">Character</div>
+                        <div className="text-sm text-purple-300 mb-1 font-pixel">Character</div>
                         <div className="flex items-center justify-between">
-                          <span className="text-white">{character.name}</span>
-                          <span className="text-purple-200 text-sm">{character.class}</span>
+                          <span className="text-white font-pixel">{character.name}</span>
+                          <span className="text-purple-200 text-sm font-pixel">{character.class}</span>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-blue-600/20 rounded-lg p-3 border border-blue-400/30">
                           <div className="flex items-center gap-2 mb-1">
                             <Star className="w-4 h-4 text-blue-400" />
-                            <span className="text-xs text-blue-300">Level</span>
+                            <span className="text-xs text-blue-300 font-pixel">Level</span>
                           </div>
-                          <div className="text-white">{character.level}</div>
+                          <div className="text-white font-pixel">{character.level}</div>
                         </div>
                         <div className="bg-amber-600/20 rounded-lg p-3 border border-amber-400/30">
                           <div className="flex items-center gap-2 mb-1">
                             <Trophy className="w-4 h-4 text-amber-400" />
-                            <span className="text-xs text-amber-300">XP</span>
+                            <span className="text-xs text-amber-300 font-pixel">XP</span>
                           </div>
-                          <div className="text-white">{character.xp}</div>
+                          <div className="text-white font-pixel">{character.xp}</div>
                         </div>
                       </div>
                       <div className="bg-slate-700/50 rounded-lg p-2">
@@ -285,13 +294,13 @@ export default function StudentOverview({
                             style={{ width: `${(character.xp / character.maxXp) * 100}%` }}
                           />
                         </div>
-                        <div className="text-xs text-purple-300 mt-1 text-center">
+                        <div className="text-xs text-purple-300 mt-1 text-center font-pixel">
                           {character.xp} / {character.maxXp} XP
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-4 text-purple-300 text-sm">
+                    <div className="text-center py-4 text-purple-300 text-sm font-pixel">
                       {student.characterId ? 'Loading character...' : 'Character not created yet'}
                     </div>
                   )}
@@ -308,7 +317,7 @@ export default function StudentOverview({
           <div className="bg-gradient-to-br from-purple-900 to-blue-900 rounded-2xl max-w-2xl w-full border-4 border-purple-400 max-h-[80vh] overflow-hidden flex flex-col">
             <div className="p-6 border-b-2 border-purple-400/30">
               <div className="flex items-center justify-between">
-                <h3 className="text-2xl text-amber-400">Invite Students</h3>
+                <h3 className="text-2xl text-amber-400 font-pixel">Invite Students</h3>
                 <button
                   onClick={() => {
                     setShowInviteModal(false);
@@ -322,7 +331,7 @@ export default function StudentOverview({
             </div>
             {/* Course selection dropdown */}
             <div className="p-6 border-b-2 border-purple-400/30">
-              <label className="block text-purple-100 mb-2">Select Course</label>
+              <label className="block text-purple-100 mb-2 font-pixel">Select Course</label>
               {(!courses || courses.length === 0) ? (
                 <div className="text-purple-300">Loading courses...</div>
               ) : (
@@ -339,7 +348,7 @@ export default function StudentOverview({
                     ))}
                   </select>
                   {selectedCourse && (
-                    <div className="mt-2 text-amber-300 text-sm font-mono">
+                    <div className="mt-2 text-amber-300 text-sm font-mono font-pixel">
                       <span className="font-semibold">Course OTP Code:</span> {selectedCourse.otpCode}
                     </div>
                   )}
@@ -387,13 +396,13 @@ export default function StudentOverview({
                             </div>
                           )}
                           <div className="flex-1">
-                            <div className="text-white">{student.name}</div>
-                            <div className="text-sm text-purple-200">@{student.username}</div>
+                            <div className="text-white font-pixel">{student.name}</div>
+                            <div className="text-sm text-purple-200 font-pixel">@{student.username}</div>
                           </div>
                           {character && (
                             <div className="text-right mr-4">
-                              <div className="text-white text-sm">Level {character.level}</div>
-                              <div className="text-xs text-purple-200">{character.class}</div>
+                              <div className="text-white text-sm font-pixel">Level {character.level}</div>
+                              <div className="text-xs text-purple-200 font-pixel">{character.class}</div>
                             </div>
                           )}
                           <button

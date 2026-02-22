@@ -73,11 +73,11 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
         {/* Header */}
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-amber-400 flex items-center gap-2 mb-2">
+            <h2 className="text-2xl font-bold text-amber-400 flex items-center gap-2 mb-2 font-pixel">
               <AlertCircle className="w-6 h-6" />
               Report Teacher
             </h2>
-            <p className="text-purple-200 text-sm">
+            <p className="text-purple-200 text-sm font-pixel">
               Report issues or concerns about {teacher.name}
             </p>
           </div>
@@ -93,20 +93,20 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
           {/* Course Info */}
           {course && (
             <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-400/20">
-              <div className="text-sm text-purple-300 mb-1">Course</div>
-              <div className="text-white font-semibold">{course.name}</div>
+              <div className="text-sm text-purple-300 mb-1 font-pixel">Course</div>
+              <div className="text-white font-semibold font-pixel">{course.name}</div>
             </div>
           )}
 
           {/* Category */}
           <div>
-            <label className="block text-purple-100 font-semibold mb-3">
+            <label className="block text-purple-100 font-semibold mb-3 font-pixel">
               Report Category *
             </label>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white focus:border-purple-400 focus:outline-none"
+              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white font-pixel focus:border-purple-400 focus:outline-none"
             >
               <option value="">Select a category...</option>
               {REPORT_CATEGORIES.map(cat => (
@@ -119,7 +119,7 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
 
           {/* Subject */}
           <div>
-            <label className="block text-purple-100 font-semibold mb-3">
+            <label className="block text-purple-100 font-semibold mb-3 font-pixel">
               Subject *
             </label>
             <input
@@ -128,16 +128,16 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Brief subject of your report"
               maxLength={100}
-              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:border-purple-400 focus:outline-none"
+              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-400 font-pixel focus:border-purple-400 focus:outline-none"
             />
-            <div className="text-xs text-purple-300 mt-1">
+            <div className="text-xs text-purple-300 mt-1 font-pixel">
               {subject.length}/100
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-purple-100 font-semibold mb-3">
+            <label className="block text-purple-100 font-semibold mb-3 font-pixel">
               Description *
             </label>
             <textarea
@@ -147,16 +147,16 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
               rows={5}
               minLength={20}
               maxLength={1000}
-              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-400 focus:border-purple-400 focus:outline-none resize-none"
+              className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-400 font-pixel focus:border-purple-400 focus:outline-none resize-none"
             />
-            <div className="text-xs text-purple-300 mt-1">
+            <div className="text-xs text-purple-300 mt-1 font-pixel">
               {description.length}/1000 (minimum 20 characters)
             </div>
           </div>
 
           {/* Info Notice */}
           <div className="bg-amber-500/10 border border-amber-400/30 rounded-lg p-4">
-            <p className="text-sm text-amber-200">
+            <p className="text-sm text-amber-200 font-pixel">
               ⚠️ All reports are reviewed by administrators. False accusations may result in disciplinary action.
             </p>
           </div>
@@ -166,14 +166,14 @@ export default function ReportTeacherModal({ teacher, course, student, onClose, 
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all"
+              className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all font-pixel"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+              className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white py-3 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold font-pixel"
             >
               {isSubmitting ? 'Submitting...' : 'Submit Report'}
             </button>
