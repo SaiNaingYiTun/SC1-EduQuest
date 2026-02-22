@@ -1,138 +1,232 @@
-import { useState } from 'react';
-import { Search, BookOpen, Check } from 'lucide-react';
-import { User } from '../App';
+import { useState, useMemo } from "react";
+import { Search, BookOpen, ShieldAlert, UsersRound } from "lucide-react";
+import { useToast } from "../App";
+import { COURSE_STATUS } from "./courseStatus";
+import ReportTeacherModal from "./ReportTeacherModal";
 
-
-
-export default function ClassesPage({ studentClasses, teachers, onJoinClass }) {
-  const [teacherUsername, setTeacherUsername] = useState('');
-  const [otp, setOtp] = useState('');
+export default function ClassesPage({
+  user,
+  studentClasses = [],
+  teachers = [],
+  onJoinClass,
+  courses = [],
+}) {
+  const [teacherUsername, setTeacherUsername] = useState("");
+  const [otp, setOtp] = useState("");
   const [showJoinForm, setShowJoinForm] = useState(false);
+
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportingTeacher, setReportingTeacher] = useState(null);
+  const [reportingCourse, setReportingCourse] = useState(null);
+
+  const toast = useToast();
+
+  const myCourses = useMemo(() => {
+    return courses.filter(
+      (course) =>
+        studentClasses.includes(String(course._id)) &&
+        course.status === COURSE_STATUS.APPROVED
+    );
+  }, [courses, studentClasses]);
 
   const handleJoin = (e) => {
     e.preventDefault();
-    
     if (!teacherUsername.trim() || !otp.trim()) {
-      alert('Please fill in all fields');
+      toast("Please fill in all fields", "error");
       return;
     }
 
     const success = onJoinClass(teacherUsername, otp);
     if (success) {
-      alert('Successfully joined class!');
-      setTeacherUsername('');
-      setOtp('');
+      toast("Successfully joined class!", "success");
+      setTeacherUsername("");
+      setOtp("");
       setShowJoinForm(false);
     }
   };
 
-  const myTeachers = teachers.filter(t => studentClasses.includes(t.id));
+  const Panel = ({ children, className = "" }) => (
+    <div
+      className={
+        "rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md " +
+        "shadow-[0_18px_60px_-30px_rgba(0,0,0,0.55)] " +
+        className
+      }
+    >
+      {children}
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-4xl text-amber-400">My Classes</h2>
-        <button
-          onClick={() => setShowJoinForm(!showJoinForm)}
-          className="bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white px-6 py-3 rounded-lg transition-all shadow-lg flex items-center gap-2"
-        >
-          <Search className="w-5 h-5" />
-          Join New Class
-        </button>
+    <div className="max-w-6xl mx-auto px-6 pb-16">
+      {/* Header row (match Inventory style) */}
+      <div className="mt-10 mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-extrabold text-amber-300">My Classes</h1>
+          <p className="text-sm text-white/60 mt-1">
+            Join approved classes and view your enrolled courses.
+          </p>
+        </div>
+
+        <div className="text-sm text-white/60 flex items-center gap-2">
+          <UsersRound className="w-4 h-4" />
+          <span>
+            Enrolled: <span className="text-white font-semibold">{myCourses.length}</span>
+          </span>
+        </div>
       </div>
 
-      {/* Join Class Form */}
-      {showJoinForm && (
-        <div className="bg-gradient-to-br from-blue-800/30 to-purple-800/30 rounded-2xl p-8 border-2 border-blue-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6">Join a Class</h3>
-          
-          <form onSubmit={handleJoin} className="space-y-6">
-            <div>
-              <label className="block text-purple-100 mb-2">Teacher Username</label>
+      {/* Main container (like Inventory) */}
+      <Panel className="p-6">
+        {/* top actions row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="text-white/70 text-sm">
+            {myCourses.length === 0
+              ? "You are not enrolled in any class yet."
+              : "Your enrolled classes are shown below."}
+          </div>
+
+          <button
+            onClick={() => setShowJoinForm((v) => !v)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full
+                       bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold
+                       hover:brightness-110 active:brightness-95 transition"
+            type="button"
+          >
+            <Search className="w-4 h-4" />
+            {showJoinForm ? "Close Join Form" : "Join New Class"}
+          </button>
+        </div>
+
+        {/* join form */}
+        {showJoinForm && (
+          <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
+            <form onSubmit={handleJoin} className="grid sm:grid-cols-3 gap-3">
               <input
                 type="text"
                 value={teacherUsername}
                 onChange={(e) => setTeacherUsername(e.target.value)}
-                className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
-                placeholder="Enter teacher's username"
+                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white
+                           placeholder:text-white/40 focus:outline-none focus:ring-2
+                           focus:ring-amber-400/60"
+                placeholder="Teacher Username"
               />
-            </div>
 
-            <div>
-              <label className="block text-purple-100 mb-2">Class OTP Code</label>
               <input
                 type="text"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.toUpperCase())}
-                className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none uppercase"
-                placeholder="Enter OTP code provided by teacher"
+                className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white uppercase
+                           placeholder:text-white/40 focus:outline-none focus:ring-2
+                           focus:ring-amber-400/60"
+                placeholder="OTP Code"
               />
-            </div>
 
-            <div className="flex gap-4">
               <button
                 type="submit"
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white py-3 rounded-lg transition-all shadow-lg"
+                className="px-5 py-3 rounded-xl bg-emerald-500/20 border border-emerald-400/30
+                           text-emerald-100 font-semibold hover:bg-emerald-500/30 transition"
               >
-                Join Class
+                Join
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowJoinForm(false);
-                  setTeacherUsername('');
-                  setOtp('');
-                }}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )}
 
-      {/* My Classes List */}
-      {myTeachers.length === 0 ? (
-        <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
-          <BookOpen className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
-          <h3 className="text-2xl text-white mb-2">No Classes Yet</h3>
-          <p className="text-purple-200 mb-6">
-            Join a class using your teacher's username and OTP code to start your learning journey!
-          </p>
-        </div>
-      ) : (
-        <div className="grid md:grid-cols-2 gap-6">
-          {myTeachers.map((teacher) => (
-            <div
-              key={teacher.id}
-              className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm hover:border-purple-400/50 transition-all"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <BookOpen className="w-6 h-6 text-amber-400" />
-                    <h3 className="text-2xl text-white">{teacher.subjects}</h3>
-                  </div>
-                  <div className="text-purple-200">
-                    Instructor: {teacher.name}
-                  </div>
-                  <div className="text-sm text-purple-300">
-                    @{teacher.username}
-                  </div>
-                </div>
-                <div className="w-12 h-12 rounded-full bg-green-600 flex items-center justify-center">
-                  <Check className="w-6 h-6 text-white" />
-                </div>
-              </div>
-
-              <div className="bg-slate-800/50 rounded-lg p-4 border border-purple-400/20">
-                <div className="text-sm text-purple-300 mb-1">Class Code</div>
-                <div className="text-lg text-amber-400 tracking-wider">{teacher.otpCode}</div>
-              </div>
+        {/* content area */}
+        <div className="mt-6">
+          {myCourses.length === 0 ? (
+            <div className="py-14 text-center">
+              <BookOpen className="w-14 h-14 mx-auto mb-4 text-white/25" />
+              <h3 className="text-xl font-bold text-white mb-2">No Classes Yet</h3>
+              <p className="text-white/55">
+                Click <span className="text-amber-300 font-semibold">Join New Class</span> to enroll.
+              </p>
             </div>
-          ))}
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {myCourses.map((course) => {
+                const teacher = teachers.find((t) => t.id === course.teacherId);
+
+                return (
+                  <div
+                    key={course._id}
+                    className="rounded-2xl border border-white/10 bg-black/20
+                               hover:bg-black/25 hover:border-white/20 transition"
+                  >
+                    {/* small top accent line (subtle like other pages) */}
+                    <div className="h-1 rounded-t-2xl bg-gradient-to-r from-amber-400/70 to-purple-400/40" />
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-lg font-extrabold text-white">
+                            {course.name}
+                          </div>
+                          <div className="text-xs text-white/55 mt-1">
+                            Section {course.section || "-"} • Approved
+                          </div>
+                        </div>
+
+                        <div className="text-xs px-3 py-1 rounded-full border border-white/10 bg-white/5 text-white/70">
+                          Class
+                        </div>
+                      </div>
+
+                      {teacher && (
+                        <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="text-sm font-semibold text-white">{teacher.name}</div>
+                          <div className="text-xs text-white/55">@{teacher.username}</div>
+                        </div>
+                      )}
+
+                      {teacher && (
+                        <button
+                          onClick={() => {
+                            setReportingTeacher(teacher);
+                            setReportingCourse(course);
+                            setShowReportModal(true);
+                          }}
+                          className="mt-4 w-full inline-flex items-center justify-center gap-2
+                                     px-4 py-2.5 rounded-full
+                                     bg-red-500/15 border border-red-500/25 text-red-200 font-semibold
+                                     hover:bg-red-500/25 transition"
+                          type="button"
+                        >
+                          <ShieldAlert className="w-4 h-4" />
+                          Report Teacher
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
+      </Panel>
+
+      {/* Report Teacher Modal */}
+      {showReportModal && reportingTeacher && (
+        <ReportTeacherModal
+          teacher={reportingTeacher}
+          course={reportingCourse}
+          student={user}
+          onClose={() => {
+            setShowReportModal(false);
+            setReportingTeacher(null);
+            setReportingCourse(null);
+          }}
+          onReportSubmitted={() => {
+            toast(
+              "Report submitted successfully. Administrators will review it shortly.",
+              "success"
+            );
+            setShowReportModal(false);
+            setReportingTeacher(null);
+            setReportingCourse(null);
+          }}
+        />
       )}
     </div>
   );

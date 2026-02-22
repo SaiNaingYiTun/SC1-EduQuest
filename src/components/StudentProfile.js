@@ -1,30 +1,70 @@
 import { useState } from 'react';
 import { User as UserIcon, Edit2, Save, LogOut, Camera } from 'lucide-react';
-import { User, Character } from '../App';
+import { Character, useToast } from '../App';
+import { API_URL } from '../api';
+
 
 
 
 const defaultProfilePics = [
-  'https://images.unsplash.com/photo-1724435811349-32d27f4d5806?w=200',
-  'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200',
-  'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=200',
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200',
-  'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200',
+  '/avatars/avatar1.png',
+  '/avatars/avatar2.png',
+  '/avatars/avatar3.png',
+  '/avatars/avatar4.png',
 ];
-
 export default function StudentProfile({ user, character, onUpdateUser, onLogout }) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(user.name || '');
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState(user.profilePic || defaultProfilePics[0]);
+  const toast = useToast();
 
-  const handleSave = () => {
-    onUpdateUser({
-      name,
-      profilePic: selectedAvatar
-    });
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/${user.id}/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({
+          name,
+
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast(data?.message || 'Failed to save profile', 'error');
+        return;
+      }
+      let updatedUser = data;
+      if (selectedAvatar && selectedAvatar !== user.profilePic) {
+        const picRes = await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+          },
+          body: JSON.stringify({ profilePic: selectedAvatar }),
+        });
+
+        const picData = await picRes.json();
+        if (picRes.ok) {
+          updatedUser = picData;
+        } else {
+          toast(picData?.message || 'Failed to update profile picture', 'error');
+        }
+      }
+
+      onUpdateUser(updatedUser);
+      setIsEditing(false);
+      setShowAvatarPicker(false);
+      toast('Profile updated!', 'success');
+    } catch (err) {
+      toast('Failed to save profile', 'error');
+    }
   };
 
   const handleCancel = () => {
@@ -34,7 +74,61 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
     setShowAvatarPicker(false);
   };
 
-  return (
+  const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
+  const UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast('Please upload an image file.', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast('Image too large (max 2MB).', 'error');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data?.error?.message || 'Upload failed', 'error');
+        return;
+      }
+
+      const imageUrl = data.secure_url;
+      setSelectedAvatar(imageUrl);
+
+      await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`,
+        },
+        body: JSON.stringify({ profilePic: imageUrl }),
+      });
+
+      onUpdateUser({ profilePic: imageUrl });
+      toast('Profile picture updated!', 'success');
+    } catch (err) {
+      toast('Upload failed. Please try again.', 'error');
+    }
+  };
+
+    return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center">
         <h2 className="text-4xl text-amber-400 mb-2">Profile</h2>
@@ -55,6 +149,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
               <button
                 onClick={() => setShowAvatarPicker(!showAvatarPicker)}
                 className="absolute bottom-0 right-0 w-10 h-10 rounded-full bg-amber-600 hover:bg-amber-700 flex items-center justify-center border-2 border-white shadow-lg transition-all"
+                type="button"
               >
                 <Camera className="w-5 h-5 text-white" />
               </button>
@@ -111,13 +206,24 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
                     setSelectedAvatar(pic);
                     setShowAvatarPicker(false);
                   }}
-                  className={`rounded-full overflow-hidden border-4 transition-all hover:scale-110 ${
-                    selectedAvatar === pic ? 'border-amber-400' : 'border-purple-400/30'
-                  }`}
+                  className={`rounded-full overflow-hidden border-4 transition-all hover:scale-110 ${selectedAvatar === pic ? 'border-amber-400' : 'border-purple-400/30'
+                    }`}
+                  type="button"
                 >
                   <img src={pic} alt={`Avatar ${index + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
+            </div>
+
+            <div className="mt-5">
+              <label className="text-sm text-purple-200 block mb-2">Upload from device</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="w-full text-white"
+              />
+              <div className="text-xs text-purple-300 mt-2">PNG/JPG, max 2MB</div>
             </div>
           </div>
         )}
@@ -155,7 +261,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
       {/* Character Info */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
         <h3 className="text-2xl text-amber-400 mb-6">Character Information</h3>
-        
+
         <div className="flex items-center gap-6">
           <img
             src={character.avatar}
@@ -181,7 +287,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
       {/* Account Settings */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
         <h3 className="text-2xl text-amber-400 mb-6">Account Settings</h3>
-        
+
         <div className="space-y-4">
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">

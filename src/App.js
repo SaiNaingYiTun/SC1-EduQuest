@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import RoleSelection from './components/RoleSelection';
 import AuthPage from './components/AuthPage';
 import AdminLoginPage from './components/AdminLoginPage';
@@ -7,6 +7,13 @@ import StudentDashboard from './components/StudentDashboard';
 import TeacherDashboard from './components/TeacherDashboard';
 import CharacterSelection from './components/CharacterSelection';
 import GamePage from './components/GamePage';
+import { createContext, useContext } from 'react';
+import { API_URL } from './api';
+
+const ToastCtx = createContext(() => { });
+export const useToast = () => useContext(ToastCtx);
+
+
 
 function App() {
   const [currentView, setCurrentView] = useState('role');
@@ -15,7 +22,7 @@ function App() {
   const [allUsers, setAllUsers] = useState([]);
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [courses, setCourses] = useState([]);
-  
+
 
   const [characters, setCharacters] = useState({});
   const [studentClasses, setStudentClasses] = useState({});
@@ -25,13 +32,225 @@ function App() {
   const [studentProgress, setStudentProgress] = useState({});
   const [studentLevels, setStudentLevels] = useState({});
   const [authToken, setAuthToken] = useState(() => {
-  return localStorage.getItem('authToken') || null;
-});
+    return localStorage.getItem('authToken') || null;
+  });
+  const [toasts, setToasts] = useState([]);
+
+  const toast = useCallback((message, type = 'info') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 2800);
+  }, []);
+
+  const lastFetchRef = useRef({
+    users: 0,
+    quests: 0,
+    courses: 0,
+  });
+
+  const inflightRequestsRef = useRef(new Map());
+
+
 
   // -----------------------
   // Backend helpers
   // -----------------------
- 
+
+  const authFetch = useCallback(async (url, options = {}) => {
+    const res = await fetch(`${API_URL}${url}`, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        ...(options.method && options.method !== 'GET'
+          ? { 'Content-Type': 'application/json' }
+          : {})
+      }
+    });
+
+    if (res.status === 401) {
+      toast('Session expired. Please log in again.', 'warning');
+      setCurrentUser(null);
+      setAuthToken(null);
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      setCurrentView('role');
+    }
+
+    return res;
+  }, [authToken, toast]);
+
+  const fetchedStudentStateRef = useRef(new Set());
+
+
+  const refreshStudentClassesForTeacher = useCallback(async () => {
+    if (!currentUser || currentUser.role !== 'teacher') return;
+
+    const teacherCourseIds = courses
+      .filter(c => String(c.teacherId) === String(currentUser.id))
+      .map(c => String(c._id));
+
+    if (teacherCourseIds.length === 0) return;
+
+    const relevantStudents = allUsers.filter(
+      u =>
+        u.role === 'student' &&
+        (studentClasses[u.id] || []).some(cid =>
+          teacherCourseIds.includes(String(cid))
+        )
+    );
+
+    const studentsToFetch = relevantStudents.filter(
+      s => !fetchedStudentStateRef.current.has(s.id)
+    );
+
+    if (studentsToFetch.length === 0) return;
+
+    const results = await Promise.allSettled(
+      studentsToFetch.map(s =>
+        authFetch(`/api/students/${s.id}/state`).then(r => r.json())
+      )
+    );
+
+    const nextClasses = {};
+    const nextCharacters = {};
+
+    studentsToFetch.forEach((s, i) => {
+      const r = results[i];
+      if (r.status !== 'fulfilled') return;
+
+      const value = r.value;
+
+      if (Array.isArray(value.studentClasses)) {
+        nextClasses[s.id] = value.studentClasses;
+      }
+
+      if (value.character && value.character.id) {
+        nextCharacters[value.character.id] = value.character;
+      }
+
+      fetchedStudentStateRef.current.add(s.id);
+    });
+
+    setStudentClasses(prev => ({ ...prev, ...nextClasses }));
+    setCharacters(prev => ({ ...prev, ...nextCharacters }));
+  }, [currentUser, allUsers, courses, authFetch, studentClasses]);
+
+
+  const refreshAllUsers = useCallback(async (force = false) => {
+    // 🚀 Request deduplication - prevent multiple simultaneous requests
+    const cacheKey = '/api/users';
+    if (inflightRequestsRef.current.has(cacheKey)) {
+      return inflightRequestsRef.current.get(cacheKey);
+    }
+
+    // 🚀 Freshness check - skip if data is recent (< 30s)
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.users) < 30000) {
+      return;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch('/api/users');
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const normalized = data.map(u => ({ ...u, id: u.id || u._id }));
+        setAllUsers(normalized);
+
+        // ✅ Build studentClasses map from backend User.studentClasses
+        const nextMap = {};
+        for (const u of normalized) {
+          if (u.role === 'student') {
+            nextMap[u.id] = Array.isArray(u.studentClasses)
+              ? u.studentClasses.map(String)
+              : [];
+          }
+        }
+        setStudentClasses(nextMap);
+
+        lastFetchRef.current.users = Date.now();
+      } finally {
+        inflightRequestsRef.current.delete(cacheKey);
+      }
+    })();
+
+    inflightRequestsRef.current.set(cacheKey, requestPromise);
+    return requestPromise;
+  }, [authFetch]);
+
+
+
+  const refreshQuests = useCallback(async (force = false) => {
+    const cacheKey = '/api/quests';
+    if (inflightRequestsRef.current.has(cacheKey)) {
+      return inflightRequestsRef.current.get(cacheKey);
+    }
+
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.quests) < 30000) {
+      return;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch('/api/quests');
+        if (!res.ok) return;
+        const data = await res.json();
+        setQuests(Array.isArray(data) ? data : []);
+        lastFetchRef.current.quests = Date.now();
+      } finally {
+        inflightRequestsRef.current.delete(cacheKey);
+      }
+    })();
+
+    inflightRequestsRef.current.set(cacheKey, requestPromise);
+    return requestPromise;
+  }, [authFetch]);
+
+
+
+  const refreshCourses = useCallback(async (force = false) => {
+    if (!currentUser || !authToken) return;
+
+    const url =
+      currentUser.role === 'teacher'
+        ? `/api/teachers/${currentUser.id}/courses`
+        : '/api/courses';
+
+    if (inflightRequestsRef.current.has(url)) {
+      return inflightRequestsRef.current.get(url);
+    }
+
+    const now = Date.now();
+    if (!force && (now - lastFetchRef.current.courses) < 30000) {
+      return;
+    }
+
+    const requestPromise = (async () => {
+      try {
+        const res = await authFetch(url);
+        if (!res.ok) return;
+        const data = await res.json();
+        setCourses(Array.isArray(data) ? data : []);
+        lastFetchRef.current.courses = Date.now();
+      } catch (err) {
+        console.error('Error loading courses:', err);
+      } finally {
+        inflightRequestsRef.current.delete(url);
+      }
+    })();
+
+    inflightRequestsRef.current.set(url, requestPromise);
+    return requestPromise;
+  }, [currentUser, authToken, authFetch]);
+
+
+
+
+
+
 
 
   const saveStudentState = async (
@@ -42,7 +261,7 @@ function App() {
     levelInfo
   ) => {
     try {
-      await fetch(`/api/students/${studentId}/state`, {
+      await fetch(`${API_URL}/api/students/${studentId}/state`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -58,9 +277,9 @@ function App() {
     }
   };
 
-  const fetchStudentState = async (studentId) => {
+  const fetchStudentState = useCallback(async (studentId) => {
     try {
-      const res = await fetch(`/api/students/${studentId}/state`);
+      const res = await fetch(`${API_URL}/api/students/${studentId}/state`);
       const data = await res.json();
 
       const backendAchievements = Array.isArray(data.achievements)
@@ -93,10 +312,10 @@ function App() {
       }
 
       if (data.character) {
-      setCharacters((prev) => ({
-        ...prev,
-        [data.character.id]: data.character
-      }));
+        setCharacters((prev) => ({
+          ...prev,
+          [data.character.id]: data.character
+        }));
       }
 
       setAchievements((prev) => ({
@@ -123,17 +342,17 @@ function App() {
         ...prev,
         [studentId]: data.studentClasses || []
       }));
-      
-      
+
+
 
     } catch (err) {
       console.error('Error loading student state:', err);
     }
-  };
+  }, [API_URL]);
 
   const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
     try {
-      const res = await fetch(`/api/students/${studentId}/progress`, {
+      const res = await fetch(`${API_URL}/api/students/${studentId}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -176,166 +395,112 @@ function App() {
   // -----------------------
 
   useEffect(() => {
-  const fetchCourses = async () => {
-    if (currentUser && currentUser.role === 'teacher' && authToken) {
-      try {
-        const res = await authFetch(`/api/teachers/${currentUser.id}/courses`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setCourses(data);
-      } catch (err) {
-        console.error('Error loading courses:', err);
-      }
-    }
-  };
-  fetchCourses();
-}, [currentUser, authToken]);
+    refreshCourses();
+  }, [refreshCourses]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'teacher') return;
+    if (!allUsers.length || !courses.length) return;
+    refreshStudentClassesForTeacher();
+  }, [currentUser, allUsers, courses, refreshStudentClassesForTeacher]);
 
 
 
   useEffect(() => {
-  if (!authToken) return;
- 
-  const fetchAllUsers = async () => {
-    try {
-      const res = await authFetch('/api/users');
-      if (!res.ok) return;
- 
-      const data = await res.json();
-      const normalized = data.map((u) => ({
-        ...u,
-        id: u.id || u._id
-      }));
- 
-      setAllUsers(normalized);
-    } catch (err) {
-      console.error("Error loading users:", err);
-    }
-  };
- 
-  fetchAllUsers();
-}, [authToken]);
+    if (!authToken) return;
+    refreshAllUsers();
+  }, [authToken, refreshAllUsers]);
+
+
+
 
   useEffect(() => {
-  // After allUsers is loaded and you are a teacher, fetch student states
-  if (
-    currentUser &&
-    currentUser.role === 'teacher' &&
-    allUsers.length > 0
-  ) {
-    allUsers
-      .filter((u) => u.role === 'student')
-      .forEach(async (student) => {
-        try {
-          const res = await fetch(`/api/students/${student.id}/state`);
-          const data = await res.json();
-          setStudentClasses((prev) => ({
-            ...prev,
-            [student.id]: data.studentClasses || []
-          }));
-        } catch (err) {
-          // ignore
-        }
-      });
-  }
-}, [allUsers, currentUser]);
-
-  useEffect(() => {
-    // Load from localStorage
-    const savedUser = localStorage.getItem('currentUser');
+    // Load from localStorage once on app mount.
+    const savedUserRaw = localStorage.getItem('currentUser');
     const savedView = localStorage.getItem('currentView');
-    const savedUsers = localStorage.getItem('allUsers');
     const savedCharacters = localStorage.getItem('characters');
-    
     const savedAchievements = localStorage.getItem('achievements');
     const savedStudentInventories = localStorage.getItem('studentInventories');
 
-    if (savedUser) {
-    const user = JSON.parse(savedUser);
-    setCurrentUser(user);
-
-    // Fetch student state from backend if student
-    if (user.role === 'student') {
-      fetchStudentState(user.id);
+    let savedUser = null;
+    if (savedUserRaw) {
+      const parsedUser = JSON.parse(savedUserRaw);
+      savedUser = { ...parsedUser, id: parsedUser.id || parsedUser._id };
+      setCurrentUser(savedUser);
+      setSelectedRole(savedUser.role);
     }
-  }
+
     if (savedCharacters) {
       setCharacters(JSON.parse(savedCharacters));
     }
-    
+
     if (savedAchievements) {
       setAchievements(JSON.parse(savedAchievements));
     }
-
-    // Always load quests from backend API (backend is source of truth)
-    fetch('/api/quests')
-      .then((res) => res.json())
-      .then((data) => {
-        setQuests(data);
-      })
-      .catch((err) => {
-        console.error('Error loading quests from backend:', err);
-      });
 
     if (savedStudentInventories) {
       setStudentInventories(JSON.parse(savedStudentInventories));
     }
 
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      setCurrentUser(user);
-      setSelectedRole(user.role);
+    // Always load quests from backend API (backend is source of truth)
+    fetch(`${API_URL}/api/quests`)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to load quests: ${res.status}`);
+        }
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error('Failed to load quests: backend did not return JSON');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setQuests(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error('Error loading quests from backend:', err);
+      });
 
+    if (savedUser) {
       if (savedView) {
         setCurrentView(savedView);
+      } else if (savedUser.role === 'student' && !savedUser.characterId) {
+        setCurrentView('character');
       } else {
-        // Determine view based on user state
-        if (user.role === 'student' && !user.characterId) {
-          setCurrentView('character');
-        } else {
-          setCurrentView('dashboard');
-        }
+        setCurrentView('dashboard');
       }
 
-      // On reload, sync student state from backend too
-      if (user.role === 'student') {
-        fetchStudentState(user.id);
+      // On reload, sync student state from backend once.
+      if (savedUser.role === 'student') {
+        fetchStudentState(savedUser.id);
       }
     }
 
-    const path = window.location.pathname;
-  if (path === '/admin-login') {
-    setCurrentView('admin-login');
-  } else if (path === '/character') {
-    // only switch if user is student
-    if (currentUser && currentUser.role === 'student') {
-      setCurrentView('character');
+    const rawPath = window.location.pathname;
+    const path = rawPath.replace(/\/+$/, '') || '/';
+    if (path === '/admin-login') {
+      setCurrentView('admin-login');
+    } else if (path === '/character') {
+      if (savedUser && savedUser.role === 'student') {
+        setCurrentView('character');
+      }
+    } else if (path === '/dashboard') {
+      if (savedUser) {
+        setCurrentView('dashboard');
+      }
     }
-  } else if (path === '/dashboard') {
-    if (currentUser) setCurrentView('dashboard');
-  }
-
-    
- 
-
-  }, []);
+  }, [fetchStudentState]);
 
   // -----------------------
   // Persist some state locally
   // -----------------------
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    // Save to localStorage
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       localStorage.setItem('currentView', currentView);
     }
-    localStorage.setItem('allUsers', JSON.stringify(allUsers));
-    localStorage.setItem('characters', JSON.stringify(characters));
-    localStorage.setItem('studentClasses', JSON.stringify(studentClasses));
-    localStorage.setItem('achievements', JSON.stringify(achievements));
-    localStorage.setItem('studentInventories', JSON.stringify(studentInventories));
-  }, [currentUser, currentView, allUsers, characters, studentClasses, achievements, studentInventories]);
+  }, [currentUser, currentView]);
 
   // -----------------------
   // Auth & user handling
@@ -346,202 +511,191 @@ function App() {
     setCurrentView('auth');
   };
 
-  const authFetch = (url, options = {}) => {
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      // only add Content-Type if not provided (for GET it’s not needed)
-      ...(options.method && options.method !== 'GET'
-        ? { 'Content-Type': 'application/json' }
-        : {})
-    }
-  });
-};
+
+
 
 
 
   const handleAuth = async (username, password, isSignUp, email, role) => {
     try {
       if (isSignUp) {
-      // === SIGN UP ===
-        const res = await fetch('/api/auth/register', {
+        // === SIGN UP ===
+        const res = await fetch(`${API_URL}/api/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-          username,
-          email,
-          password,
-          role: role || selectedRole,
-          name: username
-        })
-      });
-  
+            username,
+            email,
+            password,
+            role: role || selectedRole,
+            name: username
+          })
+        });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      alert(errData.message || (isSignUp ? 'Failed to register' : 'Failed to login'));
-      return;
-    }
 
-    const data = await res.json(); // { user, token }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          toast(errData.message || (isSignUp ? 'Failed to register' : 'Failed to login'), 'error');
+          return;
+        }
 
-    // normalise so we always have user.id
-    const backendUser = data.user;
-    const normalizedUser = {
-      ...backendUser,
-      id: backendUser.id || backendUser._id
-    };
+        const data = await res.json(); // { user, token }
 
-    setCurrentUser(normalizedUser);
-    setAuthToken(data.token);
-    localStorage.setItem('authToken', data.token);
+        // normalise so we always have user.id
+        const backendUser = data.user;
+        const normalizedUser = {
+          ...backendUser,
+          id: backendUser.id || backendUser._id
+        };
 
-    // keep local allUsers if other parts of app still rely on it
-    setAllUsers((prev) => [...prev, normalizedUser]);
+        setCurrentUser(normalizedUser);
+        setAuthToken(data.token);
+        localStorage.setItem('authToken', data.token);
 
-    if ((role || selectedRole) === 'student') {
-      // set up local defaults for achievements/progress/inventory/level
-      const defaultAchievements = getDefaultAchievements();
-      const initialInventory = [];
-      const initialProgress = {};
-      const initialLevel = { level: 1, xp: 0 };
+        // keep local allUsers if other parts of app still rely on it
+        setAllUsers((prev) => [...prev, normalizedUser]);
 
-      setAchievements((prev) => ({
-        ...prev,
-        [normalizedUser.id]: defaultAchievements
-      }));
+        if ((role || selectedRole) === 'student') {
+          // set up local defaults for achievements/progress/inventory/level
+          const defaultAchievements = getDefaultAchievements();
+          const initialInventory = [];
+          const initialProgress = {};
+          const initialLevel = { level: 1, xp: 0 };
 
-      setStudentInventories((prev) => ({
-        ...prev,
-        [normalizedUser.id]: initialInventory
-      }));
+          setAchievements((prev) => ({
+            ...prev,
+            [normalizedUser.id]: defaultAchievements
+          }));
 
-      setStudentProgress((prev) => ({
-        ...prev,
-        [normalizedUser.id]: initialProgress
-      }));
+          setStudentInventories((prev) => ({
+            ...prev,
+            [normalizedUser.id]: initialInventory
+          }));
 
-      setStudentLevels((prev) => ({
-        ...prev,
-        [normalizedUser.id]: initialLevel
-      }));
+          setStudentProgress((prev) => ({
+            ...prev,
+            [normalizedUser.id]: initialProgress
+          }));
 
-      // initialise student state in backend with same defaults
-      await saveStudentState(
-        normalizedUser.id,
-        defaultAchievements,
-        initialInventory,
-        initialProgress,
-        initialLevel
-      );
+          setStudentLevels((prev) => ({
+            ...prev,
+            [normalizedUser.id]: initialLevel
+          }));
 
-      setCurrentView('character');
-    } else {
-      // teacher goes straight to dashboard
-      setCurrentView('dashboard');
-    }
-  } else {
-    // === SIGN IN ===
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        usernameOrEmail: username,
-        password,
-        role: role || selectedRole
-      })
-    });
+          // initialise student state in backend with same defaults
+          await saveStudentState(
+            normalizedUser.id,
+            defaultAchievements,
+            initialInventory,
+            initialProgress,
+            initialLevel
+          );
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      alert(errData.message || 'Failed to login');
-      return;
-    }
+          setCurrentView('character');
+        } else {
+          // teacher goes straight to dashboard
+          setCurrentView('dashboard');
+        }
+      } else {
+        // === SIGN IN ===
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            usernameOrEmail: username,
+            password,
+            role: role || selectedRole
+          })
+        });
 
-    const data = await res.json(); // { user, token }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          toast(errData.message || 'Failed to login', 'error');
+          return;
+        }
 
-    const backendUser = data.user;
-    const normalizedUser = {
-      ...backendUser,
-      id: backendUser.id || backendUser._id
-    };
+        const data = await res.json(); // { user, token }
 
-    setCurrentUser(normalizedUser);
-    setAuthToken(data.token);
-    localStorage.setItem('authToken', data.token);
+        const backendUser = data.user;
+        const normalizedUser = {
+          ...backendUser,
+          id: backendUser.id || backendUser._id
+        };
 
-    // keep local list if you still use allUsers for UI (classes, etc.)
-    setAllUsers((prev) => {
-      const exists = prev.some((u) => u.id === normalizedUser.id);
-      return exists ? prev : [...prev, normalizedUser];
-    });
+        setCurrentUser(normalizedUser);
+        setAuthToken(data.token);
+        localStorage.setItem('authToken', data.token);
 
-    // for students, load state from backend (achievements, inventory, progress, level)
-    if (normalizedUser.role === 'student') {
-      await fetchStudentState(normalizedUser.id);
-    }
+        // keep local list if you still use allUsers for UI (classes, etc.)
+        setAllUsers((prev) => {
+          const exists = prev.some((u) => u.id === normalizedUser.id);
+          return exists ? prev : [...prev, normalizedUser];
+        });
 
-    if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
-      setCurrentView('character');
-    } else {
-      setCurrentView('dashboard');
-    }
-  }
+        // for students, load state from backend (achievements, inventory, progress, level)
+        if (normalizedUser.role === 'student') {
+          await fetchStudentState(normalizedUser.id);
+        }
+
+        if (normalizedUser.role === 'student' && !normalizedUser.characterId) {
+          setCurrentView('character');
+        } else {
+          setCurrentView('dashboard');
+        }
+      }
     } catch (err) {
-    console.error('Auth error:', err);
-    alert('Something went wrong. Please try again.');
-  }
-};
+      console.error('Auth error:', err);
+      toast('Something went wrong. Please try again.', 'error');
+    }
+  };
 
   const handleAdminLogin = async (username, password) => {
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        usernameOrEmail: username,
-        password,
-        role: 'admin'
-      })
-    });
+    try {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usernameOrEmail: username,
+          password,
+          role: 'admin'
+        })
+      });
 
-    const data = await res.json().catch(() => ({}));
+      const data = await res.json().catch(() => ({}));
 
-    if (!res.ok) {
-      console.error('Admin login failed response:', res.status, data);
-      alert(data.message || 'Admin login failed');
-      return;
+      if (!res.ok) {
+        console.error('Admin login failed response:', res.status, data);
+        toast(data.message || 'Admin login failed', 'error');
+        return;
+      }
+
+      if (!data.token) {
+        console.error('Admin login succeeded but no token returned:', data);
+        toast('No token returned from server for admin — check backend', 'error');
+        return;
+      }
+
+      const adminUser = {
+        ...data.user,
+        id: data.user.id || data.user._id
+      };
+
+      setCurrentUser(adminUser);
+      setAuthToken(data.token);
+      localStorage.setItem('authToken', data.token);
+      localStorage.setItem('currentUser', JSON.stringify(adminUser));
+
+      setCurrentView('admin');
+    } catch (err) {
+      console.error('Admin login error:', err);
+      toast('Admin login failed', 'error');
     }
-
-    if (!data.token) {
-      console.error('Admin login succeeded but no token returned:', data);
-      alert('No token returned from server for admin — check backend');
-      return;
-    }
-
-    const adminUser = {
-      ...data.user,
-      id: data.user.id || data.user._id
-    };
-
-    setCurrentUser(adminUser);
-    setAuthToken(data.token);
-    localStorage.setItem('authToken', data.token);
-    localStorage.setItem('currentUser', JSON.stringify(adminUser));
-
-    setCurrentView('admin');
-  } catch (err) {
-    console.error('Admin login error:', err);
-    alert('Admin login failed');
-  }
-};
+  };
 
   const handleCharacterCreation = async (character) => {
     if (!currentUser) return;
 
-    
+
 
     const updatedUser = {
       ...currentUser,
@@ -557,21 +711,21 @@ function App() {
     setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
 
     try {
-    // Save characterId in backend User document
-    await authFetch(`/api/users/${currentUser.id}/character`, {
-      method: 'PUT',
-      body: JSON.stringify({ characterId: character.id })
-    });
+      // Save characterId in backend User document
+      await authFetch(`/api/users/${currentUser.id}/character`, {
+        method: 'PUT',
+        body: JSON.stringify({ characterId: character.id })
+      });
 
-    // Save full character object in student state
-    await fetch(`/api/students/${currentUser.id}/state`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ character })
-    });
-  } catch (err) {
-    console.error('Error updating character:', err);
-  }
+      // Save full character object in student state
+      await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ character })
+      });
+    } catch (err) {
+      console.error('Error updating character:', err);
+    }
 
 
     setCurrentView('dashboard');
@@ -622,18 +776,18 @@ function App() {
 
     const teacher = allUsers.find((u) => u.username === teacherUsername && u.role === 'teacher');
     if (!teacher) {
-      alert('Teacher not found!');
+      toast('Teacher not found!', 'error');
       return false;
     }
 
     if (teacher.otpCode !== otp) {
-      alert('Invalid OTP code!');
+      toast('Invalid OTP code!', 'error');
       return false;
     }
 
     const currentClasses = studentClasses[currentUser.id] || [];
     if (currentClasses.includes(teacher.id)) {
-      alert('You are already in this class!');
+      toast('You are already in this class!', 'warning');
       return false;
     }
 
@@ -679,7 +833,6 @@ function App() {
     try {
       const response = await authFetch('/api/quests', {
         method: 'POST',
-        //headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newQuest)
       });
 
@@ -687,9 +840,16 @@ function App() {
         throw new Error('Failed to create quest');
       }
 
-      const createdQuest = await response.json();
-
-      setQuests((prev) => [...prev, createdQuest]);
+      // Option 1: Fetch all quests from backend to ensure state is up-to-date
+      const allQuestsRes = await fetch(`${API_URL}/api/quests`);
+      if (allQuestsRes.ok) {
+        const allQuests = await allQuestsRes.json();
+        setQuests(allQuests);
+      } else {
+        // fallback: just add the created quest
+        const createdQuest = await response.json();
+        setQuests((prev) => [...prev, createdQuest]);
+      }
     } catch (error) {
       console.error('Error creating quest:', error);
     }
@@ -699,7 +859,7 @@ function App() {
     try {
       const response = await authFetch(`/api/quests/${updatedQuest.id}`, {
         method: 'PUT',
-       // headers: { 'Content-Type': 'application/json' },
+        // headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedQuest)
       });
 
@@ -823,14 +983,7 @@ function App() {
   // Helpers
   // -----------------------
 
-  const generateOTP = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let otp = '';
-    for (let i = 0; i < 8; i++) {
-      otp += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return otp;
-  };
+
 
   const getDefaultAchievements = () => [
     {
@@ -877,150 +1030,234 @@ function App() {
     }
   ];
 
+
+  const onInviteStudent = async (studentId, courseId) => {
+    const res = await authFetch(`/api/students/${studentId}/add-course`, {
+      method: 'POST',
+      body: JSON.stringify({ courseId }),
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch { }
+
+    if (res.ok) {
+      // Use backend truth if available
+      const nextClasses = Array.isArray(data?.updatedState?.studentClasses)
+        ? data.updatedState.studentClasses.map(String)
+        : null;
+
+      setStudentClasses(prev => {
+        const fallback = Array.from(
+          new Set([...(prev[studentId] || []), String(courseId)])
+        );
+
+        return {
+          ...prev,
+          [studentId]: nextClasses ?? fallback,
+        };
+      });
+
+      // Prevent your “fetch student state” logic from missing them later
+      fetchedStudentStateRef.current.add(String(studentId));
+
+      // Keep allUsers in sync too
+      await refreshAllUsers();
+    }
+
+    return res;
+  };
+
+  const teachers = useMemo(
+    () => allUsers.filter(u => u.role === 'teacher'),
+    [allUsers]
+  );
+
+  const students = useMemo(() => {
+    if (!currentUser || currentUser.role !== 'teacher') return [];
+
+    const teacherCourseIds = courses
+      .filter(c => String(c.teacherId) === String(currentUser.id))
+      .map(c => String(c._id));
+
+    return allUsers
+      .filter(u =>
+        u.role === 'student' &&
+        (studentClasses[u.id] || []).some(cid =>
+          teacherCourseIds.includes(String(cid))
+        )
+      )
+      .map(u => ({
+        ...u,
+        studentClasses: studentClasses[u.id] || []
+      }));
+  }, [allUsers, currentUser, courses, studentClasses]);
+
+  const allStudentsWithClasses = useMemo(
+    () => allUsers
+      .filter(u => u.role === 'student')
+      .map(u => ({
+        ...u,
+        studentClasses: studentClasses[u.id] || []
+      })),
+    [allUsers, studentClasses]
+  );
+
+
+
+
+
+
+
   // -----------------------
   // Render
   // -----------------------
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900">
-      {currentView === 'role' && (
-        <RoleSelection onSelectRole={handleRoleSelect} />
-      )}
+    <ToastCtx.Provider value={toast}>
+      {/* 🌌 App Root */}
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 relative">
 
-      {currentView === 'auth' && selectedRole && (
-        <AuthPage
-          role={selectedRole}
-          onAuth={handleAuth}
-          onBack={() => setCurrentView('role')}
-        />
-      )}
+        {/* 🔔 Toast Overlay */}
+        <div className="fixed top-4 right-4 z-[9999] space-y-3 w-[320px]">
+          {toasts.map(t => {
+            const style =
+              t.type === 'success'
+                ? 'border-green-400/40 bg-green-500/10'
+                : t.type === 'error'
+                  ? 'border-red-400/40 bg-red-500/10'
+                  : t.type === 'warning'
+                    ? 'border-amber-400/40 bg-amber-500/10'
+                    : 'border-sky-400/30 bg-sky-500/10';
 
-      {currentView === 'admin-login' && (
-        <AdminLoginPage
-          onAdminLogin={handleAdminLogin}
-          onBack={() => setCurrentView('role')}
-        />
-      )}
+            const icon =
+              t.type === 'success' ? '✅' :
+                t.type === 'error' ? '❌' :
+                  t.type === 'warning' ? '⚠️' :
+                    'ℹ️';
 
-      {currentView === 'admin' && currentUser?.role === 'admin' && (
-        <AdminDashboard
-          user={currentUser}
-          authFetch={authFetch}
-          onLogout={handleAdminLogout}
-          go={(view) => setCurrentView(view)}
-        />
-      )}
+            return (
+              <div
+                key={t.id}
+                role="status"
+                aria-live="polite"
+                className={`flex items-start gap-3 px-4 py-3 rounded-xl border shadow-lg
+                backdrop-blur-md bg-slate-900/95 text-white animate-slide-in ${style}`}
+              >
+                <span className="text-lg leading-none">{icon}</span>
+                <div className="text-sm leading-snug">{t.message}</div>
+              </div>
+            );
+          })}
+        </div>
 
-      {currentView === 'character' &&
-        currentUser &&
-        currentUser.role === 'student' && (
-          <CharacterSelection
-            onCharacterCreated={handleCharacterCreation}
-            userId={currentUser.id}
+        {/* 👇 APP CONTENT */}
+        {currentView === 'role' && (
+          <RoleSelection onSelectRole={handleRoleSelect} />
+        )}
+
+        {currentView === 'auth' && selectedRole && (
+          <AuthPage
+            role={selectedRole}
+            onAuth={handleAuth}
+            onBack={() => setCurrentView('role')}
           />
         )}
 
-      {currentView === 'dashboard' &&
-        currentUser &&
-        currentUser.role === 'student' && (
-          <StudentDashboard
-            user={currentUser}
-            character={
-              currentUser.characterId
-                ? characters[currentUser.characterId]
-                : undefined
-            }
-            onLogout={handleLogout}
-            onUpdateUser={handleUpdateUser}
-            onUpdateCharacter={handleUpdateCharacter}
-            onJoinClass={handleJoinClass}
-            studentClasses={studentClasses[currentUser.id] || []}
-            teachers={allUsers.filter((u) => u.role === 'teacher')}
-            achievements={achievements[currentUser.id] || []}
-            onUnlockAchievement={handleUnlockAchievement}
-            quests={quests}
-            inventory={studentInventories[currentUser.id] || []}
-            progress={studentProgress[currentUser.id] || {}}
-            levelInfo={studentLevels[currentUser.id] || { level: 1, xp: 0 }}
-            onUpdateProgress={handleUpdateProgress}
-            onStartQuest={handleStartQuest}
+        {currentView === 'admin-login' && (
+          <AdminLoginPage
+            onAdminLogin={handleAdminLogin}
+            onBack={() => setCurrentView('role')}
           />
         )}
 
-      {currentView === 'dashboard' &&
-        currentUser &&
-        currentUser.role === 'teacher' && (
-          <TeacherDashboard
+        {currentView === 'admin' && currentUser?.role === 'admin' && (
+          <AdminDashboard
             user={currentUser}
-            onLogout={handleLogout}
-            onUpdateUser={handleUpdateUser}
-            students={allUsers.filter(
-              (u) =>
-                u.role === 'student' &&
-                (studentClasses[u.id] || []).some(cid =>
-                courses.some(course => String(course._id) === String(cid) && course.teacherId === currentUser.id) 
-                )
-            )
-            .map(u => ({
-              ...u,
-              studentClasses: studentClasses[u.id] || []
-            }))
-          }
-            allStudents={allUsers.filter((u) => u.role === 'student')}
-            characters={characters}
-            studentClasses={studentClasses}
-            onInviteStudent={async (studentId, courseId) => {
-              const updatedClasses = [
-                ...(studentClasses[studentId] || []),
-                courseId
-              ];
-              setStudentClasses({
-                ...studentClasses,
-                [studentId]: updatedClasses
-              });
-
-              try {
-                const res = await fetch(`/api/students/${studentId}/state`);
-                const existing = await res.json();
- 
-              // 2️⃣ save merged state (prevents wiping)
-              await fetch(`/api/students/${studentId}/state`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                achievements: existing.achievements || [],
-                inventory: existing.inventory || [],
-                progress: existing.progress || {},
-                level: existing.level ?? 1,
-                xp: existing.xp ?? 0,
-                studentClasses: updatedClasses})
-                });
-              } catch (err) {
-                console.error('Error saving student classes:', err);
-              }
-            }}
-            onCreateQuest={handleCreateQuest}
-            onUpdateQuest={handleUpdateQuest}
-            onDeleteQuest={handleDeleteQuest}
-            onAddItemToInventory={handleAddItemToInventory}
-            quests={quests}
             authFetch={authFetch}
-            courses={courses}
+            onLogout={handleAdminLogout}
+            go={(view) => setCurrentView(view)}
           />
         )}
-        {currentView === 'game' && selectedQuest && currentUser && currentUser.characterId && (
-        <GamePage
-          quest={selectedQuest}
-          character={characters[currentUser.characterId]}
-          onQuestComplete={handleQuestComplete}
-          onBack={() => {
-            setCurrentView('dashboard');
-            setSelectedQuest(null);
-          }}
-        />
-      )}
-    </div>
+
+        {currentView === 'character' &&
+          currentUser?.role === 'student' && (
+            <CharacterSelection
+              onCharacterCreated={handleCharacterCreation}
+              userId={currentUser.id}
+            />
+          )}
+
+        {currentView === 'dashboard' &&
+          currentUser?.role === 'student' && (
+            <StudentDashboard
+              user={currentUser}
+              character={
+                currentUser.characterId
+                  ? characters[currentUser.characterId]
+                  : undefined
+              }
+              onLogout={handleLogout}
+              onUpdateUser={handleUpdateUser}
+              onUpdateCharacter={handleUpdateCharacter}
+              onJoinClass={handleJoinClass}
+              studentClasses={studentClasses[currentUser.id] || []}
+              teachers={teachers}
+              achievements={achievements[currentUser.id] || []}
+              onUnlockAchievement={handleUnlockAchievement}
+              quests={quests}
+              inventory={studentInventories[currentUser.id] || []}
+              progress={studentProgress[currentUser.id] || {}}
+              levelInfo={studentLevels[currentUser.id] || { level: 1, xp: 0 }}
+              onUpdateProgress={handleUpdateProgress}
+              onStartQuest={handleStartQuest}
+              courses={courses}
+              authFetch={authFetch}
+            />
+          )}
+
+        {currentView === 'dashboard' &&
+          currentUser?.role === 'teacher' && (
+            <TeacherDashboard
+              user={currentUser}
+              onLogout={handleLogout}
+              onUpdateUser={handleUpdateUser}
+              students={students}
+              allStudents={allStudentsWithClasses}
+              characters={characters}
+              studentClasses={studentClasses}
+              onInviteStudent={onInviteStudent}
+              onCreateQuest={handleCreateQuest}
+              onUpdateQuest={handleUpdateQuest}
+              onDeleteQuest={handleDeleteQuest}
+              onAddItemToInventory={handleAddItemToInventory}
+              quests={quests}
+              authFetch={authFetch}
+              courses={courses}
+              onRefreshAllUsers={refreshAllUsers}
+              onRefreshStudentClasses={refreshStudentClassesForTeacher}
+              onRefreshQuests={refreshQuests}
+              onRefreshCourses={refreshCourses}
+              onCoursesChange={setCourses}
+            />
+          )}
+
+        {currentView === 'game' &&
+          selectedQuest &&
+          currentUser?.characterId && (
+            <GamePage
+              quest={selectedQuest}
+              character={characters[currentUser.characterId]}
+              onQuestComplete={handleQuestComplete}
+              onBack={() => {
+                setCurrentView('dashboard');
+                setSelectedQuest(null);
+              }}
+            />
+          )}
+      </div>
+    </ToastCtx.Provider>
   );
+
 }
 
 export default App;
