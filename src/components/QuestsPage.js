@@ -21,6 +21,14 @@ export default function QuestsPage({
     enrolledCourseIds.includes(getId(course._id))
   );
 
+  const availableQuests = (quests || []).filter((quest) => {
+    const questCourseId = getId(quest.courseId);
+    const inEnrolledCourse = enrolledCourseIds.includes(questCourseId);
+    const matchesCourseFilter =
+      selectedCourseFilter === 'all' || questCourseId === String(selectedCourseFilter);
+    return inEnrolledCourse && matchesCourseFilter;
+  });
+
   useEffect(() => {
     const saved = localStorage.getItem(`completed_quests_${character.id}`);
     if (saved) {
@@ -29,7 +37,7 @@ export default function QuestsPage({
   }, [character.id]);
 
   const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
-    const quest = (quests || []).find(q => q.id === questId);
+    const quest = (quests || []).find((q) => getId(q.id || q._id) === String(questId));
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
@@ -169,13 +177,6 @@ export default function QuestsPage({
                     By: {teacher.name}
                   </div>
                 ) : null}
-
-                {/* {teacher && (
-                {quest.courseName && (
-                  <div className="text-sm text-purple-300 mb-2">
-                    {quest.courseName}
-                  </div>
-                )}
 
                 <div className="flex items-center gap-4 mb-4 text-sm text-purple-200 font-pixel">
                   <div className="flex items-center gap-1">
