@@ -28,6 +28,57 @@ export default function QuestsPage({
     }
   }, [character.id]);
 
+  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+    const quest = (quests || []).find(q => q.id === questId);
+    if (!quest) return;
+
+    const percentage = (score / totalQuestions) * 100;
+    const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+
+    // Update character
+    const newXp = character.xp + xpEarned;
+    const newLevel = Math.floor(newXp / 100) + 1;
+    const leveledUp = newLevel > character.level;
+
+    onUpdateCharacter(character.id, {
+      xp: newXp,
+      level: newLevel,
+      maxXp: newLevel * 100
+    });
+
+    // Mark quest as completed
+    const newCompleted = [...completedQuests, questId];
+    setCompletedQuests(newCompleted);
+    localStorage.setItem(`completed_quests_${character.id}`, JSON.stringify(newCompleted));
+
+    // Check for achievements
+    if (completedQuests.length === 0) {
+      onUnlockAchievement('first_quest');
+    }
+    if (percentage === 100) {
+      onUnlockAchievement('perfect_score');
+    }
+    if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
+      onUnlockAchievement('speed_demon');
+    }
+    if (newLevel >= 5) {
+      onUnlockAchievement('level_5');
+    }
+    if (newLevel >= 10) {
+      onUnlockAchievement('level_10');
+    }
+
+    // Show results
+    let itemsText = '';
+    if (itemsEarned.length > 0) {
+      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
+    }
+
+    alert(
+      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
+    );
+  };
+
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
       case 'Easy':
@@ -40,17 +91,6 @@ export default function QuestsPage({
         return 'gray';
     }
   };
-
-  const availableQuests = (Array.isArray(quests) ? quests : []).filter((quest) => {
-    const questCourseId = getId(quest.courseId);
-    if (!questCourseId) return false;
-
-    const isEnrolled = enrolledCourseIds.includes(questCourseId);
-    const matchesCourseFilter =
-      selectedCourseFilter === 'all' || questCourseId === selectedCourseFilter;
-
-    return isEnrolled && matchesCourseFilter;
-  });
 
   return (
     <div className="space-y-8">
@@ -124,9 +164,16 @@ export default function QuestsPage({
                 <h3 className="text-xl text-white mb-2 font-pixel">{quest.title}</h3>
                 <p className="text-purple-200 mb-4 font-pixel">{quest.description}</p>
 
-                {teacher && (
+                {teacher ? (
                   <div className="text-sm text-purple-300 mb-4 font-pixel">
                     By: {teacher.name}
+                  </div>
+                ) : null}
+
+                {/* {teacher && (
+                {quest.courseName && (
+                  <div className="text-sm text-purple-300 mb-2">
+                    {quest.courseName}
                   </div>
                 )}
 

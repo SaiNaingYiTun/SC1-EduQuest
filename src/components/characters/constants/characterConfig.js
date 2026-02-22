@@ -115,29 +115,29 @@ export const CHARACTER_CONFIG = {
     scale: 1.6,
   },
 
-  Necromancer: {
-    spriteKey: 'necromancer',
+  Witch: {
+    spriteKey: 'witch',
     animations: {
-      idle: { key: 'necromancer_idle_anim', sheet: 'necromancer_idle', frameRate: 10, repeat: -1, frames: { start: 0, end: 9 } },
-      run: { key: 'necromancer_run_anim', sheet: 'necromancer_run', frameRate: 12, repeat: -1, frames: { start: 0, end: 7 } },
-      jump: { key: 'necromancer_jump_anim', sheet: 'necromancer_jump', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
-      fall: { key: 'necromancer_fall_anim', sheet: 'necromancer_fall', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
-      attack1: { key: 'necromancer_attack_1', sheet: 'necromancer_attack', frameRate: 12, repeat: 0, frames: { start: 0, end: 12 } },
-      projectileMove: { key: 'necromancer_projectile_move_anim', sheet: 'necromancer_moving', frameRate: 18, repeat: -1, frames: { start: 0, end: 3 } },
-      projectileExplode: { key: 'necromancer_projectile_explode_anim', sheet: 'necromancer_explode', frameRate: 20, repeat: 0, frames: { start: 0, end: 6 } },
-      takeHit: { key: 'necromancer_take_hit_anim', sheet: 'necromancer_takeHit', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
-      death: { key: 'necromancer_death_anim', sheet: 'necromancer_death', frameRate: 10, repeat: 0, frames: { start: 0, end: 17 } },
+      idle: { key: 'witch_idle_anim', sheet: 'witch_idle', frameRate: 10, repeat: -1, frames: { start: 0, end: 9 } },
+      run: { key: 'witch_run_anim', sheet: 'witch_run', frameRate: 12, repeat: -1, frames: { start: 0, end: 7 } },
+      jump: { key: 'witch_jump_anim', sheet: 'witch_jump', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
+      fall: { key: 'witch_fall_anim', sheet: 'witch_fall', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
+      attack1: { key: 'witch_attack_1', sheet: 'witch_attack', frameRate: 12, repeat: 0, frames: { start: 0, end: 12 } },
+      projectileMove: { key: 'witch_projectile_move_anim', sheet: 'witch_moving', frameRate: 18, repeat: -1, frames: { start: 0, end: 3 } },
+      projectileExplode: { key: 'witch_projectile_explode_anim', sheet: 'witch_explode', frameRate: 20, repeat: 0, frames: { start: 0, end: 6 } },
+      takeHit: { key: 'witch_take_hit_anim', sheet: 'witch_takeHit', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
+      death: { key: 'witch_death_anim', sheet: 'witch_death', frameRate: 10, repeat: 0, frames: { start: 0, end: 17 } },
     },
     sprites: {
-      idle: { path: 'assets/sprites/necromancer/Idle.png', frameWidth: 140, frameHeight: 140 },
-      run: { path: 'assets/sprites/necromancer/Run.png', frameWidth: 140, frameHeight: 140 },
-      jump: { path: 'assets/sprites/necromancer/Jump.png', frameWidth: 140, frameHeight: 140 },
-      fall: { path: 'assets/sprites/necromancer/Fall.png', frameWidth: 140, frameHeight: 140 },
-      attack: { path: 'assets/sprites/necromancer/Attack.png', frameWidth: 140, frameHeight: 140 },
-      moving: { path: 'assets/sprites/necromancer/Moving.png', frameWidth: 50, frameHeight: 50 },
-      explode: { path: 'assets/sprites/necromancer/Explode.png', frameWidth: 50, frameHeight: 50 },
-      takeHit: { path: 'assets/sprites/necromancer/Take_Hit.png', frameWidth: 140, frameHeight: 140 },
-      death: { path: 'assets/sprites/necromancer/Death.png', frameWidth: 140, frameHeight: 140 },
+      idle: { path: 'assets/sprites/witch/Idle.png', frameWidth: 140, frameHeight: 140 },
+      run: { path: 'assets/sprites/witch/Run.png', frameWidth: 140, frameHeight: 140 },
+      jump: { path: 'assets/sprites/witch/Jump.png', frameWidth: 140, frameHeight: 140 },
+      fall: { path: 'assets/sprites/witch/Fall.png', frameWidth: 140, frameHeight: 140 },
+      attack: { path: 'assets/sprites/witch/Attack.png', frameWidth: 140, frameHeight: 140 },
+      moving: { path: 'assets/sprites/witch/Moving.png', frameWidth: 50, frameHeight: 50 },
+      explode: { path: 'assets/sprites/witch/Explode.png', frameWidth: 50, frameHeight: 50 },
+      takeHit: { path: 'assets/sprites/witch/Take_Hit.png', frameWidth: 140, frameHeight: 140 },
+      death: { path: 'assets/sprites/witch/Death.png', frameWidth: 140, frameHeight: 140 },
     },
     physics: {
       bodySize: { width: 24, height: 53 },
@@ -150,7 +150,7 @@ export const CHARACTER_CONFIG = {
     combat: {
       damage: 30,
       attackRate: 1000,
-      attacks: ['necromancer_attack_1'],
+      attacks: ['witch_attack_1'],
     },
     scale: 1.1,
   },
@@ -160,6 +160,9 @@ export const BOSS_CONFIG = {
   spriteKey: 'boss',
   animations: {
     idle: { key: 'boss_idle_anim', sheet: 'boss_idle', frameRate: 8, repeat: -1, frames: { start: 0, end: 7 } },
+    run: { key: 'boss_run_anim', sheet: 'boss_run', frameRate: 10, repeat: -1, frames: { start: 0, end: 7 } },
+    jump: { key: 'boss_jump_anim', sheet: 'boss_jump', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
+    fall: { key: 'boss_fall_anim', sheet: 'boss_fall', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
     attack1: { key: 'boss_attack_1_anim', sheet: 'boss_attack_1', frameRate: 12, repeat: 0, frames: { start: 0, end: 5 } },
     attack2: { key: 'boss_attack_2_anim', sheet: 'boss_attack_2', frameRate: 12, repeat: 0, frames: { start: 0, end: 5 } },
     takeHit: { key: 'boss_take_hit_anim', sheet: 'boss_take_hit', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
@@ -167,6 +170,9 @@ export const BOSS_CONFIG = {
   },
   sprites: {
     idle: { path: 'assets/sprites/war_boss/Idle.png', frameWidth: 200, frameHeight: 200 },
+    run: { path: 'assets/sprites/war_boss/Run.png', frameWidth: 200, frameHeight: 200 },
+    jump: { path: 'assets/sprites/war_boss/Jump.png', frameWidth: 200, frameHeight: 200 },
+    fall: { path: 'assets/sprites/war_boss/Fall.png', frameWidth: 200, frameHeight: 200 },
     attack1: { path: 'assets/sprites/war_boss/Attack1.png', frameWidth: 200, frameHeight: 200 },
     attack2: { path: 'assets/sprites/war_boss/Attack2.png', frameWidth: 200, frameHeight: 200 },
     takeHit: { path: 'assets/sprites/war_boss/Take_Hit.png', frameWidth: 200, frameHeight: 200 },
@@ -184,3 +190,7 @@ export const BOSS_CONFIG = {
   },
   scale: 2.5,
 };
+
+
+
+
