@@ -170,7 +170,6 @@ export default function QuestsPage({
                   </div>
                 ) : null}
 
-                {/* {teacher && (
                 {quest.courseName && (
                   <div className="text-sm text-purple-300 mb-2">
                     {quest.courseName}
