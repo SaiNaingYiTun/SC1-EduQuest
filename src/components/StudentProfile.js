@@ -131,8 +131,8 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
     return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="text-center">
-        <h2 className="text-4xl text-amber-400 mb-2">Profile</h2>
-        <p className="text-xl text-purple-200">Manage your account settings</p>
+        <h2 className="text-4xl text-amber-400 mb-2 font-pixel">Profile</h2>
+        <p className="text-xl text-purple-200 font-pixel">Manage your account settings</p>
       </div>
 
       {/* Profile Card */}
@@ -161,32 +161,32 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-purple-100 mb-2">Display Name</label>
+                  <label className="block text-purple-100 mb-2 font-pixel">Display Name</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
+                    className="w-full bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-3 text-white placeholder-purple-300 font-pixel focus:border-purple-400 focus:outline-none"
                     placeholder="Enter your name"
                   />
                 </div>
               </div>
             ) : (
               <>
-                <h3 className="text-3xl text-white mb-2">{user.name}</h3>
-                <div className="text-purple-200 mb-4">@{user.username}</div>
+                <h3 className="text-3xl text-white mb-2 font-pixel">{user.name}</h3>
+                <div className="text-purple-200 mb-4 font-pixel">@{user.username}</div>
                 <div className="flex gap-4">
                   <div className="bg-blue-600/20 px-4 py-2 rounded-lg border border-blue-400/30">
-                    <div className="text-sm text-blue-300">Role</div>
-                    <div className="text-white">Student</div>
+                    <div className="text-sm text-blue-300 font-pixel">Role</div>
+                    <div className="text-white font-pixel">Student</div>
                   </div>
                   <div className="bg-purple-600/20 px-4 py-2 rounded-lg border border-purple-400/30">
-                    <div className="text-sm text-purple-300">Level</div>
-                    <div className="text-white">{character.level}</div>
+                    <div className="text-sm text-purple-300 font-pixel">Level</div>
+                    <div className="text-white font-pixel">{character.level}</div>
                   </div>
                   <div className="bg-amber-600/20 px-4 py-2 rounded-lg border border-amber-400/30">
-                    <div className="text-sm text-amber-300">Total XP</div>
-                    <div className="text-white">{character.xp}</div>
+                    <div className="text-sm text-amber-300 font-pixel">Total XP</div>
+                    <div className="text-white font-pixel">{character.xp}</div>
                   </div>
                 </div>
               </>
@@ -197,7 +197,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
         {/* Avatar Picker */}
         {showAvatarPicker && (
           <div className="mb-6 p-6 bg-slate-800/50 rounded-lg border-2 border-purple-400/30">
-            <h4 className="text-white mb-4">Choose Avatar</h4>
+            <h4 className="text-white mb-4 font-pixel">Choose Avatar</h4>
             <div className="grid grid-cols-6 gap-4">
               {defaultProfilePics.map((pic, index) => (
                 <button
@@ -216,14 +216,14 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
             </div>
 
             <div className="mt-5">
-              <label className="text-sm text-purple-200 block mb-2">Upload from device</label>
+              <label className="text-sm text-purple-200 block mb-2 font-pixel">Upload from device</label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
-                className="w-full text-white"
+                className="w-full text-white font-pixel"
               />
-              <div className="text-xs text-purple-300 mt-2">PNG/JPG, max 2MB</div>
+              <div className="text-xs text-purple-300 mt-2 font-pixel">PNG/JPG, max 2MB</div>
             </div>
           </div>
         )}
@@ -234,14 +234,14 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
             <>
               <button
                 onClick={handleSave}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 font-pixel"
               >
                 <Save className="w-5 h-5" />
                 Save Changes
               </button>
               <button
                 onClick={handleCancel}
-                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all flex items-center justify-center gap-2"
+                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-3 rounded-lg transition-all flex items-center justify-center gap-2 font-pixel"
               >
                 Cancel
               </button>
@@ -249,7 +249,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
           ) : (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-700 hover:from-blue-700 hover:to-purple-800 text-white py-3 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 font-pixel"
             >
               <Edit2 className="w-5 h-5" />
               Edit Profile
@@ -260,7 +260,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
 
       {/* Character Info */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Character Information</h3>
+        <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Character Information</h3>
 
         <div className="flex items-center gap-6">
           <img
@@ -269,15 +269,15 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
             className="w-24 h-24 rounded-full border-4 border-amber-400 object-cover"
           />
           <div className="flex-1">
-            <div className="text-2xl text-white mb-1">{character.name}</div>
-            <div className="text-purple-200 mb-4">{character.class}</div>
+            <div className="text-2xl text-white mb-1 font-pixel">{character.name}</div>
+            <div className="text-purple-200 mb-4 font-pixel">{character.class}</div>
             <div className="bg-slate-800/50 rounded-full h-4 overflow-hidden border-2 border-purple-400/30">
               <div
                 className="bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all"
                 style={{ width: `${(character.xp / character.maxXp) * 100}%` }}
               />
             </div>
-            <div className="text-sm text-purple-200 mt-2">
+            <div className="text-sm text-purple-200 mt-2 font-pixel">
               {character.xp} / {character.maxXp} XP to next level
             </div>
           </div>
@@ -286,14 +286,14 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
 
       {/* Account Settings */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Account Settings</h3>
+        <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Account Settings</h3>
 
         <div className="space-y-4">
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-white">Username</div>
-                <div className="text-purple-200">@{user.username}</div>
+                <div className="text-white font-pixel">Username</div>
+                <div className="text-purple-200 font-pixel">@{user.username}</div>
               </div>
               <UserIcon className="w-6 h-6 text-purple-400" />
             </div>
@@ -302,8 +302,8 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-white">Account Type</div>
-                <div className="text-purple-200">Student Account</div>
+                <div className="text-white font-pixel">Account Type</div>
+                <div className="text-purple-200 font-pixel">Student Account</div>
               </div>
             </div>
           </div>
@@ -313,7 +313,7 @@ export default function StudentProfile({ user, character, onUpdateUser, onLogout
       {/* Logout Button */}
       <button
         onClick={onLogout}
-        className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-4 rounded-lg transition-all shadow-lg flex items-center justify-center gap-2 font-pixel"
       >
         <LogOut className="w-5 h-5" />
         Logout

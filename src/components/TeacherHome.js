@@ -14,13 +14,13 @@ export default function TeacherHome({ user, students, characters, selectedCourse
     <div className="space-y-8">
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-indigo-700/40 to-purple-800/40 rounded-2xl p-8 border border-indigo-400/20">
-        <h2 className="text-3xl font-semibold text-white mb-2">
+        <h2 className="text-3xl font-semibold text-white mb-2 font-pixel">
           Dashboard Overview
         </h2>
-        <p className="text-purple-200">
+        <p className="text-purple-200 font-pixel">
           {selectedCourse
             ? <>Currently viewing  
-              <span className="text-amber-400 font-medium">
+              <span className="text-amber-400 font-medium font-pixel">
                 {selectedCourse.name} {selectedCourse.section && `(${selectedCourse.section})`}
               </span>
             </>
@@ -33,8 +33,8 @@ export default function TeacherHome({ user, students, characters, selectedCourse
         <div className="bg-slate-800/60 rounded-xl p-6 border border-indigo-400/20">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-purple-300">Total Students</div>
-              <div className="text-3xl font-bold text-white">{totalStudents}</div>
+              <div className="text-sm text-purple-300 font-pixel">Total Students</div>
+              <div className="text-3xl font-bold text-white font-pixel">{totalStudents}</div>
             </div>
             <Users className="w-8 h-8 text-indigo-400" />
           </div>
@@ -43,8 +43,8 @@ export default function TeacherHome({ user, students, characters, selectedCourse
         <div className="bg-slate-800/60 rounded-xl p-6 border border-green-400/20">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-purple-300">Active Course</div>
-              <div className="text-3xl font-bold text-white">{totalCourses}</div>
+              <div className="text-sm text-purple-300 font-pixel">Active Course</div>
+              <div className="text-3xl font-bold text-white font-pixel">{totalCourses}</div>
             </div>
             <GraduationCap className="w-8 h-8 text-green-400" />
           </div>
@@ -53,8 +53,8 @@ export default function TeacherHome({ user, students, characters, selectedCourse
         <div className="bg-slate-800/60 rounded-xl p-6 border border-amber-400/20">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-purple-300">Active Quests</div>
-              <div className="text-3xl font-bold text-white">{totalQuests}</div>
+              <div className="text-sm text-purple-300 font-pixel">Active Quests</div>
+              <div className="text-3xl font-bold text-white font-pixel">{totalQuests}</div>
             </div>
             <Scroll className="w-8 h-8 text-amber-400" />
           </div>
@@ -64,26 +64,26 @@ export default function TeacherHome({ user, students, characters, selectedCourse
 
       {/* Class Information */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Class Information</h3>
+        <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Class Information</h3>
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-slate-800/50 rounded-lg p-6 border-2 border-purple-400/30">
             <div className="flex items-center gap-4 mb-4">
               <BookOpen className="w-8 h-8 text-amber-400" />
-              <h4 className="text-xl text-white">Course Details</h4>
+              <h4 className="text-xl text-white font-pixel">Course Details</h4>
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-sm text-purple-300">Faculty</div>
-                <div className="text-white">{user.subjects}</div>
+                <div className="text-sm text-purple-300 font-pixel">Faculty</div>
+                <div className="text-white font-pixel">{user.subjects}</div>
               </div>
               <div>
-                <div className="text-sm text-purple-300">Instructor</div>
-                <div className="text-white">{user.name}</div>
+                <div className="text-sm text-purple-300 font-pixel">Instructor</div>
+                <div className="text-white font-pixel">{user.name}</div>
               </div>
               <div>
-                <div className="text-sm text-purple-300">Username</div>
-                <div className="text-white">@{user.username}</div>
+                <div className="text-sm text-purple-300 font-pixel">Username</div>
+                <div className="text-white font-pixel">@{user.username}</div>
               </div>
             </div>
           </div>
@@ -91,12 +91,12 @@ export default function TeacherHome({ user, students, characters, selectedCourse
           <div className="bg-slate-800/50 rounded-lg p-6 border-2 border-amber-400/30">
             <div className="flex items-center gap-4 mb-4">
               <Users className="w-8 h-8 text-amber-400" />
-              <h4 className="text-xl text-white">Enrollment</h4>
+              <h4 className="text-xl text-white font-pixel">Enrollment</h4>
             </div>
             <div className="space-y-3">
               <div>
-                <div className="text-sm text-purple-300">Total Enrolled</div>
-                <div className="text-white">{totalStudents} Students</div>
+                <div className="text-sm text-purple-300 font-pixel">Total Enrolled</div>
+                <div className="text-white font-pixel">{totalStudents} Students</div>
               </div>
             </div>
           </div>
@@ -106,7 +106,7 @@ export default function TeacherHome({ user, students, characters, selectedCourse
       {/* Recent Students */}
       {recentStudents.length > 0 && (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6">Recently Joined Students</h3>
+          <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Recently Joined Students</h3>
 
           <div className="space-y-3">
             {recentStudents.map((student) => {
@@ -131,14 +131,14 @@ export default function TeacherHome({ user, students, characters, selectedCourse
                     )}
 
                     <div className="flex-1">
-                      <div className="text-white">{student.name}</div>
-                      <div className="text-sm text-purple-200">@{student.username}</div>
+                      <div className="text-white font-pixel">{student.name}</div>
+                      <div className="text-sm text-purple-200 font-pixel">@{student.username}</div>
                     </div>
 
                     {character && (
                       <div className="text-right">
-                        <div className="text-white">Level {character.level}</div>
-                        <div className="text-sm text-purple-200">{character.class}</div>
+                        <div className="text-white font-pixel">Level {character.level}</div>
+                        <div className="text-sm text-purple-200 font-pixel">{character.class}</div>
                       </div>
                     )}
                   </div>
@@ -152,8 +152,8 @@ export default function TeacherHome({ user, students, characters, selectedCourse
       {totalStudents === 0 && (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Users className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
-          <h3 className="text-2xl text-white mb-2">No Students Yet</h3>
-          <p className="text-purple-200 mb-6">
+          <h3 className="text-2xl text-white mb-2 font-pixel">No Students Yet</h3>
+          <p className="text-purple-200 mb-6 font-pixel">
             Invite students from the Students tab to start building your class.
           </p>
         </div>

@@ -21,6 +21,14 @@ export default function QuestsPage({
     enrolledCourseIds.includes(getId(course._id))
   );
 
+  const availableQuests = (quests || []).filter((quest) => {
+    const questCourseId = getId(quest.courseId);
+    const inEnrolledCourse = enrolledCourseIds.includes(questCourseId);
+    const matchesCourseFilter =
+      selectedCourseFilter === 'all' || questCourseId === String(selectedCourseFilter);
+    return inEnrolledCourse && matchesCourseFilter;
+  });
+
   useEffect(() => {
     const saved = localStorage.getItem(`completed_quests_${character.id}`);
     if (saved) {
@@ -29,7 +37,7 @@ export default function QuestsPage({
   }, [character.id]);
 
   const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
-    const quest = (quests || []).find(q => q.id === questId);
+    const quest = (quests || []).find((q) => getId(q.id || q._id) === String(questId));
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
@@ -107,7 +115,7 @@ export default function QuestsPage({
           <select
             value={selectedCourseFilter}
             onChange={(e) => setSelectedCourseFilter(e.target.value)}
-            className="bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-2 text-white focus:border-purple-400 focus:outline-none"
+            className="bg-slate-800/50 border-2 border-purple-400/30 rounded-lg px-4 py-2 text-white font-pixel focus:border-purple-400 focus:outline-none"
           >
             <option value="all">All Courses</option>
             {enrolledCourses.map((course) => (
@@ -122,8 +130,8 @@ export default function QuestsPage({
       {availableQuests.length === 0 ? (
         <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-12 border-2 border-purple-400/30 backdrop-blur-sm text-center">
           <Scroll className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
-          <h3 className="text-2xl text-white mb-2">No Quests Available</h3>
-          <p className="text-purple-200">
+          <h3 className="text-2xl text-white mb-2 font-pixel">No Quests Available</h3>
+          <p className="text-purple-200 font-pixel">
             No real quests are assigned to your enrolled classes yet.
           </p>
         </div>
@@ -148,7 +156,7 @@ export default function QuestsPage({
                 {isCompleted && (
                   <div className="flex items-center gap-2 text-green-400 mb-3">
                     <CheckCircle className="w-5 h-5" />
-                    <span>Completed</span>
+                    <span className="font-pixel">Completed</span>
                   </div>
                 )}
 
