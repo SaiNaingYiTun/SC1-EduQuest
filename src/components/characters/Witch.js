@@ -29,6 +29,7 @@ export class Witch extends BaseCharacter {
         frameHeight: spriteData.frameHeight,
       });
     });
+    scene.load.audio('witch_attack_sfx', 'assets/sounds/witch_attack.mp3');
   }
 
   static createAnimations(scene) {
@@ -167,6 +168,7 @@ export class Witch extends BaseCharacter {
 
     this.sprite.play(attackAnim);
     this.currentAnim = attackAnim;
+    this.playSound('witch_attack_sfx', { volume: 0.4 });
 
     const completeHandler = () => {
       this.isAttacking = false;
