@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
-
 export default function QuestsPage({
   character,
   onUpdateCharacter,
@@ -12,23 +11,15 @@ export default function QuestsPage({
   courses = [],
   onStartQuest
 }) {
-
   const [completedQuests, setCompletedQuests] = useState([]);
-  const [selectedCourseFilter, setSelectedCourseFilter] = useState('all'); // 'all' or courseId
+  const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
 
+  const getId = (value) => String(value?._id ?? value?.id ?? value ?? '');
   const enrolledCourseIds = studentClasses.map(String);
-  
-  // Get courses student is enrolled in
-  const enrolledCourses = courses.filter(course => 
-    enrolledCourseIds.includes(String(course._id))
-  );
 
-  // Filter quests by enrolled courses and selected filter
-  const availableQuests = quests.filter(quest => {
-    const isEnrolled = enrolledCourseIds.includes(String(quest.courseId));
-    const matchesFilter = selectedCourseFilter === 'all' || String(quest.courseId) === selectedCourseFilter;
-    return isEnrolled && matchesFilter;
-  });
+  const enrolledCourses = courses.filter((course) =>
+    enrolledCourseIds.includes(getId(course._id))
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem(`completed_quests_${character.id}`);
@@ -110,7 +101,6 @@ export default function QuestsPage({
         </div>
       </div>
 
-      {/* Course Filter */}
       {enrolledCourses.length > 0 && (
         <div className="flex items-center gap-4">
           <Filter className="w-5 h-5 text-purple-300" />
@@ -134,23 +124,26 @@ export default function QuestsPage({
           <Scroll className="w-16 h-16 mx-auto mb-4 text-purple-400/50" />
           <h3 className="text-2xl text-white mb-2">No Quests Available</h3>
           <p className="text-purple-200">
-            Join a class to access quests created by your teachers!
+            No real quests are assigned to your enrolled classes yet.
           </p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {availableQuests.map((quest) => {
-            const isCompleted = completedQuests.includes(quest.id);
-            const teacher = teachers.find(t => t.id === quest.teacherId);
+            const questId = getId(quest.id || quest._id);
+            const teacherId = getId(quest.teacherId);
+            const isCompleted = completedQuests.includes(questId);
+            const teacher = teachers.find((t) => getId(t.id || t._id) === teacherId);
             const difficultyColor = getDifficultyColor(quest.difficulty);
 
             return (
               <div
-                key={quest.id}
-                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${isCompleted
-                  ? 'border-green-400/50 opacity-75'
-                  : 'border-purple-400/30 hover:border-purple-400/50'
-                  }`}
+                key={questId}
+                className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${
+                  isCompleted
+                    ? 'border-green-400/50 opacity-75'
+                    : 'border-purple-400/30 hover:border-purple-400/50'
+                }`}
               >
                 {isCompleted && (
                   <div className="flex items-center gap-2 text-green-400 mb-3">
@@ -161,7 +154,9 @@ export default function QuestsPage({
 
                 <div className="flex items-start justify-between mb-4">
                   <Scroll className="w-12 h-12 text-amber-400" />
-                  <span className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50 font-pixel`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-sm bg-${difficultyColor}-600/30 text-${difficultyColor}-300 border border-${difficultyColor}-400/50 font-pixel`}
+                  >
                     {quest.difficulty}
                   </span>
                 </div>
@@ -181,12 +176,6 @@ export default function QuestsPage({
                     {quest.courseName}
                   </div>
                 )}
-
-                {teacher && (
-                  <div className="text-sm text-purple-300 mb-4">
-                    {teacher.name}
-                  </div>
-                )} */}
 
                 <div className="flex items-center gap-4 mb-4 text-sm text-purple-200 font-pixel">
                   <div className="flex items-center gap-1">
@@ -208,10 +197,11 @@ export default function QuestsPage({
                 <button
                   onClick={() => onStartQuest && onStartQuest(quest)}
                   disabled={isCompleted}
-                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${isCompleted
-                    ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
-                    }`}
+                  className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                    isCompleted
+                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
+                  }`}
                 >
                   {isCompleted ? (
                     <>
