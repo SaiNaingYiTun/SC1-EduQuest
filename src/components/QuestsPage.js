@@ -178,6 +178,12 @@ export default function QuestsPage({
                   </div>
                 ) : null}
 
+                {quest.courseName && (
+                  <div className="text-sm text-purple-300 mb-2">
+                    {quest.courseName}
+                  </div>
+                )}
+
                 <div className="flex items-center gap-4 mb-4 text-sm text-purple-200 font-pixel">
                   <div className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-amber-400" />

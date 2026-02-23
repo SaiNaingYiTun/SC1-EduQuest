@@ -61,6 +61,8 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
     let bossFightManager = null;
     let lastQuizMapKey = null;
+    let quizBgm = null;
+    const QUIZ_BGM_KEY = 'quiz_bgm';
 
     const resolvedCharacterConfig = CHARACTER_CONFIG[character.class] || CHARACTER_CONFIG.Warrior;
     const QUEST_MASTER_CONFIG = {
@@ -115,6 +117,39 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
       return `${mins}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const ensureQuizBgm = function () {
+      if (!this.sound || !this.cache.audio.exists(QUIZ_BGM_KEY)) return null;
+      if (!quizBgm || quizBgm.isDestroyed) {
+        quizBgm = this.sound.add(QUIZ_BGM_KEY, {
+          loop: true,
+          volume: 0.35,
+        });
+      }
+      return quizBgm;
+    };
+
+    const startQuizBgm = function () {
+      const bgm = ensureQuizBgm.call(this);
+      if (!bgm || bgm.isPlaying) return;
+      bgm.play();
+    };
+
+    const stopQuizBgm = function () {
+      if (!quizBgm || quizBgm.isDestroyed || !quizBgm.isPlaying) return;
+      quizBgm.stop();
+    };
+
+    const destroyQuizBgm = function () {
+      if (!quizBgm) return;
+      if (quizBgm.isPlaying) {
+        quizBgm.stop();
+      }
+      if (!quizBgm.isDestroyed) {
+        quizBgm.destroy();
+      }
+      quizBgm = null;
     };
 
     const shuffleArray = (array) => {
@@ -590,6 +625,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
     const startQuizMiniGame = function () {
       gameState = 'quiz';
+      startQuizBgm.call(this);
       hasAnswered = false;
       questionShown = false;
       doorUnlocked = false;
@@ -806,6 +842,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
     const startBossFight = function () {
       gameState = 'boss';
+      stopQuizBgm.call(this);
       this.physics.world.gravity.y = 600;
 
       bossFightManager = new BossFightManager(this, {
@@ -854,12 +891,20 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       this.load.image('boss_healthbar_background', 'assets/sprites/healthbar/boss-healthbar_background.png');
       this.load.image('boss_healthbar_fill', 'assets/sprites/healthbar/boss-healthbar.png');
       this.load.image('boss_healthbar_icon', 'assets/sprites/healthbar/boss-healthbar_Icon.png');
+      this.load.audio(QUIZ_BGM_KEY, 'assets/sounds/quiz_bgm.mp3');
 
       this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
     };
 
     const createQuestScene = function () {
       setIsLoading(false);
+
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+        destroyQuizBgm.call(this);
+      });
+      this.events.once(Phaser.Scenes.Events.DESTROY, () => {
+        destroyQuizBgm.call(this);
+      });
 
       Warrior.createAnimations(this);
       Mage.createAnimations(this);
@@ -1013,6 +1058,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
     const completeQuest = function (victory) {
       gameState = 'complete';
+      stopQuizBgm.call(this);
       this.children.removeAll(true);
 
       const bg = this.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
