@@ -142,8 +142,8 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-4xl text-amber-400 mb-2">Teacher Profile</h2>
-        <p className="text-purple-200">
+        <h2 className="text-4xl text-amber-400 mb-2 font-pixel">Teacher Profile</h2>
+        <p className="text-purple-200 font-pixel">
           Update your profile details and avatar
         </p>
       </div>
@@ -151,16 +151,16 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
-          <div className="text-purple-300 text-sm">Courses</div>
-          <div className="text-white text-2xl font-semibold">{stats?.courses ?? 0}</div>
+          <div className="text-purple-300 text-sm font-pixel">Courses</div>
+          <div className="text-white text-2xl font-semibold font-pixel">{stats?.courses ?? 0}</div>
         </div>
         <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
-          <div className="text-purple-300 text-sm">Students</div>
-          <div className="text-white text-2xl font-semibold">{stats?.students ?? 0}</div>
+          <div className="text-purple-300 text-sm font-pixel">Students</div>
+          <div className="text-white text-2xl font-semibold font-pixel">{stats?.students ?? 0}</div>
         </div>
         <div className="bg-slate-800/30 rounded-xl p-4 border border-purple-400/20">
-          <div className="text-purple-300 text-sm">Quests</div>
-          <div className="text-white text-2xl font-semibold">{stats?.quests ?? 0}</div>
+          <div className="text-purple-300 text-sm font-pixel">Quests</div>
+          <div className="text-white text-2xl font-semibold font-pixel">{stats?.quests ?? 0}</div>
         </div>
       </div>
 
@@ -195,7 +195,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-purple-100 mb-2">Name</label>
+                  <label className="block text-purple-100 mb-2 font-pixel">Name</label>
                   <input
                     type="text"
                     value={name}
@@ -206,7 +206,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
                 </div>
 
                 <div>
-                  <label className="block text-purple-100 mb-2">Faculty / Department</label>
+                  <label className="block text-purple-100 mb-2 font-pixel">Faculty / Department</label>
                   <input
                     type="text"
                     value={subjects}
@@ -218,18 +218,18 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
               </div>
             ) : (
               <>
-                <h3 className="text-3xl text-white mb-1">{user.name}</h3>
-                <div className="text-purple-200 mb-4">@{user.username}</div>
+                <h3 className="text-3xl text-white mb-1 font-pixel">{user.name}</h3>
+                <div className="text-purple-200 mb-4 font-pixel">@{user.username}</div>
 
                 <div className="flex flex-wrap gap-3">
                   <div className="bg-amber-600/20 px-4 py-2 rounded-lg border border-amber-400/30">
-                    <div className="text-sm text-amber-300">Role</div>
-                    <div className="text-white">Teacher</div>
+                    <div className="text-sm text-amber-300 font-pixel">Role</div>
+                    <div className="text-white font-pixel">Teacher</div>
                   </div>
 
                   <div className="bg-purple-600/20 px-4 py-2 rounded-lg border border-purple-400/30">
-                    <div className="text-sm text-purple-300">Faculty</div>
-                    <div className="text-white">
+                    <div className="text-sm text-purple-300 font-pixel">Faculty</div>
+                    <div className="text-white font-pixel">
                       {Array.isArray(user.subjects) ? (user.subjects[0] || 'Not set') : (user.subjects || 'Not set')}
                     </div>
                   </div>
@@ -243,7 +243,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
         {showAvatarPicker && isEditing && (
           <div className="mb-6 p-6 bg-slate-800/50 rounded-xl border-2 border-purple-400/30">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-white">Choose an avatar</h4>
+              <h4 className="text-white font-pixel">Choose an avatar</h4>
               <button
                 onClick={() => setShowAvatarPicker(false)}
                 className="text-sm text-purple-200 hover:text-white"
@@ -278,21 +278,21 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
 
             {/* Upload from device */}
             <div className="mt-5">
-              <label className="text-sm text-purple-200 block mb-2">Upload from device</label>
+              <label className="text-sm text-purple-200 block mb-2 font-pixel">Upload from device</label>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
                 className="w-full text-white"
               />
-              <div className="text-xs text-purple-300 mt-2">
+              <div className="text-xs text-purple-300 mt-2 font-pixel">
                 PNG/JPG, max 2MB
               </div>
             </div>
 
             {/* Optional direct URL (keep if you still want it) */}
             <div className="mt-5">
-              <label className="text-sm text-purple-200 block mb-2">Or paste image URL</label>
+              <label className="text-sm text-purple-200 block mb-2 font-pixel">Or paste image URL</label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -349,14 +349,14 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
 
       {/* Account Info */}
       <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-        <h3 className="text-2xl text-amber-400 mb-6">Account Information</h3>
+        <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Account Information</h3>
 
         <div className="space-y-4">
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-white">Username</div>
-                <div className="text-purple-200">@{user.username}</div>
+                <div className="text-white font-pixel">Username</div>
+                <div className="text-purple-200 font-pixel">@{user.username}</div>
               </div>
               <UserIcon className="w-6 h-6 text-purple-400" />
             </div>
@@ -365,8 +365,8 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
           <div className="bg-slate-800/30 rounded-lg p-4 border border-purple-400/20">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-white">Account Type</div>
-                <div className="text-purple-200">Teacher Account</div>
+                <div className="text-white font-pixel">Account Type</div>
+                <div className="text-purple-200 font-pixel">Teacher Account</div>
               </div>
             </div>
           </div>

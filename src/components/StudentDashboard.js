@@ -70,7 +70,7 @@ export default function StudentDashboard({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap ${activeTab === tab.id
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all whitespace-nowrap font-pixel ${activeTab === tab.id
                     ? 'bg-amber-500 text-white shadow-lg'
                     : 'bg-purple-800/50 text-purple-200 hover:bg-purple-700/50'
                     }`}

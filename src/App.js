@@ -126,7 +126,17 @@ function App() {
       }
 
       if (value.character && value.character.id) {
-        nextCharacters[value.character.id] = value.character;
+        const level = typeof value.level === 'number' ? value.level : value.character.level;
+        const xp = typeof value.xp === 'number' ? value.xp : value.character.xp;
+        nextCharacters[value.character.id] = {
+          ...value.character,
+          ...(typeof level === 'number' ? { level } : {}),
+          ...(typeof xp === 'number' ? { xp } : {}),
+          maxXp:
+            typeof value.character.maxXp === 'number'
+              ? value.character.maxXp
+              : ((typeof level === 'number' ? level : 1) * 100),
+        };
       }
 
       fetchedStudentStateRef.current.add(s.id);
@@ -258,7 +268,8 @@ function App() {
     achievementList,
     inventoryList,
     progressObj,
-    levelInfo
+    levelInfo,
+    character
   ) => {
     try {
       await fetch(`${API_URL}/api/students/${studentId}/state`, {
@@ -269,7 +280,8 @@ function App() {
           inventory: inventoryList,
           progress: progressObj,
           level: levelInfo.level,
-          xp: levelInfo.xp
+          xp: levelInfo.xp,
+          ...(character ? { character } : {})
         })
       });
     } catch (err) {
@@ -311,10 +323,19 @@ function App() {
         );
       }
 
-      if (data.character) {
+      if (data.character && data.character.id) {
+        const characterFromState = {
+          ...data.character,
+          level,
+          xp,
+          maxXp:
+            typeof data.character.maxXp === 'number'
+              ? data.character.maxXp
+              : level * 100
+        };
         setCharacters((prev) => ({
           ...prev,
-          [data.character.id]: data.character
+          [data.character.id]: characterFromState
         }));
       }
 
@@ -352,9 +373,8 @@ function App() {
 
   const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
     try {
-      const res = await fetch(`${API_URL}/api/students/${studentId}/progress`, {
+      const res = await authFetch(`/api/students/${studentId}/progress`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           questId,
           score,
@@ -385,8 +405,34 @@ function App() {
           xp: data.xp ?? 0
         }
       }));
+
+      const studentUser = allUsers.find((u) => String(u.id) === String(studentId));
+      const characterId = studentUser?.characterId;
+      if (characterId) {
+        setCharacters((prev) => {
+          const existing = prev[characterId];
+          if (!existing) return prev;
+          const nextLevel = data.level ?? existing.level ?? 1;
+          const nextXp = data.xp ?? existing.xp ?? 0;
+          return {
+            ...prev,
+            [characterId]: {
+              ...existing,
+              level: nextLevel,
+              xp: nextXp,
+              maxXp:
+                typeof existing.maxXp === 'number'
+                  ? existing.maxXp
+                  : nextLevel * 100
+            }
+          };
+        });
+      }
+
+      return data;
     } catch (err) {
       console.error('Error updating progress:', err);
+      return null;
     }
   };
 
@@ -799,7 +845,7 @@ function App() {
     return true;
   };
 
-  const handleUnlockAchievement = async (achievementId) => {
+  const handleUnlockAchievement = async (achievementId, overrides = {}) => {
     if (!currentUser) return;
 
     const userId = currentUser.id;
@@ -812,8 +858,14 @@ function App() {
     );
 
     const inventory = studentInventories[userId] || [];
-    const progressObj = studentProgress[userId] || {};
-    const levelInfo = studentLevels[userId] || { level: 1, xp: 0 };
+    const progressObj =
+      overrides.progressObj ??
+      studentProgress[userId] ??
+      {};
+    const levelInfo =
+      overrides.levelInfo ??
+      studentLevels[userId] ??
+      { level: 1, xp: 0 };
 
     setAchievements({
       ...achievements,
@@ -897,7 +949,7 @@ function App() {
     setSelectedQuest(quest);
     setCurrentView('game');
   };
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+  const handleQuestComplete = async (questId, score, totalQuestions, timeLeft, itemsEarned) => {
     if (!currentUser || !currentUser.characterId) return;
 
     const quest = quests.find(q => q.id === questId);
@@ -908,36 +960,68 @@ function App() {
 
     const percentage = (score / totalQuestions) * 100;
     const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+    const progressData = await handleUpdateProgress(currentUser.id, questId, score, xpEarned);
 
-    // Update character
-    const newXp = character.xp + xpEarned;
-    const newLevel = Math.floor(newXp / 100) + 1;
+    const newXp =
+      typeof progressData?.xp === 'number'
+        ? progressData.xp
+        : (character.xp + xpEarned);
+    const newLevel =
+      typeof progressData?.level === 'number'
+        ? progressData.level
+        : (Math.floor(newXp / 100) + 1);
     const leveledUp = newLevel > character.level;
 
-    handleUpdateCharacter(character.id, {
+    const updatedCharacter = {
+      ...character,
       xp: newXp,
       level: newLevel,
-      maxXp: newLevel * 100
-    });
+      maxXp:
+        typeof character.maxXp === 'number'
+          ? character.maxXp
+          : newLevel * 100
+    };
 
-    // Add earned items to inventory
-    itemsEarned.forEach(item => {
-      handleAddItemToInventory(currentUser.id, item);
-    });
+    handleUpdateCharacter(character.id, updatedCharacter);
+
+    try {
+      await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ character: updatedCharacter })
+      });
+    } catch (err) {
+      console.error('Error saving character xp/level:', err);
+    }
+
+    // Add earned items to inventory without overwriting fresh xp/progress from backend
+    await Promise.all(
+      itemsEarned.map((item) =>
+        handleAddItemToInventory(currentUser.id, item, {
+          progress: progressData?.progress,
+          levelInfo: { level: newLevel, xp: newXp }
+        })
+      )
+    );
 
     // Check for achievements
-    handleUnlockAchievement('first_quest');
+    const achievementStateOverrides = {
+      progressObj: progressData?.progress,
+      levelInfo: { level: newLevel, xp: newXp }
+    };
+
+    handleUnlockAchievement('first_quest', achievementStateOverrides);
     if (percentage === 100) {
-      handleUnlockAchievement('perfect_score');
+      handleUnlockAchievement('perfect_score', achievementStateOverrides);
     }
     if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
-      handleUnlockAchievement('speed_demon');
+      handleUnlockAchievement('speed_demon', achievementStateOverrides);
     }
     if (newLevel >= 5) {
-      handleUnlockAchievement('level_5');
+      handleUnlockAchievement('level_5', achievementStateOverrides);
     }
     if (newLevel >= 10) {
-      handleUnlockAchievement('level_10');
+      handleUnlockAchievement('level_10', achievementStateOverrides);
     }
 
     // Return to dashboard
@@ -957,13 +1041,19 @@ function App() {
     }, 100);
   };
 
-  const handleAddItemToInventory = async (studentId, item) => {
+  const handleAddItemToInventory = async (studentId, item, overrides = {}) => {
     const newInventory = [...(studentInventories[studentId] || []), item];
 
     const achievementList =
       achievements[studentId] || getDefaultAchievements();
-    const progressObj = studentProgress[studentId] || {};
-    const levelInfo = studentLevels[studentId] || { level: 1, xp: 0 };
+    const progressObj =
+      overrides.progress ??
+      studentProgress[studentId] ??
+      {};
+    const levelInfo =
+      overrides.levelInfo ??
+      studentLevels[studentId] ??
+      { level: 1, xp: 0 };
 
     setStudentInventories({
       ...studentInventories,
@@ -1041,7 +1131,6 @@ function App() {
     try { data = await res.json(); } catch { }
 
     if (res.ok) {
-      // Use backend truth if available
       const nextClasses = Array.isArray(data?.updatedState?.studentClasses)
         ? data.updatedState.studentClasses.map(String)
         : null;
@@ -1057,11 +1146,11 @@ function App() {
         };
       });
 
-      // Prevent your “fetch student state” logic from missing them later
-      fetchedStudentStateRef.current.add(String(studentId));
+     
+      fetchedStudentStateRef.current.delete(String(studentId));
 
-      // Keep allUsers in sync too
-      await refreshAllUsers();
+      await refreshStudentClassesForTeacher();
+      await refreshAllUsers(true);
     }
 
     return res;
