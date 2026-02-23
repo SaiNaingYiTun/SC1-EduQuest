@@ -47,6 +47,7 @@ export class Boss extends BaseCharacter {
       frameWidth: 200,
       frameHeight: 200,
     });
+    scene.load.audio('boss_attack_sfx', 'assets/sounds/war_boss_attack.mp3');
 
     console.log('Boss sprites queued for loading');
   }
@@ -230,6 +231,7 @@ export class Boss extends BaseCharacter {
 
     // Play attack animation
     this.sprite.play(attack.key);
+    this.playSound('boss_attack_sfx', { volume: 0.45 });
 
     // Listen for specific attack completion
     const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + attack.key;

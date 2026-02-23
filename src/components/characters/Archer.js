@@ -29,6 +29,7 @@ export class Archer extends BaseCharacter {
         frameHeight: spriteData.frameHeight,
       });
     });
+    scene.load.audio('archer_attack_sfx', 'assets/sounds/archer_attack.mp3');
   }
 
   static createAnimations(scene) {
@@ -167,6 +168,7 @@ export class Archer extends BaseCharacter {
 
     this.sprite.play(attackAnim);
     this.currentAnim = attackAnim;
+    this.playSound('archer_attack_sfx', { volume: 0.4 });
 
     const completeHandler = () => {
       this.isAttacking = false;

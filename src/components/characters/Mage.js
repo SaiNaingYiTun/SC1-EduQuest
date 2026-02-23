@@ -29,6 +29,7 @@ export class Mage extends BaseCharacter {
         frameHeight: spriteData.frameHeight,
       });
     });
+    scene.load.audio('mage_attack_sfx', 'assets/sounds/mage_attack.mp3');
   }
 
   static createAnimations(scene) {
@@ -167,6 +168,7 @@ export class Mage extends BaseCharacter {
 
     this.sprite.play(attackAnim);
     this.currentAnim = attackAnim;
+    this.playSound('mage_attack_sfx', { volume: 0.4 });
 
     const completeHandler = () => {
       this.isAttacking = false;

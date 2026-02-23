@@ -44,6 +44,12 @@ export class BaseCharacter {
     // Override in child classes
   }
 
+  playSound(key, config = {}) {
+    if (!key || !this.scene?.sound) return;
+    if (!this.scene.cache?.audio?.exists(key)) return;
+    this.scene.sound.play(key, config);
+  }
+
   takeDamage(amount) {
     // Override in child classes
   }
