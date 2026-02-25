@@ -4,7 +4,7 @@ import { Sword, BookOpen } from 'lucide-react';
 
 export default function RoleSelection({ onSelectRole }) {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4 font-pixel">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-12">
           <h1 className="text-6xl mb-4 text-amber-400">⚔️ EduQuest ⚔️</h1>
