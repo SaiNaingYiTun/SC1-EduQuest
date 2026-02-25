@@ -1109,15 +1109,13 @@ function App() {
     setSelectedQuest(null);
 
     // Show results
-    let itemsText = '';
-    if (itemsEarned.length > 0) {
-      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
-    }
-
     setTimeout(() => {
-      alert(
-        `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}${leveledUp ? `\n\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
-      );
+      const baseMessage = `Quest Complete! Score ${score}/${totalQuestions} (${percentage.toFixed(0)}%), XP +${xpEarned}.`;
+      const levelMessage = leveledUp ? ` Level Up! Now level ${newLevel}.` : '';
+      const itemsMessage = itemsEarned.length > 0
+        ? ` Items: ${itemsEarned.map(item => item.name).join(', ')}.`
+        : '';
+      toast(`${baseMessage}${levelMessage}${itemsMessage}`, 'success');
     }, 100);
   };
 
