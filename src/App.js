@@ -50,6 +50,43 @@ function App() {
 
   const inflightRequestsRef = useRef(new Map());
 
+  const hashString = useCallback((value) => {
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i += 1) {
+      hash ^= value.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return hash >>> 0;
+  }, []);
+
+  const createSeededRng = useCallback((seed) => {
+    let t = seed >>> 0;
+    return () => {
+      t += 0x6D2B79F5;
+      let r = t;
+      r = Math.imul(r ^ (r >>> 15), r | 1);
+      r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+  }, []);
+
+  const shuffleWithRng = useCallback((items, rng) => {
+    const arr = Array.isArray(items) ? items.slice() : [];
+    for (let i = arr.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rng() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }, []);
+
+  const getQuestQuestionsRandomOrder = useCallback(
+    (quest) => {
+      if (!quest || !Array.isArray(quest.questions)) return [];
+      return shuffleWithRng(quest.questions, () => Math.random());
+    },
+    [shuffleWithRng]
+  );
+
 
 
   // -----------------------
@@ -628,16 +665,16 @@ function App() {
             [normalizedUser.id]: initialLevel
           }));
 
-          // initialise student state in backend with same defaults
-          await saveStudentState(
+          // move immediately, then sync student state in background
+          setCurrentView('character');
+          toast('Syncing your profile in the background...', 'info');
+          void saveStudentState(
             normalizedUser.id,
             defaultAchievements,
             initialInventory,
             initialProgress,
             initialLevel
           );
-
-          setCurrentView('character');
         } else {
           // teacher goes straight to dashboard
           setCurrentView('dashboard');
@@ -756,25 +793,28 @@ function App() {
     setCurrentUser(updatedUser);
     setAllUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
 
-    try {
-      // Save characterId in backend User document
-      await authFetch(`/api/users/${currentUser.id}/character`, {
-        method: 'PUT',
-        body: JSON.stringify({ characterId: character.id })
-      });
-
-      // Save full character object in student state
-      await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character })
-      });
-    } catch (err) {
-      console.error('Error updating character:', err);
-    }
-
-
     setCurrentView('dashboard');
+    toast('Saving your character in the background...', 'info');
+
+    void (async () => {
+      try {
+        // Save characterId in backend User document
+        await authFetch(`/api/users/${currentUser.id}/character`, {
+          method: 'PUT',
+          body: JSON.stringify({ characterId: character.id })
+        });
+
+        // Save full character object in student state
+        await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character })
+        });
+      } catch (err) {
+        console.error('Error updating character:', err);
+        toast('Failed to save character. Please try again later.', 'error');
+      }
+    })();
   };
 
   const handleLogout = () => {
@@ -817,32 +857,68 @@ function App() {
     });
   };
 
-  const handleJoinClass = (teacherUsername, otp) => {
-    if (!currentUser || currentUser.role !== 'student') return;
+  const handleJoinClass = async (teacherUsername, otp) => {
+    if (!currentUser || currentUser.role !== 'student') return false;
 
-    const teacher = allUsers.find((u) => u.username === teacherUsername && u.role === 'teacher');
+    const normalizedUsername = String(teacherUsername || '').trim().toLowerCase();
+    const normalizedOtp = String(otp || '').trim().toUpperCase();
+
+    const teacher = allUsers.find(
+      (u) => u.role === 'teacher' && String(u.username || '').toLowerCase() === normalizedUsername
+    );
     if (!teacher) {
       toast('Teacher not found!', 'error');
       return false;
     }
 
-    if (teacher.otpCode !== otp) {
+    const course = courses.find(
+      (c) =>
+        String(c.teacherId) === String(teacher.id) &&
+        String(c.otpCode || '').toUpperCase() === normalizedOtp &&
+        String(c.status || '').toLowerCase() === 'approved'
+    );
+
+    if (!course) {
       toast('Invalid OTP code!', 'error');
       return false;
     }
 
     const currentClasses = studentClasses[currentUser.id] || [];
-    if (currentClasses.includes(teacher.id)) {
+    if (currentClasses.some((cid) => String(cid) === String(course._id))) {
       toast('You are already in this class!', 'warning');
       return false;
     }
 
-    setStudentClasses({
-      ...studentClasses,
-      [currentUser.id]: [...currentClasses, teacher.id]
-    });
+    try {
+      const res = await authFetch(`/api/students/${currentUser.id}/add-course`, {
+        method: 'POST',
+        body: JSON.stringify({ courseId: course._id })
+      });
 
-    return true;
+      let data = null;
+      try { data = await res.json(); } catch { }
+
+      if (!res.ok) {
+        const message = data?.message || 'Failed to join class';
+        toast(message, 'error');
+        return false;
+      }
+
+      const nextClasses = Array.isArray(data?.updatedState?.studentClasses)
+        ? data.updatedState.studentClasses.map(String)
+        : Array.from(new Set([...currentClasses.map(String), String(course._id)]));
+
+      setStudentClasses({
+        ...studentClasses,
+        [currentUser.id]: nextClasses
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error joining class:', err);
+      toast('Failed to join class', 'error');
+      return false;
+    }
   };
 
   const handleUnlockAchievement = async (achievementId, overrides = {}) => {
@@ -946,7 +1022,11 @@ function App() {
   };
 
   const handleStartQuest = (quest) => {
-    setSelectedQuest(quest);
+    const shuffledQuestions = getQuestQuestionsRandomOrder(quest);
+    setSelectedQuest({
+      ...quest,
+      questions: shuffledQuestions
+    });
     setCurrentView('game');
   };
   const handleQuestComplete = async (questId, score, totalQuestions, timeLeft, itemsEarned) => {
