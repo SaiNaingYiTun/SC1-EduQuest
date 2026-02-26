@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { Search, BookOpen, ShieldAlert, UsersRound } from "lucide-react";
 import { useToast } from "../App";
 import { COURSE_STATUS } from "./courseStatus";
@@ -11,9 +11,9 @@ export default function ClassesPage({
   onJoinClass,
   courses = [],
 }) {
-  const [teacherUsername, setTeacherUsername] = useState("");
-  const [otp, setOtp] = useState("");
   const [showJoinForm, setShowJoinForm] = useState(false);
+  const teacherUsernameRef = useRef(null);
+  const otpRef = useRef(null);
 
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportingTeacher, setReportingTeacher] = useState(null);
@@ -29,18 +29,23 @@ export default function ClassesPage({
     );
   }, [courses, studentClasses]);
 
-  const handleJoin = (e) => {
+  const handleJoin = async (e) => {
     e.preventDefault();
-    if (!teacherUsername.trim() || !otp.trim()) {
+    const rawTeacherUsername = teacherUsernameRef.current?.value ?? "";
+    const rawOtp = otpRef.current?.value ?? "";
+    const teacherUsername = rawTeacherUsername.trim();
+    const otp = rawOtp.trim().toUpperCase();
+
+    if (!teacherUsername || !otp) {
       toast("Please fill in all fields", "error");
       return;
     }
 
-    const success = onJoinClass(teacherUsername, otp);
+    const success = await onJoinClass(teacherUsername, otp);
     if (success) {
       toast("Successfully joined class!", "success");
-      setTeacherUsername("");
-      setOtp("");
+      if (teacherUsernameRef.current) teacherUsernameRef.current.value = "";
+      if (otpRef.current) otpRef.current.value = "";
       setShowJoinForm(false);
     }
   };
@@ -104,8 +109,10 @@ export default function ClassesPage({
             <form onSubmit={handleJoin} className="grid sm:grid-cols-3 gap-3">
               <input
                 type="text"
-                value={teacherUsername}
-                onChange={(e) => setTeacherUsername(e.target.value)}
+                ref={teacherUsernameRef}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-pixel
                            placeholder:text-white/40 focus:outline-none focus:ring-2
                            focus:ring-amber-400/60"
@@ -114,8 +121,10 @@ export default function ClassesPage({
 
               <input
                 type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.toUpperCase())}
+                ref={otpRef}
+                autoCapitalize="characters"
+                autoCorrect="off"
+                spellCheck={false}
                 className="px-4 py-3 rounded-xl border border-white/10 bg-white/5 text-white uppercase font-pixel
                            placeholder:text-white/40 focus:outline-none focus:ring-2
                            focus:ring-amber-400/60"

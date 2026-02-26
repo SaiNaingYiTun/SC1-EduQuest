@@ -116,34 +116,6 @@ export default function StudentHome({ character, achievements, studentClasses, t
         )}
       </div>
 
-      {/* Classes Overview */}
-      {studentClasses.length > 0 && (
-        <div className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-8 border-2 border-purple-400/30 backdrop-blur-sm">
-          <h3 className="text-2xl text-amber-400 mb-6 font-pixel">Your Classes</h3>
-          
-          <div className="space-y-4">
-            {studentClasses.map((teacherId) => {
-              const teacher = teachers.find(t => t.id === teacherId);
-              if (!teacher) return null;
-              
-              return (
-                <div
-                  key={teacherId}
-                  className="bg-slate-800/50 rounded-lg p-4 border-2 border-purple-400/30"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-white text-xl font-pixel">{teacher.subjects}</div>
-                      <div className="text-purple-200 font-pixel">Teacher: {teacher.name}</div>
-                    </div>
-                    <BookOpen className="w-8 h-8 text-purple-400" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
