@@ -1,10 +1,9 @@
-import Phaser from 'phaser';
-
 export class BaseCharacter {
   constructor(scene, x, y, config) {
     this.scene = scene;
     this.sprite = null;
     this.config = config;
+    this.movementSpeedMultiplier = 1;
     this.isAttacking = false;
     this.isDead = false;
     this.isTakingHit = false;
@@ -77,5 +76,18 @@ export class BaseCharacter {
 
   getPosition() {
     return this.sprite ? { x: this.sprite.x, y: this.sprite.y } : null;
+  }
+
+  setMovementSpeedMultiplier(multiplier = 1) {
+    if (!Number.isFinite(multiplier) || multiplier <= 0) {
+      this.movementSpeedMultiplier = 1;
+      return;
+    }
+    this.movementSpeedMultiplier = multiplier;
+  }
+
+  getMoveSpeed() {
+    const baseMoveSpeed = Number(this.config?.physics?.moveSpeed) || 0;
+    return baseMoveSpeed * this.movementSpeedMultiplier;
   }
 }

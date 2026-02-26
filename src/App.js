@@ -1029,6 +1029,17 @@ function App() {
     });
     setCurrentView('game');
   };
+  const getInventoryItemIdentity = (item) => {
+    const slug = String(item?.slug || '').trim().toLowerCase();
+    if (slug) return `slug:${slug}`;
+
+    const name = String(item?.name || '').trim().toLowerCase();
+    const tier = String(item?.tier || item?.rarity || '').trim().toLowerCase();
+    const itemType = String(item?.itemType || '').trim().toLowerCase();
+    const sprite = String(item?.sprite || '').trim().toLowerCase();
+    return `fallback:${name}|${tier}|${itemType}|${sprite}`;
+  };
+
   const handleQuestComplete = async (questId, score, totalQuestions, timeLeft, itemsEarned) => {
     if (!currentUser || !currentUser.characterId) return;
 
@@ -1074,9 +1085,13 @@ function App() {
       console.error('Error saving character xp/level:', err);
     }
 
-    // Add earned items to inventory without overwriting fresh xp/progress from backend
+    const existingInventory = studentInventories[currentUser.id] || [];
+    const existingKeys = new Set(existingInventory.map((item) => getInventoryItemIdentity(item)));
+    const itemsToAdd = (itemsEarned || []).filter((item) => !existingKeys.has(getInventoryItemIdentity(item)));
+
+    // Add only non-duplicate earned items to inventory without overwriting fresh xp/progress from backend
     await Promise.all(
-      itemsEarned.map((item) =>
+      itemsToAdd.map((item) =>
         handleAddItemToInventory(currentUser.id, item, {
           progress: progressData?.progress,
           levelInfo: { level: newLevel, xp: newXp }
@@ -1109,6 +1124,18 @@ function App() {
     setSelectedQuest(null);
 
     // Show results
+    let itemsText = '';
+    if (itemsToAdd.length > 0) {
+      itemsText = `\n\nItems Earned:\n${itemsToAdd
+        .map((item) => {
+          const icon = item?.icon ? `${item.icon} ` : '';
+          const tier = item?.tier || item?.rarity;
+          const tierText = tier ? ` [${String(tier).toUpperCase()}]` : '';
+          return `${icon}${item?.name || 'Unknown Item'}${tierText}`;
+        })
+        .join('\n')}`;
+    }
+
     setTimeout(() => {
       const baseMessage = `Quest Complete! Score ${score}/${totalQuestions} (${percentage.toFixed(0)}%), XP +${xpEarned}.`;
       const levelMessage = leveledUp ? ` Level Up! Now level ${newLevel}.` : '';
@@ -1120,7 +1147,18 @@ function App() {
   };
 
   const handleAddItemToInventory = async (studentId, item, overrides = {}) => {
-    const newInventory = [...(studentInventories[studentId] || []), item];
+    const normalizedItem = {
+      ...item,
+      equipped: Boolean(item?.equipped ?? false)
+    };
+    const existingInventory = studentInventories[studentId] || [];
+    const incomingKey = getInventoryItemIdentity(normalizedItem);
+    const isDuplicate = existingInventory.some(
+      (existingItem) => getInventoryItemIdentity(existingItem) === incomingKey
+    );
+    if (isDuplicate) return;
+
+    const newInventory = [...existingInventory, normalizedItem];
 
     const achievementList =
       achievements[studentId] || getDefaultAchievements();
@@ -1137,6 +1175,37 @@ function App() {
       ...studentInventories,
       [studentId]: newInventory
     });
+
+    await saveStudentState(
+      studentId,
+      achievementList,
+      newInventory,
+      progressObj,
+      levelInfo
+    );
+  };
+
+  const handleEquipInventoryItem = async (studentId, itemId) => {
+    const existingInventory = studentInventories[studentId] || [];
+    const targetItem = existingInventory.find((item) => String(item?.id) === String(itemId));
+    const shouldUnequipAll = Boolean(targetItem?.equipped);
+
+    const newInventory = existingInventory.map((item) => {
+      const isTarget = String(item?.id) === String(itemId);
+      if (shouldUnequipAll) {
+        return { ...item, equipped: false };
+      }
+      return { ...item, equipped: isTarget };
+    });
+
+    const achievementList = achievements[studentId] || getDefaultAchievements();
+    const progressObj = studentProgress[studentId] || {};
+    const levelInfo = studentLevels[studentId] || { level: 1, xp: 0 };
+
+    setStudentInventories((prev) => ({
+      ...prev,
+      [studentId]: newInventory
+    }));
 
     await saveStudentState(
       studentId,
@@ -1373,6 +1442,7 @@ function App() {
               onUnlockAchievement={handleUnlockAchievement}
               quests={quests}
               inventory={studentInventories[currentUser.id] || []}
+              onEquipInventoryItem={(itemId) => handleEquipInventoryItem(currentUser.id, itemId)}
               progress={studentProgress[currentUser.id] || {}}
               levelInfo={studentLevels[currentUser.id] || { level: 1, xp: 0 }}
               onUpdateProgress={handleUpdateProgress}
@@ -1414,6 +1484,7 @@ function App() {
             <GamePage
               quest={selectedQuest}
               character={characters[currentUser.characterId]}
+              equipment={(studentInventories[currentUser.id] || []).find((item) => item?.equipped) || null}
               onQuestComplete={handleQuestComplete}
               onBack={() => {
                 setCurrentView('dashboard');

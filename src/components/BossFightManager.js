@@ -4,6 +4,8 @@ import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
 import { Witch } from './characters/Witch';
 import { Boss } from './characters/Boss';
+import { FireBoss } from './characters/FireBoss';
+import { ForrestBoss } from './characters/ForrestBoss';
 
 export class BossFightManager {
   constructor(scene, config) {
@@ -15,6 +17,14 @@ export class BossFightManager {
     this.bossMaxHP = config.bossMaxHP;
     this.bossHP = this.bossMaxHP;
     this.onComplete = config.onComplete;
+    this.bossVariant = config.bossVariant || {};
+    this.bossType = this.bossVariant.bossType || config.bossType || 'demon';
+    this.mapKey = this.bossVariant.mapKey || config.mapKey || 'bmap1';
+    this.bossFightTitle = this.bossVariant.title || config.bossFightTitle || 'FINAL BOSS FIGHT!';
+    this.playerAttackMultiplier = Number.isFinite(config.playerAttackMultiplier) ? config.playerAttackMultiplier : 1;
+    this.playerBaseAttackScale = Number.isFinite(config.playerBaseAttackScale) ? config.playerBaseAttackScale : 1;
+    this.playerDamageReduction = Number.isFinite(config.playerDamageReduction) ? config.playerDamageReduction : 0;
+    this.playerSpeedMultiplier = Number.isFinite(config.playerSpeedMultiplier) ? config.playerSpeedMultiplier : 1;
 
     this.isAttacking = false;
     this.playerCharacter = null;
@@ -39,22 +49,27 @@ export class BossFightManager {
     this.chestPromptText = null;
     this.bossDefeated = false;
     this.awaitingChestPickup = false;
+    this.bossBgm = null;
+    this.bossBgmKey = 'boss_fight_bgm';
     
     // Hit detection
     this.playerAttackHitbox = null;
     this.bossAttackHitbox = null;
+    this.forrestThornHitbox = null;
     this.lastPlayerAttackTime = 0;
     this.lastBossAttackTime = 0;
     this.bossAttackTimer = 0;
-    this.bossAttackCooldown = 3000; // Boss attacks every 3 seconds
+    this.bossAttackCooldown = 3600; // Slower cadence so attacks feel heavier
     this.bossChaseSpeed = 125;
     this.bossDashSpeed = 240;
     this.bossJumpVelocity = -420;
     this.bossJumpHeightThreshold = 220;
     this.bossMeleeRange = 150;
+    this.bossAwakenTriggerDistance = config.bossAwakenTriggerDistance || 420;
     this.bossDashRange = 320;
     this.bossApproachRange = 560;
     this.bossStopRange = 95;
+    this.lockBossToSpawn = false;
     this.bossActionLocked = false;
     this.playerAttackActive = false;
     this.bossAttackActive = false;
@@ -70,10 +85,150 @@ export class BossFightManager {
     this.witchProjectileSpeed = 520;
     this.witchProjectileRange = 860;
     this.witchProjectileHitbox = { width: 20, height: 20, offsetX: 10, offsetY: 16 };
+    this.activeFireProjectiles = [];
+    this.fireProjectileSpeed = 260;
+    this.fireProjectileLifetimeMs = 2600;
+    this.fireProjectileHitbox = { width: 20, height: 20 };
+    this.fireProjectileScale = 1.8;
+    this.fireSingleShotRange = 220;
+    this.activeForrestProjectiles = [];
+    this.forrestProjectileSpeed = 300;
+    this.forrestProjectileLifetimeMs = 2800;
+    this.forrestProjectileHitbox = { width: 38, height: 22 };
+    this.forrestProjectileScale = 1.2;
+    this.forrestRangeAttackIntervalMs = 5000;
+    this.forrestRangeAttackTimer = 0;
+    this.forrestFarDistanceThreshold = 620;
+    this.forrestFarDurationMs = 8000;
+    this.forrestFarTimer = 0;
+    this.forrestTeleportOffsetX = 140;
+    this.forrestTeleportOffsetY = -40;
+    this.forrestTeleportOffsetYByClass = {
+      Warrior: 0,
+      Mage: 0,
+      Archer: 0,
+      Witch: 0,
+    };
+    this.forrestThornDamage = 18;
+    this.forrestThornRange = 185;
+    this.forrestSpellRange = 180;
+    this.forrestThornHitboxSize = { width: 170, height: 100 };
+    this.forrestThornHitboxOffset = { x: 85, y: 4 };
+    this.forrestThornAttackActive = false;
+    this.forrestThornAttackHasHit = false;
+
+    // Boss fight spawn points (edit these to move spawn locations).
+    this.spawnPoints = this.bossVariant.spawnPoints || config.spawnPoints || {
+      player: { x: 50, y: 410 },
+      boss: { x: 1100, y: 530 },
+    };
+    this.applyBossAIConfig(this.bossVariant.ai || config.ai || {});
+  }
+
+  applyBossAIConfig(aiConfig) {
+    if (!aiConfig || typeof aiConfig !== 'object') return;
+    if (Number.isFinite(aiConfig.bossAttackCooldown)) this.bossAttackCooldown = aiConfig.bossAttackCooldown;
+    if (Number.isFinite(aiConfig.bossChaseSpeed)) this.bossChaseSpeed = aiConfig.bossChaseSpeed;
+    if (Number.isFinite(aiConfig.bossDashSpeed)) this.bossDashSpeed = aiConfig.bossDashSpeed;
+    if (Number.isFinite(aiConfig.bossJumpVelocity)) this.bossJumpVelocity = aiConfig.bossJumpVelocity;
+    if (Number.isFinite(aiConfig.bossJumpHeightThreshold)) this.bossJumpHeightThreshold = aiConfig.bossJumpHeightThreshold;
+    if (Number.isFinite(aiConfig.bossMeleeRange)) this.bossMeleeRange = aiConfig.bossMeleeRange;
+    if (Number.isFinite(aiConfig.bossAwakenTriggerDistance)) this.bossAwakenTriggerDistance = aiConfig.bossAwakenTriggerDistance;
+    if (Number.isFinite(aiConfig.bossDashRange)) this.bossDashRange = aiConfig.bossDashRange;
+    if (Number.isFinite(aiConfig.bossApproachRange)) this.bossApproachRange = aiConfig.bossApproachRange;
+    if (Number.isFinite(aiConfig.bossStopRange)) this.bossStopRange = aiConfig.bossStopRange;
+    if (Number.isFinite(aiConfig.forrestRangeAttackIntervalMs)) this.forrestRangeAttackIntervalMs = aiConfig.forrestRangeAttackIntervalMs;
+    if (Number.isFinite(aiConfig.forrestFarDistanceThreshold)) this.forrestFarDistanceThreshold = aiConfig.forrestFarDistanceThreshold;
+    if (Number.isFinite(aiConfig.forrestFarDurationMs)) this.forrestFarDurationMs = aiConfig.forrestFarDurationMs;
+    if (Number.isFinite(aiConfig.forrestTeleportOffsetX)) this.forrestTeleportOffsetX = aiConfig.forrestTeleportOffsetX;
+    if (Number.isFinite(aiConfig.forrestTeleportOffsetY)) this.forrestTeleportOffsetY = aiConfig.forrestTeleportOffsetY;
+    if (aiConfig.forrestTeleportOffsetYByClass && typeof aiConfig.forrestTeleportOffsetYByClass === 'object') {
+      this.forrestTeleportOffsetYByClass = {
+        ...this.forrestTeleportOffsetYByClass,
+        ...aiConfig.forrestTeleportOffsetYByClass,
+      };
+    }
+    if (Number.isFinite(aiConfig.forrestThornDamage)) this.forrestThornDamage = aiConfig.forrestThornDamage;
+    if (Number.isFinite(aiConfig.forrestThornRange)) this.forrestThornRange = aiConfig.forrestThornRange;
+    if (Number.isFinite(aiConfig.forrestSpellRange)) this.forrestSpellRange = aiConfig.forrestSpellRange;
+    if (Number.isFinite(aiConfig.forrestThornHitboxWidth)) this.forrestThornHitboxSize.width = aiConfig.forrestThornHitboxWidth;
+    if (Number.isFinite(aiConfig.forrestThornHitboxHeight)) this.forrestThornHitboxSize.height = aiConfig.forrestThornHitboxHeight;
+    if (Number.isFinite(aiConfig.forrestThornHitboxOffsetX)) this.forrestThornHitboxOffset.x = aiConfig.forrestThornHitboxOffsetX;
+    if (Number.isFinite(aiConfig.forrestThornHitboxOffsetY)) this.forrestThornHitboxOffset.y = aiConfig.forrestThornHitboxOffsetY;
+    if (typeof aiConfig.lockToSpawn === 'boolean') this.lockBossToSpawn = aiConfig.lockToSpawn;
+  }
+
+  startBossBgm() {
+    if (!this.scene?.sound || !this.scene?.cache?.audio?.exists(this.bossBgmKey)) return;
+    if (!this.bossBgm || this.bossBgm.isDestroyed) {
+      this.bossBgm = this.scene.sound.add(this.bossBgmKey, {
+        loop: true,
+        volume: 0.35,
+      });
+    }
+    if (!this.bossBgm.isPlaying) {
+      this.bossBgm.play();
+    }
+  }
+
+  stopBossBgm() {
+    if (!this.bossBgm || this.bossBgm.isDestroyed) return;
+    if (this.bossBgm.isPlaying) {
+      this.bossBgm.stop();
+    }
+    this.bossBgm.destroy();
+    this.bossBgm = null;
+  }
+
+  playSfx(key, config = {}) {
+    if (!key || !this.scene?.sound) return;
+    if (!this.scene.cache?.audio?.exists(key)) return;
+    this.scene.sound.play(key, config);
+  }
+
+  isPlayerInBossAttackRange() {
+    const playerSprite = this.playerCharacter?.sprite;
+    const bossSprite = this.bossCharacter?.sprite;
+    if (!playerSprite || !bossSprite) return false;
+
+    const distanceX = Math.abs(playerSprite.x - bossSprite.x);
+    const distanceY = Math.abs(playerSprite.y - bossSprite.y);
+    return distanceX <= this.bossMeleeRange && distanceY <= 140;
+  }
+
+  canBossStartAttack() {
+    const playerSprite = this.playerCharacter?.sprite;
+    const bossSprite = this.bossCharacter?.sprite;
+    if (!playerSprite || !bossSprite) return false;
+
+    if (this.bossType === 'fire') {
+      const distanceX = Math.abs(playerSprite.x - bossSprite.x);
+      const distanceY = Math.abs(playerSprite.y - bossSprite.y);
+      return distanceX <= this.bossApproachRange && distanceY <= 220;
+    }
+    if (this.bossType === 'forest') {
+      const distanceX = Math.abs(playerSprite.x - bossSprite.x);
+      const distanceY = Math.abs(playerSprite.y - bossSprite.y);
+      return distanceX <= this.bossApproachRange && distanceY <= 260;
+    }
+
+    return this.isPlayerInBossAttackRange();
+  }
+
+  shouldFireBossUseSingleShot() {
+    if (this.bossType !== 'fire') return false;
+    const playerSprite = this.playerCharacter?.sprite;
+    const bossSprite = this.bossCharacter?.sprite;
+    if (!playerSprite || !bossSprite) return false;
+
+    const distanceX = Math.abs(playerSprite.x - bossSprite.x);
+    const distanceY = Math.abs(playerSprite.y - bossSprite.y);
+    return distanceX <= this.fireSingleShotRange && distanceY <= 220;
   }
 
   start() {
     this.scene.children.removeAll(true);
+    this.startBossBgm();
 
     // ✅ Create debug graphics
     if (this.showDebugHitboxes) {
@@ -81,8 +236,8 @@ export class BossFightManager {
       this.debugGraphics.setDepth(1000);
     }
 
-    // Tilemap setup (new boss map)
-    const map = this.scene.make.tilemap({ key: 'bmap1' });
+    // Tilemap setup
+    const map = this.scene.make.tilemap({ key: this.mapKey });
     const bwtiles1 = map.addTilesetImage('bwtiles1', 'bwtiles1');
     const door = map.addTilesetImage('door', 'door');
     const bg2Tileset = map.addTilesetImage('bg2', 'bg2');
@@ -91,19 +246,29 @@ export class BossFightManager {
     const extra2 = map.addTilesetImage('extra2', 'extra2');
     const tilesets = [bwtiles1, door, bg2Tileset, tree, extra, extra2].filter(Boolean);
 
+    this.addImageLayersFromMapData();
+
     const bg1Layer = map.createLayer('bg1', tilesets, 0, 0);
     const bg2Layer = map.createLayer('bg2', tilesets, 0, 0);
+    const bgLayer = map.createLayer('bg', tilesets, 0, 0);
     this.chestLayer = map.createLayer('chest', tilesets, 0, 0);
+    const ground2Layer = map.createLayer('ground2', tilesets, 0, 0);
     const groundLayer = map.createLayer('ground', tilesets, 0, 0);
 
     if (bg1Layer) bg1Layer.setDepth(-7);
     if (bg2Layer) bg2Layer.setDepth(-6);
+    if (bgLayer) bgLayer.setDepth(-6);
     if (this.chestLayer) {
       this.chestLayer.setDepth(-5);
       this.chestLayer.setVisible(false);
     }
+    if (ground2Layer) {
+      ground2Layer.setDepth(-4);
+      ground2Layer.setCollisionByProperty({ collides: true });
+      ground2Layer.setCollisionByExclusion([-1]);
+    }
     if (groundLayer) {
-      groundLayer.setDepth(-4);
+      groundLayer.setDepth(-3);
       groundLayer.setCollisionByProperty({ collides: true });
       groundLayer.setCollisionByExclusion([-1]);
     }
@@ -111,17 +276,17 @@ export class BossFightManager {
     this.scene.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     // Spawn positions
-    const playerSpawnX = 200;
-    const playerSpawnY = 100;
-    const bossSpawnX = 1100;
-    const bossSpawnY = 100;
+    const playerSpawnX = this.spawnPoints.player.x;
+    const playerSpawnY = this.spawnPoints.player.y;
+    const bossSpawnX = this.spawnPoints.boss.x;
+    const bossSpawnY = this.spawnPoints.boss.y;
 
     // Background
     const bg = this.scene.add.rectangle(640, 320, 1280, 640, 0x1a0d2e);
     bg.setDepth(-10);
 
     this.scene.add
-      .text(640, 612, 'FINAL BOSS FIGHT!', {
+      .text(640, 612, this.bossFightTitle, {
         fontSize: '22px',
         color: '#ef4444',
         fontFamily: 'monospace',
@@ -140,12 +305,15 @@ export class BossFightManager {
     //   .setDepth(20);
 
     // Create boss
-    this.bossCharacter = new Boss(this.scene, bossSpawnX, bossSpawnY);
+    this.bossCharacter = this.createBossCharacter(bossSpawnX, bossSpawnY);
     this.bossCharacter.create(bossSpawnX, bossSpawnY);
     this.bossCharacter.setupPhysics(groundLayer);
 
     // Create player based on class
     this.createPlayer(playerSpawnX, playerSpawnY, groundLayer);
+    if (ground2Layer && this.playerCharacter?.sprite) {
+      this.scene.physics.add.collider(this.playerCharacter.sprite, ground2Layer);
+    }
 
     // Create attack hitboxes (invisible zones)
     this.createAttackHitboxes();
@@ -195,6 +363,58 @@ export class BossFightManager {
     this.attackKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
   }
 
+  addImageLayersFromMapData() {
+    const mapCacheEntry = this.scene.cache.tilemap.get(this.mapKey);
+    const mapData = mapCacheEntry?.data;
+    if (!mapData?.layers || !Array.isArray(mapData.layers)) return;
+
+    mapData.layers
+      .filter((layer) => layer.type === 'imagelayer' && layer.visible !== false && layer.image)
+      .forEach((layer, index) => {
+        const imagePath = String(layer.image);
+        const imageFile = imagePath.split('/').pop() || '';
+        const textureKey = imageFile.replace(/\.[^.]+$/, '');
+        if (!textureKey || !this.scene.textures.exists(textureKey)) return;
+
+        const image = this.scene.add.image(layer.x || 0, layer.y || 0, textureKey);
+        image.setOrigin(0, 0);
+        image.setDepth(-8 + index);
+        if (Number.isFinite(layer.opacity)) {
+          image.setAlpha(layer.opacity);
+        }
+      });
+  }
+
+  createBossCharacter(spawnX, spawnY) {
+    if (this.bossType === 'fire') {
+      return new FireBoss(this.scene, spawnX, spawnY);
+    }
+    if (this.bossType === 'forest') {
+      return new ForrestBoss(this.scene, spawnX, spawnY);
+    }
+    return new Boss(this.scene, spawnX, spawnY);
+  }
+
+  getBossIdleAnimationKey() {
+    if (this.bossType === 'fire') return 'fire_boss_idle_anim';
+    if (this.bossType === 'forest') return 'forrest_boss_idle_anim';
+    return 'boss_idle_anim';
+  }
+
+  setBossFacingDirection(dir) {
+    if (!this.bossCharacter?.sprite) return;
+    if (this.bossType === 'fire') {
+      // Fire boss source art faces opposite to demon boss.
+      this.bossCharacter.sprite.setFlipX(dir < 0);
+      return;
+    }
+    if (this.bossType === 'forest') {
+      this.bossCharacter.sprite.setFlipX(dir < 0);
+      return;
+    }
+    this.bossCharacter.sprite.setFlipX(dir > 0);
+  }
+
   createPlayer(spawnX, spawnY, groundLayer) {
     switch (this.character.class) {
       case 'Warrior':
@@ -214,6 +434,9 @@ export class BossFightManager {
     }
 
     this.playerCharacter.create(spawnX, spawnY);
+    if (typeof this.playerCharacter.setMovementSpeedMultiplier === 'function') {
+      this.playerCharacter.setMovementSpeedMultiplier(this.playerSpeedMultiplier);
+    }
     this.playerCharacter.setupPhysics(groundLayer);
   }
 
@@ -226,11 +449,23 @@ export class BossFightManager {
     this.playerAttackHitbox.body.setEnable(false);
 
     // Boss attack hitbox (in front of boss)
-    this.bossAttackHitbox = this.scene.add.rectangle(0, 0, 120, 100);
+    this.bossAttackHitbox = this.scene.add.rectangle(0, -20, 300, 300);
     this.bossAttackHitbox.setAlpha(0);
     this.scene.physics.add.existing(this.bossAttackHitbox);
     this.bossAttackHitbox.body.setAllowGravity(false);
     this.bossAttackHitbox.body.setEnable(false);
+
+    // Forrest thorn strike hitbox (debug-drawn when active).
+    this.forrestThornHitbox = this.scene.add.rectangle(
+      0,
+      0,
+      this.forrestThornHitboxSize.width,
+      this.forrestThornHitboxSize.height
+    );
+    this.forrestThornHitbox.setAlpha(0);
+    this.scene.physics.add.existing(this.forrestThornHitbox);
+    this.forrestThornHitbox.body.setAllowGravity(false);
+    this.forrestThornHitbox.body.setEnable(false);
   }
 
   createAttackOverlaps() {
@@ -246,6 +481,14 @@ export class BossFightManager {
       this.bossAttackHitbox,
       this.playerCharacter.sprite,
       this.handleBossAttackHit,
+      null,
+      this
+    );
+
+    this.scene.physics.add.overlap(
+      this.forrestThornHitbox,
+      this.playerCharacter.sprite,
+      this.handleForrestThornHit,
       null,
       this
     );
@@ -328,13 +571,6 @@ export class BossFightManager {
     this.bossHP -= damage;
     this.bossCharacter.takeDamage(damage);
 
-    this.scene.tweens.add({
-      targets: this.bossCharacter.sprite,
-      alpha: 0.5,
-      duration: 100,
-      yoyo: true,
-    });
-
     this.updateHPBars();
 
     if (this.bossHP <= 0) {
@@ -354,12 +590,6 @@ export class BossFightManager {
 
     this.bossHP -= damage;
     this.bossCharacter.takeDamage(damage);
-    this.scene.tweens.add({
-      targets: this.bossCharacter.sprite,
-      alpha: 0.5,
-      duration: 100,
-      yoyo: true,
-    });
     this.updateHPBars();
 
     if (this.scene.anims.exists('witch_projectile_explode_anim')) {
@@ -398,6 +628,388 @@ export class BossFightManager {
     }
   }
 
+  spawnFireProjectileTowardPlayer(damage, angleOffset = 0) {
+    const bossSprite = this.bossCharacter?.sprite;
+    const playerSprite = this.playerCharacter?.sprite;
+    if (!bossSprite || !playerSprite || !this.scene.textures.exists('fire_boss_projectile_move')) return;
+
+    const bossCenter = this.getBodyCenter(bossSprite);
+    const playerCenter = this.getBodyCenter(playerSprite);
+    if (!bossCenter || !playerCenter) return;
+
+    const direction = playerCenter.x >= bossCenter.x ? 1 : -1;
+    const startX = bossCenter.x + direction * 42;
+    const startY = bossCenter.y - 18;
+
+    const projectile = this.scene.physics.add.sprite(startX, startY, 'fire_boss_projectile_move');
+    projectile.setDepth(8);
+    projectile.setScale(this.fireProjectileScale);
+    projectile.body.setAllowGravity(false);
+    projectile.body.setSize(this.fireProjectileHitbox.width, this.fireProjectileHitbox.height, true);
+    projectile.setData('damage', damage);
+    projectile.setData('state', 'moving');
+    projectile.setData('spawnTime', this.scene.time.now);
+
+    if (this.scene.anims.exists('fire_boss_projectile_move_anim')) {
+      projectile.play('fire_boss_projectile_move_anim');
+    }
+
+    const angle = Phaser.Math.Angle.Between(startX, startY, playerCenter.x, playerCenter.y) + angleOffset;
+    const velocityX = Math.cos(angle) * this.fireProjectileSpeed;
+    const velocityY = Math.sin(angle) * this.fireProjectileSpeed;
+    projectile.body.setVelocity(velocityX, velocityY);
+    projectile.setRotation(angle);
+    projectile.setFlipY(direction < 0);
+
+    this.scene.physics.add.overlap(
+      projectile,
+      playerSprite,
+      () => this.handleFireProjectileHit(projectile),
+      null,
+      this
+    );
+
+    this.activeFireProjectiles.push(projectile);
+  }
+
+  spawnFireProjectileVolley(damage) {
+    // Three-way spread: center + slight left/right angles.
+    const spread = 0.17;
+    this.spawnFireProjectileTowardPlayer(damage, -spread);
+    this.spawnFireProjectileTowardPlayer(damage, 0);
+    this.spawnFireProjectileTowardPlayer(damage, spread);
+  }
+
+  spawnForrestProjectileTowardPlayer(damage) {
+    const bossSprite = this.bossCharacter?.sprite;
+    const playerSprite = this.playerCharacter?.sprite;
+    if (!bossSprite || !playerSprite || !this.scene.textures.exists('forrest_boss_projectile_move')) return;
+
+    const bossCenter = this.getBodyCenter(bossSprite);
+    const playerCenter = this.getBodyCenter(playerSprite);
+    if (!bossCenter || !playerCenter) return;
+
+    const direction = playerCenter.x >= bossCenter.x ? 1 : -1;
+    const startX = bossCenter.x + direction * 36;
+    const startY = bossCenter.y - 36;
+
+    const projectile = this.scene.physics.add.sprite(startX, startY, 'forrest_boss_projectile_move');
+    projectile.setDepth(8);
+    projectile.setScale(this.forrestProjectileScale);
+    projectile.body.setAllowGravity(false);
+    projectile.body.setSize(this.forrestProjectileHitbox.width, this.forrestProjectileHitbox.height, true);
+    projectile.setData('damage', damage);
+    projectile.setData('state', 'moving');
+    projectile.setData('spawnTime', this.scene.time.now);
+
+    if (this.scene.anims.exists('forrest_boss_projectile_move_anim')) {
+      projectile.play('forrest_boss_projectile_move_anim');
+    }
+
+    const angle = Phaser.Math.Angle.Between(startX, startY, playerCenter.x, playerCenter.y);
+    const velocityX = Math.cos(angle) * this.forrestProjectileSpeed;
+    const velocityY = Math.sin(angle) * this.forrestProjectileSpeed;
+    projectile.body.setVelocity(velocityX, velocityY);
+    projectile.setRotation(angle);
+    projectile.setFlipY(direction < 0);
+
+    this.scene.physics.add.overlap(
+      projectile,
+      playerSprite,
+      () => this.handleForrestProjectileHit(projectile),
+      null,
+      this
+    );
+
+    this.activeForrestProjectiles.push(projectile);
+  }
+
+  handleForrestProjectileHit(projectile) {
+    if (!projectile || !projectile.active) return;
+    if (projectile.getData('state') !== 'moving') return;
+
+    const damage = Number(projectile.getData('damage')) || 0;
+    this.applyDamageToPlayer(damage);
+    this.explodeForrestProjectile(projectile);
+  }
+
+  explodeForrestProjectile(projectile) {
+    if (!projectile || !projectile.active) return;
+    projectile.setData('state', 'exploding');
+    projectile.body.setVelocity(0, 0);
+    projectile.body.setEnable(false);
+    projectile.setRotation(0);
+    projectile.setFlipY(false);
+
+    if (this.scene.anims.exists('forrest_boss_projectile_explode_anim')) {
+      projectile.play('forrest_boss_projectile_explode_anim');
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'forrest_boss_projectile_explode_anim';
+      const done = () => this.cleanupForrestProjectile(projectile);
+      projectile.once(eventKey, done);
+      this.scene.time.delayedCall(420, () => {
+        if (projectile.active) {
+          projectile.off(eventKey, done);
+          done();
+        }
+      });
+    } else {
+      this.cleanupForrestProjectile(projectile);
+    }
+  }
+
+  cleanupForrestProjectile(projectile) {
+    if (!projectile) return;
+    this.activeForrestProjectiles = this.activeForrestProjectiles.filter((p) => p !== projectile);
+    if (projectile.active) {
+      projectile.destroy();
+    }
+  }
+
+  spawnForrestExplosionOnPlayer(damage) {
+    const playerSprite = this.playerCharacter?.sprite;
+    if (!playerSprite) return;
+
+    const center = this.getBodyCenter(playerSprite);
+    if (!center) return;
+    this.playSfx('forrest_spell', { volume: 0.45 });
+
+    const explosion = this.scene.physics.add.sprite(center.x, center.y - 8, 'forrest_boss_projectile_explode');
+    explosion.setDepth(9);
+    explosion.setScale(1.35);
+    explosion.body.setAllowGravity(false);
+    explosion.body.setEnable(false);
+    if (this.scene?.sound && this.scene.cache?.audio?.exists('forrest_spell_sfx')) {
+      this.scene.sound.play('forrest_spell_sfx', { volume: 0.45 });
+    }
+
+    if (this.scene.anims.exists('forrest_boss_projectile_explode_anim')) {
+      explosion.play('forrest_boss_projectile_explode_anim');
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'forrest_boss_projectile_explode_anim';
+      explosion.once(eventKey, () => {
+        if (explosion.active) explosion.destroy();
+      });
+      this.scene.time.delayedCall(420, () => {
+        if (explosion.active) explosion.destroy();
+      });
+    } else {
+      this.scene.time.delayedCall(300, () => {
+        if (explosion.active) explosion.destroy();
+      });
+    }
+
+    this.applyDamageToPlayer(damage);
+  }
+
+  activateForrestThornHitbox() {
+    const bossSprite = this.bossCharacter?.sprite;
+    if (!bossSprite || !bossSprite.body || !this.forrestThornHitbox?.body) return;
+
+    const dir = bossSprite.flipX ? -1 : 1;
+    const center = this.getBodyCenter(bossSprite);
+    if (!center) return;
+
+    const offsetX = this.forrestThornHitboxOffset.x * dir;
+    const hitboxX = center.x + offsetX;
+    const hitboxY = center.y + this.forrestThornHitboxOffset.y;
+
+    this.forrestThornHitbox.setPosition(hitboxX, hitboxY);
+    this.forrestThornHitbox.body.setSize(
+      this.forrestThornHitboxSize.width,
+      this.forrestThornHitboxSize.height,
+      true
+    );
+    this.forrestThornAttackActive = true;
+    this.forrestThornAttackHasHit = false;
+    this.forrestThornHitbox.body.updateFromGameObject();
+    this.forrestThornHitbox.body.setEnable(true);
+
+    this.scene.time.delayedCall(220, () => {
+      this.forrestThornAttackActive = false;
+      if (this.forrestThornHitbox?.body) {
+        this.forrestThornHitbox.body.setEnable(false);
+      }
+    });
+  }
+
+  handleForrestThornHit() {
+    if (!this.forrestThornAttackActive || this.forrestThornAttackHasHit) return;
+    this.forrestThornAttackHasHit = true;
+    this.applyDamageToPlayer(this.forrestThornDamage);
+  }
+
+  resolveForrestThornStrike() {
+    // Thorn strike uses a configurable hitbox in front of the boss.
+    this.activateForrestThornHitbox();
+  }
+
+  triggerForrestRangeSpellAttack() {
+    if (this.bossType !== 'forest') return;
+    if (!this.bossCharacter || !this.playerCharacter) return;
+    if (this.bossActionLocked || this.bossCharacter.isAttacking || this.bossCharacter.isTakingHit) return;
+
+    const bossSprite = this.bossCharacter.sprite;
+    const playerSprite = this.playerCharacter.sprite;
+    if (!bossSprite || !playerSprite) return;
+    const distanceToPlayer = Phaser.Math.Distance.Between(
+      playerSprite.x,
+      playerSprite.y,
+      bossSprite.x,
+      bossSprite.y
+    );
+    if (distanceToPlayer > this.forrestSpellRange) return;
+
+    const dir = playerSprite.x >= bossSprite.x ? 1 : -1;
+    this.setBossFacingDirection(dir);
+    bossSprite.body.setVelocityX(0);
+
+    this.bossActionLocked = true;
+    this.bossCharacter.attack((damage) => {
+      this.spawnForrestExplosionOnPlayer(damage);
+      this.bossActionLocked = false;
+    }, 'forrest_boss_spell_anim');
+
+    this.scene.time.delayedCall(1800, () => {
+      if (this.bossActionLocked && this.bossCharacter && !this.bossCharacter.isAttacking) {
+        this.bossActionLocked = false;
+      }
+    });
+  }
+
+  triggerForrestTeleportThornAttack() {
+    if (this.bossType !== 'forest') return;
+    if (!this.bossCharacter || !this.playerCharacter) return;
+    if (this.bossActionLocked || this.bossCharacter.isAttacking || this.bossCharacter.isTakingHit) return;
+
+    const bossSprite = this.bossCharacter.sprite;
+    const playerSprite = this.playerCharacter.sprite;
+    if (!bossSprite || !playerSprite || !bossSprite.body) return;
+
+    const dir = playerSprite.x >= bossSprite.x ? 1 : -1;
+    const worldWidth = this.scene.physics.world.bounds.width || 1280;
+    const worldHeight = this.scene.physics.world.bounds.height || 640;
+    const teleportX = Phaser.Math.Clamp(
+      playerSprite.x - dir * this.forrestTeleportOffsetX,
+      48,
+      worldWidth - 48
+    );
+    const teleportY = Phaser.Math.Clamp(
+      playerSprite.y + this.getForrestTeleportYOffsetForClass(),
+      48,
+      worldHeight - 16
+    );
+
+    this.bossActionLocked = true;
+    const afterTeleport = () => {
+      this.setBossFacingDirection(dir);
+      this.bossCharacter.attack(() => {
+        this.resolveForrestThornStrike();
+        this.bossActionLocked = false;
+      }, 'forrest_boss_thorn_anim');
+    };
+
+    if (typeof this.bossCharacter.teleportNear === 'function') {
+      this.bossCharacter.teleportNear(teleportX, teleportY, afterTeleport);
+    } else {
+      bossSprite.body.setVelocity(0, 0);
+      bossSprite.setPosition(teleportX, teleportY);
+      afterTeleport();
+    }
+
+    this.scene.time.delayedCall(1800, () => {
+      if (this.bossActionLocked && this.bossCharacter && !this.bossCharacter.isAttacking) {
+        this.bossActionLocked = false;
+      }
+    });
+  }
+
+  getForrestTeleportYOffsetForClass() {
+    const className = this.character?.class;
+    const classOffset = Number(this.forrestTeleportOffsetYByClass?.[className]);
+    return this.forrestTeleportOffsetY + (Number.isFinite(classOffset) ? classOffset : 0);
+  }
+
+  updateForrestAttackPattern(delta) {
+    if (this.bossType !== 'forest') return;
+    if (this.bossDefeated || !this.bossCharacter || !this.playerCharacter) return;
+    if (typeof this.bossCharacter.canFight === 'function' && !this.bossCharacter.canFight()) return;
+
+    const bossSprite = this.bossCharacter.sprite;
+    const playerSprite = this.playerCharacter.sprite;
+    if (!bossSprite || !playerSprite) return;
+
+    const safeDelta = Number.isFinite(delta) ? delta : 0;
+    const distanceToPlayer = Phaser.Math.Distance.Between(
+      playerSprite.x,
+      playerSprite.y,
+      bossSprite.x,
+      bossSprite.y
+    );
+    const canAct = !this.bossActionLocked && !this.bossCharacter.isAttacking && !this.bossCharacter.isTakingHit;
+
+    if (distanceToPlayer >= this.forrestFarDistanceThreshold) {
+      this.forrestFarTimer += safeDelta;
+    } else {
+      this.forrestFarTimer = 0;
+    }
+
+    if (canAct && this.forrestFarTimer >= this.forrestFarDurationMs) {
+      this.forrestFarTimer = 0;
+      this.forrestRangeAttackTimer = 0;
+      this.triggerForrestTeleportThornAttack();
+      return;
+    }
+
+    this.forrestRangeAttackTimer += safeDelta;
+    if (canAct && this.forrestRangeAttackTimer >= this.forrestRangeAttackIntervalMs) {
+      const isSpellInRange = distanceToPlayer <= this.forrestSpellRange;
+      if (isSpellInRange) {
+        this.forrestRangeAttackTimer = 0;
+        this.triggerForrestRangeSpellAttack();
+      }
+    }
+  }
+
+  handleFireProjectileHit(projectile) {
+    if (!projectile || !projectile.active) return;
+    if (projectile.getData('state') !== 'moving') return;
+
+    const damage = Number(projectile.getData('damage')) || 0;
+    this.applyDamageToPlayer(damage);
+    this.explodeFireProjectile(projectile);
+  }
+
+  explodeFireProjectile(projectile) {
+    if (!projectile || !projectile.active) return;
+    projectile.setData('state', 'exploding');
+    projectile.body.setVelocity(0, 0);
+    projectile.body.setEnable(false);
+    projectile.setRotation(0);
+    projectile.setFlipY(false);
+
+    if (this.scene.anims.exists('fire_boss_projectile_explode_anim')) {
+      projectile.play('fire_boss_projectile_explode_anim');
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'fire_boss_projectile_explode_anim';
+      const done = () => this.cleanupFireProjectile(projectile);
+      projectile.once(eventKey, done);
+      this.scene.time.delayedCall(420, () => {
+        if (projectile.active) {
+          projectile.off(eventKey, done);
+          done();
+        }
+      });
+    } else {
+      this.cleanupFireProjectile(projectile);
+    }
+  }
+
+  cleanupFireProjectile(projectile) {
+    if (!projectile) return;
+    this.activeFireProjectiles = this.activeFireProjectiles.filter((p) => p !== projectile);
+    if (projectile.active) {
+      projectile.destroy();
+    }
+  }
+
   // ✅ Helper function to draw debug boxes
   drawDebugBox(graphics, sprite, color) {
     if (!sprite || !sprite.body) return;
@@ -429,13 +1041,6 @@ export class BossFightManager {
     this.bossHP -= damage;
     this.bossCharacter.takeDamage(damage);
 
-    this.scene.tweens.add({
-      targets: this.bossCharacter.sprite,
-      alpha: 0.5,
-      duration: 100,
-      yoyo: true,
-    });
-
     this.updateHPBars();
 
     if (this.bossHP <= 0) {
@@ -456,6 +1061,18 @@ export class BossFightManager {
     if (this.playerAttackHitbox?.body) this.playerAttackHitbox.body.setEnable(false);
     this.bossAttackActive = false;
     if (this.bossAttackHitbox?.body) this.bossAttackHitbox.body.setEnable(false);
+    if (this.activeFireProjectiles.length > 0) {
+      this.activeFireProjectiles.forEach((projectile) => {
+        if (projectile?.active) projectile.destroy();
+      });
+      this.activeFireProjectiles = [];
+    }
+    if (this.activeForrestProjectiles.length > 0) {
+      this.activeForrestProjectiles.forEach((projectile) => {
+        if (projectile?.active) projectile.destroy();
+      });
+      this.activeForrestProjectiles = [];
+    }
 
     const afterBossDeath = () => {
       if (!this.chestLayer || !this.playerCharacter?.sprite) {
@@ -512,16 +1129,15 @@ export class BossFightManager {
     this.complete(true);
   }
 
-  handleBossAttackHit() {
-    if (!this.bossAttackActive || this.bossAttackHasHit) return;
+  applyDamageToPlayer(damage) {
     if (!this.playerCharacter || !this.playerCharacter.sprite) return;
+    if (this.playerHP <= 0) return;
 
-    const damage = this.pendingBossDamage;
-    this.bossAttackHasHit = true;
-
-    this.playerHP -= damage;
+    const clampedReduction = Phaser.Math.Clamp(this.playerDamageReduction, 0, 0.95);
+    const mitigatedDamage = Math.max(1, Math.round(damage * (1 - clampedReduction)));
+    this.playerHP -= mitigatedDamage;
     if (this.playerHP < 0) this.playerHP = 0;
-    this.playerCharacter.takeDamage(damage);
+    this.playerCharacter.takeDamage(mitigatedDamage);
 
     this.scene.tweens.add({
       targets: this.playerCharacter.sprite,
@@ -533,8 +1149,6 @@ export class BossFightManager {
     this.updateHPBars();
 
     if (this.playerHP <= 0) {
-      this.bossAttackActive = false;
-      this.bossAttackHitbox.body.setEnable(false);
       if (this.playerCharacter && typeof this.playerCharacter.die === 'function') {
         this.playerCharacter.die(() => {
           this.scene.time.delayedCall(400, () => this.complete(false));
@@ -542,6 +1156,19 @@ export class BossFightManager {
       } else {
         this.scene.time.delayedCall(1200, () => this.complete(false));
       }
+    }
+  }
+
+  handleBossAttackHit() {
+    if (!this.bossAttackActive || this.bossAttackHasHit) return;
+    if (!this.playerCharacter || !this.playerCharacter.sprite) return;
+
+    const damage = this.pendingBossDamage;
+    this.bossAttackHasHit = true;
+    this.applyDamageToPlayer(damage);
+    if (this.playerHP <= 0) {
+      this.bossAttackActive = false;
+      this.bossAttackHitbox.body.setEnable(false);
     }
   }
 
@@ -615,13 +1242,79 @@ export class BossFightManager {
       });
     }
 
+    // Cleanup Fire projectiles after timeout/out of world bounds.
+    if (this.activeFireProjectiles.length > 0) {
+      const worldWidth = this.scene.physics.world.bounds.width;
+      const worldHeight = this.scene.physics.world.bounds.height;
+      const now = this.scene.time.now;
+      this.activeFireProjectiles = this.activeFireProjectiles.filter((projectile) => {
+        if (!projectile || !projectile.active) return false;
+        if (projectile.getData('state') === 'exploding') return true;
+
+        const spawnTime = Number(projectile.getData('spawnTime')) || now;
+        const expired = now - spawnTime > this.fireProjectileLifetimeMs;
+        const offWorld =
+          projectile.x < -50 ||
+          projectile.x > worldWidth + 50 ||
+          projectile.y < -50 ||
+          projectile.y > worldHeight + 50;
+
+        if (expired || offWorld) {
+          this.explodeFireProjectile(projectile);
+        }
+        return projectile.active;
+      });
+    }
+
+    // Cleanup Forrest projectiles after timeout/out of world bounds.
+    if (this.activeForrestProjectiles.length > 0) {
+      const worldWidth = this.scene.physics.world.bounds.width;
+      const worldHeight = this.scene.physics.world.bounds.height;
+      const now = this.scene.time.now;
+      this.activeForrestProjectiles = this.activeForrestProjectiles.filter((projectile) => {
+        if (!projectile || !projectile.active) return false;
+        if (projectile.getData('state') === 'exploding') return true;
+
+        const spawnTime = Number(projectile.getData('spawnTime')) || now;
+        const expired = now - spawnTime > this.forrestProjectileLifetimeMs;
+        const offWorld =
+          projectile.x < -50 ||
+          projectile.x > worldWidth + 50 ||
+          projectile.y < -50 ||
+          projectile.y > worldHeight + 50;
+
+        if (expired || offWorld) {
+          this.explodeForrestProjectile(projectile);
+        }
+        return projectile.active;
+      });
+    }
+
+    // Boss stays dormant until player is close enough, then awakens.
+    if (!this.bossDefeated && this.bossCharacter && this.playerCharacter?.sprite && this.bossCharacter?.sprite) {
+      const isAwake = typeof this.bossCharacter.canFight === 'function' ? this.bossCharacter.canFight() : true;
+      const isAwakening = Boolean(this.bossCharacter.isAwakening);
+      if (!isAwake && !isAwakening) {
+        const distanceX = Math.abs(this.playerCharacter.sprite.x - this.bossCharacter.sprite.x);
+        if (distanceX <= this.bossAwakenTriggerDistance && typeof this.bossCharacter.triggerAwaken === 'function') {
+          this.bossCharacter.triggerAwaken();
+        }
+      }
+    }
+
     this.updateBossAI(delta);
 
+    if (this.bossType === 'forest') {
+      this.updateForrestAttackPattern(delta);
+    }
+
     // Update boss AI attack timer
-    if (!this.bossDefeated) {
+    if (!this.bossDefeated && this.bossType !== 'forest') {
       this.bossAttackTimer += Number.isFinite(delta) ? delta : 0;
       if (
         this.bossAttackTimer >= this.bossAttackCooldown &&
+        this.canBossStartAttack() &&
+        (typeof this.bossCharacter.canFight !== 'function' || this.bossCharacter.canFight()) &&
         !this.bossCharacter.isAttacking &&
         !this.bossCharacter.isTakingHit &&
         !this.bossActionLocked
@@ -643,6 +1336,14 @@ export class BossFightManager {
       // Draw boss collision box (red)
       if (this.bossCharacter && this.bossCharacter.sprite) {
         this.drawDebugBox(this.debugGraphics, this.bossCharacter.sprite, 0xff0000);
+
+        if (this.bossType === 'forest' && this.forrestSpellRange > 0) {
+          const center = this.getBodyCenter(this.bossCharacter.sprite);
+          if (center) {
+            this.debugGraphics.lineStyle(2, 0x22c55e, 0.9);
+            this.debugGraphics.strokeCircle(center.x, center.y, this.forrestSpellRange);
+          }
+        }
       }
 
       // Draw attack hitboxes when active
@@ -651,6 +1352,9 @@ export class BossFightManager {
       }
       if (this.bossAttackHitbox.body.enable) {
         this.drawDebugBox(this.debugGraphics, this.bossAttackHitbox, 0xff00ff);
+      }
+      if (this.forrestThornHitbox?.body?.enable) {
+        this.drawDebugBox(this.debugGraphics, this.forrestThornHitbox, 0x84cc16);
       }
       if (this.activeArcherArrows.length > 0) {
         this.activeArcherArrows.forEach((arrow) => {
@@ -663,6 +1367,20 @@ export class BossFightManager {
         this.activeWitchProjectiles.forEach((projectile) => {
           if (projectile && projectile.active && projectile.body && projectile.body.enable) {
             this.drawDebugBox(this.debugGraphics, projectile, 0xa855f7);
+          }
+        });
+      }
+      if (this.activeFireProjectiles.length > 0) {
+        this.activeFireProjectiles.forEach((projectile) => {
+          if (projectile && projectile.active && projectile.body && projectile.body.enable) {
+            this.drawDebugBox(this.debugGraphics, projectile, 0xf97316);
+          }
+        });
+      }
+      if (this.activeForrestProjectiles.length > 0) {
+        this.activeForrestProjectiles.forEach((projectile) => {
+          if (projectile && projectile.active && projectile.body && projectile.body.enable) {
+            this.drawDebugBox(this.debugGraphics, projectile, 0x65a30d);
           }
         });
       }
@@ -680,7 +1398,11 @@ export class BossFightManager {
     if (this.playerCharacter.isDead || this.playerCharacter.isTakingHit) return;
     if (this.playerCharacter.isAttacking) return;
 
-    const damage = this.playerCharacter.getDamage();
+    const baseDamage = this.playerCharacter.getDamage();
+    const damage = Math.max(
+      1,
+      Math.round(baseDamage * this.playerBaseAttackScale * this.playerAttackMultiplier)
+    );
 
     const playerSprite = this.playerCharacter.sprite;
     const playerCenter = this.getBodyCenter(playerSprite);
@@ -718,78 +1440,91 @@ export class BossFightManager {
   }
   bossAttack() {
     if (!this.bossCharacter || this.bossCharacter.isAttacking || this.bossActionLocked) return;
+    if (typeof this.bossCharacter.canFight === 'function' && !this.bossCharacter.canFight()) return;
+    if (!this.canBossStartAttack()) return;
 
     const playerSprite = this.playerCharacter?.sprite;
     const bossSprite = this.bossCharacter.sprite;
     if (!playerSprite || !bossSprite) return;
 
-    const distanceX = Math.abs(playerSprite.x - bossSprite.x);
     this.bossActionLocked = true;
+    const bossDirection = playerSprite.x >= bossSprite.x ? 1 : -1;
+    this.setBossFacingDirection(bossDirection);
+    bossSprite.body.setVelocityX(0);
 
-    // Pattern 1: Heavy melee if very close
-    if (distanceX <= this.bossStopRange + 20) {
-      this.executeBossAttack('boss_attack_2_anim', 190, () => {
-        this.bossActionLocked = false;
-      });
-      this.bossAttackCooldown = 1400;
-      return;
-    }
-
-    // Pattern 2: Dash then slash at mid range
-    if (distanceX <= this.bossDashRange && Math.random() < 0.55) {
-      const dashDirection = playerSprite.x >= bossSprite.x ? 1 : -1;
-      bossSprite.setFlipX(dashDirection < 0);
-      bossSprite.body.setVelocityX(dashDirection * this.bossDashSpeed);
-      this.scene.time.delayedCall(180, () => {
-        if (!this.bossCharacter || !this.bossCharacter.sprite || this.bossCharacter.isDead) {
-          this.bossActionLocked = false;
-          return;
-        }
-        this.bossCharacter.sprite.body.setVelocityX(0);
-        this.executeBossAttack('boss_attack_1_anim', 140, () => {
-          this.bossActionLocked = false;
-        });
-      });
-      this.bossAttackCooldown = 1600;
-      return;
-    }
-
-    // Pattern 3: Quick melee while approaching
-    this.executeBossAttack('boss_attack_1_anim', 130, () => {
+    const { attackKey, hitboxDuration, cooldown } = this.pickBossAttackProfile();
+    this.executeBossAttack(attackKey, hitboxDuration, () => {
       this.bossActionLocked = false;
     });
-    this.bossAttackCooldown = distanceX > this.bossDashRange ? 1800 : 1500;
+    this.bossAttackCooldown = cooldown;
+  }
+
+  pickBossAttackProfile() {
+    if (this.bossType === 'fire') {
+      return {
+        attackKey: 'fire_boss_attack_anim',
+        hitboxDuration: 180,
+        cooldown: 5000,
+      };
+    }
+    if (this.bossType === 'forest') {
+      return {
+        attackKey: 'forrest_boss_spell_anim',
+        hitboxDuration: 180,
+        cooldown: 3200,
+      };
+    }
+
+    const attackKey = Math.random() < 0.4 ? 'boss_attack_2_anim' : 'boss_attack_1_anim';
+    return {
+      attackKey,
+      hitboxDuration: attackKey === 'boss_attack_2_anim' ? 190 : 140,
+      cooldown: attackKey === 'boss_attack_2_anim' ? 2600 : 2200,
+    };
   }
 
   updateBossAI(_delta) {
     if (this.bossDefeated || !this.bossCharacter || !this.playerCharacter) return;
+    if (typeof this.bossCharacter.canFight === 'function' && !this.bossCharacter.canFight()) return;
     const bossSprite = this.bossCharacter.sprite;
     const playerSprite = this.playerCharacter.sprite;
     if (!bossSprite || !playerSprite || !bossSprite.body) return;
+    if (this.lockBossToSpawn) {
+      bossSprite.body.setVelocityX(0);
+      return;
+    }
 
     const dx = playerSprite.x - bossSprite.x;
-    const dy = playerSprite.y - bossSprite.y;
     const distanceX = Math.abs(dx);
     const dir = dx >= 0 ? 1 : -1;
-    bossSprite.setFlipX(dir < 0);
+    this.setBossFacingDirection(dir);
 
     if (this.bossCharacter.isAttacking || this.bossCharacter.isTakingHit || this.bossCharacter.isDead || this.bossActionLocked) {
       bossSprite.body.setVelocityX(0);
       return;
     }
 
-    const grounded = bossSprite.body.blocked.down || bossSprite.body.touching.down;
-    if (grounded && dy < -this.bossJumpHeightThreshold && distanceX <= this.bossApproachRange) {
-      bossSprite.body.setVelocityY(this.bossJumpVelocity);
-    }
+    if (this.bossType === 'fire') {
+      const preferredRange = 280;
+      const tolerance = 45;
 
-    if (distanceX > this.bossMeleeRange && distanceX <= this.bossApproachRange) {
-      bossSprite.body.setVelocityX(dir * this.bossChaseSpeed);
+      if (distanceX > preferredRange + tolerance) {
+        bossSprite.body.setVelocityX(dir * this.bossChaseSpeed);
+      } else if (distanceX < preferredRange - tolerance) {
+        bossSprite.body.setVelocityX(-dir * this.bossChaseSpeed);
+      } else {
+        bossSprite.body.setVelocityX(0);
+      }
+      return;
+    }
+    if (this.bossType === 'forest') {
+      // Forest boss should not chase; it only teleports for thorn attacks.
+      bossSprite.body.setVelocityX(0);
       return;
     }
 
-    if (distanceX < this.bossStopRange) {
-      bossSprite.body.setVelocityX(0);
+    if (distanceX > this.bossMeleeRange) {
+      bossSprite.body.setVelocityX(dir * this.bossChaseSpeed);
       return;
     }
 
@@ -801,6 +1536,10 @@ export class BossFightManager {
       if (onDone) onDone();
       return;
     }
+    if (typeof this.bossCharacter.canFight === 'function' && !this.bossCharacter.canFight()) {
+      if (onDone) onDone();
+      return;
+    }
 
     const bossSprite = this.bossCharacter.sprite;
     const bossCenter = this.getBodyCenter(bossSprite);
@@ -808,21 +1547,37 @@ export class BossFightManager {
       if (onDone) onDone();
       return;
     }
+    if (!this.canBossStartAttack()) {
+      if (onDone) onDone();
+      return;
+    }
 
+    const playerSprite = this.playerCharacter?.sprite;
     const bossHitboxHalfWidth = this.bossAttackHitbox.width / 2;
     const bossBodyHalfWidth = bossSprite.body.width / 2;
-    const bossDirection = bossSprite.flipX ? -1 : 1;
-    const offsetX = bossDirection * (bossBodyHalfWidth + bossHitboxHalfWidth + 8);
+    const bossDirection = playerSprite && playerSprite.x >= bossSprite.x ? 1 : -1;
+    const offsetX = bossDirection * (bossBodyHalfWidth + bossHitboxHalfWidth + 10);
 
     this.bossAttackHitbox.setPosition(bossCenter.x + offsetX, bossCenter.y);
 
     const wasAttacking = this.bossCharacter.isAttacking;
     this.bossCharacter.attack((damage) => {
-      this.pendingBossDamage = damage;
-      this.activateBossHitbox(hitboxDuration);
+      if (this.bossType === 'fire') {
+        if (this.shouldFireBossUseSingleShot()) {
+          this.spawnFireProjectileTowardPlayer(damage, 0);
+        } else {
+          this.spawnFireProjectileVolley(damage);
+        }
+      } else if (this.bossType === 'forest') {
+        this.spawnForrestProjectileTowardPlayer(damage);
+      } else {
+        this.pendingBossDamage = damage;
+        this.activateBossHitbox(hitboxDuration);
+      }
 
-      if (this.bossCharacter.sprite && this.scene.anims.exists('boss_idle_anim')) {
-        this.bossCharacter.sprite.play('boss_idle_anim', true);
+      const idleKey = this.getBossIdleAnimationKey();
+      if (this.bossCharacter.sprite && this.scene.anims.exists(idleKey)) {
+        this.bossCharacter.sprite.play(idleKey, true);
       }
       if (onDone) onDone();
     }, attackKey);
@@ -881,6 +1636,8 @@ export class BossFightManager {
   }
 
   complete(victory) {
+    this.stopBossBgm();
+    this.playSfx(victory ? 'victory' : 'defeat', { volume: 0.55 });
     if (this.onComplete) {
       this.onComplete({
         victory,
@@ -895,6 +1652,7 @@ export class BossFightManager {
   }
 
   destroy() {
+    this.stopBossBgm();
     if (this.playerCharacter) {
       this.playerCharacter.destroy();
     }
@@ -925,6 +1683,9 @@ export class BossFightManager {
     if (this.bossAttackHitbox) {
       this.bossAttackHitbox.destroy();
     }
+    if (this.forrestThornHitbox) {
+      this.forrestThornHitbox.destroy();
+    }
     if (this.chestCollider) {
       this.chestCollider.destroy();
     }
@@ -946,6 +1707,22 @@ export class BossFightManager {
         }
       });
       this.activeWitchProjectiles = [];
+    }
+    if (this.activeFireProjectiles.length > 0) {
+      this.activeFireProjectiles.forEach((projectile) => {
+        if (projectile && projectile.active) {
+          projectile.destroy();
+        }
+      });
+      this.activeFireProjectiles = [];
+    }
+    if (this.activeForrestProjectiles.length > 0) {
+      this.activeForrestProjectiles.forEach((projectile) => {
+        if (projectile && projectile.active) {
+          projectile.destroy();
+        }
+      });
+      this.activeForrestProjectiles = [];
     }
   }
 }

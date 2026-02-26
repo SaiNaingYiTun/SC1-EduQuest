@@ -24,6 +24,7 @@ export default function StudentDashboard({
   onUnlockAchievement,
   quests,
   inventory,
+  onEquipInventoryItem,
   onStartQuest,
   courses,
   authFetch
@@ -125,7 +126,7 @@ export default function StudentDashboard({
         )}
 
         {activeTab === 'inventory' && (
-          <InventoryPage inventory={inventory} />
+          <InventoryPage inventory={inventory} onEquipItem={onEquipInventoryItem} />
         )}
 
         

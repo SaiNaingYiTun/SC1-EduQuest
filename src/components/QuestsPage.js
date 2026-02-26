@@ -36,12 +36,13 @@ export default function QuestsPage({
     }
   }, [character.id]);
 
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned, bossVictoryBonusXp = 0) => {
     const quest = (quests || []).find((q) => getId(q.id || q._id) === String(questId));
     if (!quest) return;
 
     const percentage = (score / totalQuestions) * 100;
-    const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+    const baseXpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+    const xpEarned = baseXpEarned + Math.max(0, Number(bossVictoryBonusXp) || 0);
 
     // Update character
     const newXp = character.xp + xpEarned;
@@ -83,7 +84,7 @@ export default function QuestsPage({
     }
 
     alert(
-      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
+      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${bossVictoryBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossVictoryBonusXp})` : ''}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
     );
   };
 

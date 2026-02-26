@@ -2,224 +2,208 @@ import { BaseCharacter } from './BaseCharacter';
 import { BOSS_CONFIG } from './constants/characterConfig';
 import Phaser from 'phaser';
 
+const BOSS_IDLE_ANIM = 'boss_idle_anim';
+const BOSS_RUN_ANIM = 'boss_run_anim';
+const BOSS_AWAKEN_ANIM = 'boss_awaken_anim';
+const BOSS_ATTACK_1_ANIM = 'boss_attack_1_anim';
+const BOSS_ATTACK_2_ANIM = 'boss_attack_2_anim';
+const BOSS_TAKE_HIT_ANIM = 'boss_take_hit_anim';
+const BOSS_DEATH_ANIM = 'boss_death_anim';
+
+const BOSS_IDLE_KEYS = Array.from({ length: 6 }, (_, i) => `boss_demon_idle_${i + 1}`);
+const BOSS_WALK_KEYS = Array.from({ length: 12 }, (_, i) => `boss_demon_walk_${i + 1}`);
+const BOSS_CLEAVE_KEYS = Array.from({ length: 15 }, (_, i) => `boss_demon_cleave_${i + 1}`);
+const BOSS_TAKE_HIT_KEYS = Array.from({ length: 5 }, (_, i) => `boss_demon_take_hit_${i + 1}`);
+const BOSS_DEATH_KEYS = Array.from({ length: 22 }, (_, i) => `boss_demon_death_${i + 1}`);
+const BOSS_AWAKEN_START_TEXTURE = BOSS_DEATH_KEYS[BOSS_DEATH_KEYS.length - 1];
+
+const makeFrames = (keys) => keys.map((key) => ({ key }));
+
 export class Boss extends BaseCharacter {
   constructor(scene, x, y) {
     super(scene, x, y, BOSS_CONFIG);
+    this.hasAwakened = false;
+    this.isAwakening = false;
   }
 
   static preload(scene) {
-    console.log('=== BOSS PRELOAD START ===');
-    
-    // Load boss sprites with exact keys matching config
-    scene.load.spritesheet('boss_idle', 'assets/sprites/war_boss/Idle.png', {
-      frameWidth: 200,
-      frameHeight: 200,
+    BOSS_IDLE_KEYS.forEach((key, i) => {
+      scene.load.image(key, `assets/sprites/demon_boss/01_demon_idle/demon_idle_${i + 1}.png`);
     });
-    scene.load.spritesheet('boss_run', 'assets/sprites/war_boss/Run.png', {
-      frameWidth: 200,
-      frameHeight: 200,
+    BOSS_WALK_KEYS.forEach((key, i) => {
+      scene.load.image(key, `assets/sprites/demon_boss/02_demon_walk/demon_walk_${i + 1}.png`);
     });
-    scene.load.spritesheet('boss_jump', 'assets/sprites/war_boss/Jump.png', {
-      frameWidth: 200,
-      frameHeight: 200,
+    BOSS_CLEAVE_KEYS.forEach((key, i) => {
+      scene.load.image(key, `assets/sprites/demon_boss/03_demon_cleave/demon_cleave_${i + 1}.png`);
     });
-    scene.load.spritesheet('boss_fall', 'assets/sprites/war_boss/Fall.png', {
-      frameWidth: 200,
-      frameHeight: 200,
+    BOSS_TAKE_HIT_KEYS.forEach((key, i) => {
+      scene.load.image(key, `assets/sprites/demon_boss/04_demon_take_hit/demon_take_hit_${i + 1}.png`);
+    });
+    BOSS_DEATH_KEYS.forEach((key, i) => {
+      scene.load.image(key, `assets/sprites/demon_boss/05_demon_death/demon_death_${i + 1}.png`);
     });
 
-    scene.load.spritesheet('boss_attack_1', 'assets/sprites/war_boss/Attack1.png', {
-      frameWidth: 200,
-      frameHeight: 200,
-    });
-
-    scene.load.spritesheet('boss_attack_2', 'assets/sprites/war_boss/Attack2.png', {
-      frameWidth: 200,
-      frameHeight: 200,
-    });
-
-    scene.load.spritesheet('boss_take_hit', 'assets/sprites/war_boss/Take_Hit.png', {
-      frameWidth: 200,
-      frameHeight: 200,
-    });
-
-    scene.load.spritesheet('boss_death', 'assets/sprites/war_boss/Death.png', {
-      frameWidth: 200,
-      frameHeight: 200,
-    });
-    scene.load.audio('boss_attack_sfx', 'assets/sounds/war_boss_attack.mp3');
-
-    console.log('Boss sprites queued for loading');
+    scene.load.audio('demon_attack', 'assets/sounds/demon_attack.mp3');
+    scene.load.audio('demon_hurt', 'assets/sounds/demon_hurt.mp3');
   }
 
   static createAnimations(scene) {
-    console.log('=== BOSS ANIMATIONS CREATE START ===');
-    
-    // Wait for textures to be ready
-    const idleTex = scene.textures.get('boss_idle');
-    const runTex = scene.textures.get('boss_run');
-    const jumpTex = scene.textures.get('boss_jump');
-    const fallTex = scene.textures.get('boss_fall');
-    const attack1Tex = scene.textures.get('boss_attack_1');
-    const attack2Tex = scene.textures.get('boss_attack_2');
-    const takeHitTex = scene.textures.get('boss_take_hit');
-    const deathTex = scene.textures.get('boss_death');
+    if (scene.anims.exists(BOSS_IDLE_ANIM)) scene.anims.remove(BOSS_IDLE_ANIM);
+    if (scene.anims.exists(BOSS_RUN_ANIM)) scene.anims.remove(BOSS_RUN_ANIM);
+    if (scene.anims.exists(BOSS_AWAKEN_ANIM)) scene.anims.remove(BOSS_AWAKEN_ANIM);
+    if (scene.anims.exists(BOSS_ATTACK_1_ANIM)) scene.anims.remove(BOSS_ATTACK_1_ANIM);
+    if (scene.anims.exists(BOSS_ATTACK_2_ANIM)) scene.anims.remove(BOSS_ATTACK_2_ANIM);
+    if (scene.anims.exists(BOSS_TAKE_HIT_ANIM)) scene.anims.remove(BOSS_TAKE_HIT_ANIM);
+    if (scene.anims.exists(BOSS_DEATH_ANIM)) scene.anims.remove(BOSS_DEATH_ANIM);
 
-    console.log('Boss texture info:', {
-      idle: idleTex.frameTotal,
-      run: runTex.frameTotal,
-      jump: jumpTex.frameTotal,
-      fall: fallTex.frameTotal,
-      attack1: attack1Tex.frameTotal,
-      attack2: attack2Tex.frameTotal,
-      takeHit: takeHitTex.frameTotal,
-      death: deathTex.frameTotal
-    });
-
-    // Create idle animation
-    if (!scene.anims.exists('boss_idle_anim') && idleTex.frameTotal > 1) {
+    if (BOSS_IDLE_KEYS.every((key) => scene.textures.exists(key))) {
       scene.anims.create({
-        key: 'boss_idle_anim',
-        frames: scene.anims.generateFrameNumbers('boss_idle', { start: 0, end: Math.min(7, idleTex.frameTotal - 1) }),
-        frameRate: 8,
-        repeat: -1,
-      });
-      console.log('✅ Created boss_idle_anim');
-    }
-
-    if (!scene.anims.exists('boss_run_anim') && runTex.frameTotal > 1) {
-      scene.anims.create({
-        key: 'boss_run_anim',
-        frames: scene.anims.generateFrameNumbers('boss_run', { start: 0, end: Math.min(7, runTex.frameTotal - 1) }),
+        key: BOSS_IDLE_ANIM,
+        frames: makeFrames(BOSS_IDLE_KEYS),
         frameRate: 10,
         repeat: -1,
       });
     }
 
-    if (!scene.anims.exists('boss_jump_anim') && jumpTex.frameTotal > 1) {
+    if (BOSS_WALK_KEYS.every((key) => scene.textures.exists(key))) {
       scene.anims.create({
-        key: 'boss_jump_anim',
-        frames: scene.anims.generateFrameNumbers('boss_jump', { start: 0, end: Math.min(5, jumpTex.frameTotal - 1) }),
-        frameRate: 10,
-        repeat: 0,
+        key: BOSS_RUN_ANIM,
+        frames: makeFrames(BOSS_WALK_KEYS),
+        frameRate: 14,
+        repeat: -1,
       });
     }
 
-    if (!scene.anims.exists('boss_fall_anim') && fallTex.frameTotal > 1) {
+    if (BOSS_CLEAVE_KEYS.every((key) => scene.textures.exists(key))) {
       scene.anims.create({
-        key: 'boss_fall_anim',
-        frames: scene.anims.generateFrameNumbers('boss_fall', { start: 0, end: Math.min(5, fallTex.frameTotal - 1) }),
-        frameRate: 10,
+        key: BOSS_ATTACK_1_ANIM,
+        frames: makeFrames(BOSS_CLEAVE_KEYS),
+        frameRate: 16,
         repeat: 0,
       });
-    }
-
-    // Create attack 1 animation
-    if (!scene.anims.exists('boss_attack_1_anim') && attack1Tex.frameTotal > 1) {
       scene.anims.create({
-        key: 'boss_attack_1_anim',
-        frames: scene.anims.generateFrameNumbers('boss_attack_1', { start: 0, end: Math.min(5, attack1Tex.frameTotal - 1) }),
+        key: BOSS_ATTACK_2_ANIM,
+        frames: makeFrames(BOSS_CLEAVE_KEYS),
         frameRate: 12,
         repeat: 0,
       });
-      console.log('✅ Created boss_attack_1_anim with', Math.min(5, attack1Tex.frameTotal - 1) + 1, 'frames');
-    } else {
-      console.error('❌ Cannot create boss_attack_1_anim - frameTotal:', attack1Tex.frameTotal);
     }
 
-    // Create attack 2 animation
-    if (!scene.anims.exists('boss_attack_2_anim') && attack2Tex.frameTotal > 1) {
+    if (BOSS_TAKE_HIT_KEYS.every((key) => scene.textures.exists(key))) {
       scene.anims.create({
-        key: 'boss_attack_2_anim',
-        frames: scene.anims.generateFrameNumbers('boss_attack_2', { start: 0, end: Math.min(5, attack2Tex.frameTotal - 1) }),
+        key: BOSS_TAKE_HIT_ANIM,
+        frames: makeFrames(BOSS_TAKE_HIT_KEYS),
         frameRate: 12,
         repeat: 0,
       });
-      console.log('✅ Created boss_attack_2_anim with', Math.min(5, attack2Tex.frameTotal - 1) + 1, 'frames');
-    } else {
-      console.error('❌ Cannot create boss_attack_2_anim - frameTotal:', attack2Tex.frameTotal);
     }
 
-    // Create take hit animation
-    if (!scene.anims.exists('boss_take_hit_anim') && takeHitTex.frameTotal > 1) {
+    if (BOSS_DEATH_KEYS.every((key) => scene.textures.exists(key))) {
       scene.anims.create({
-        key: 'boss_take_hit_anim',
-        frames: scene.anims.generateFrameNumbers('boss_take_hit', { start: 0, end: Math.min(2, takeHitTex.frameTotal - 1) }),
-        frameRate: 10,
+        key: BOSS_AWAKEN_ANIM,
+        frames: makeFrames([...BOSS_DEATH_KEYS].reverse()),
+        frameRate: 12,
         repeat: 0,
       });
-      console.log('✅ Created boss_take_hit_anim');
-    }
-
-    // Create death animation
-    if (!scene.anims.exists('boss_death_anim') && deathTex.frameTotal > 1) {
       scene.anims.create({
-        key: 'boss_death_anim',
-        frames: scene.anims.generateFrameNumbers('boss_death', { start: 0, end: Math.min(5, deathTex.frameTotal - 1) }),
-        frameRate: 8,
+        key: BOSS_DEATH_ANIM,
+        frames: makeFrames(BOSS_DEATH_KEYS),
+        frameRate: 12,
         repeat: 0,
       });
-      console.log('✅ Created boss_death_anim');
     }
   }
 
   create(x, y) {
-    this.sprite = this.scene.physics.add.sprite(x, y, 'boss_idle');
+    this.sprite = this.scene.physics.add.sprite(x, y, BOSS_IDLE_KEYS[0]);
     this.sprite.setOrigin(0.5, 1);
     this.sprite.setScale(this.config.scale);
     this.sprite.setFlipX(true);
     this.sprite.setDepth(5);
 
-    // Physics setup
     const physics = this.config.physics;
     this.sprite.body.setSize(physics.bodySize.width, physics.bodySize.height);
     this.sprite.body.setOffset(physics.bodyOffset.x, physics.bodyOffset.y);
 
-    if (this.scene.anims.exists('boss_idle_anim')) {
-      this.sprite.play('boss_idle_anim');
-      console.log('Playing boss idle animation');
-    } else {
-      console.error('boss_idle_anim does not exist!');
+    // Start dormant at the first frame of awakening (reversed death frame 22).
+    this.hasAwakened = false;
+    this.isAwakening = false;
+    this.isAttacking = false;
+    if (this.scene.textures.exists(BOSS_AWAKEN_START_TEXTURE)) {
+      this.sprite.setTexture(BOSS_AWAKEN_START_TEXTURE);
     }
+  }
+
+  canFight() {
+    return this.hasAwakened && !this.isAwakening && !this.isDead;
+  }
+
+  triggerAwaken(onComplete) {
+    if (!this.sprite || this.isDead || this.isAwakening || this.hasAwakened) return false;
+
+    if (!this.scene.anims.exists(BOSS_AWAKEN_ANIM)) {
+      this.hasAwakened = true;
+      if (this.scene.anims.exists(BOSS_IDLE_ANIM)) {
+        this.sprite.play(BOSS_IDLE_ANIM, true);
+      }
+      if (onComplete) onComplete();
+      return true;
+    }
+
+    this.isAwakening = true;
+    this.isAttacking = true;
+    this.sprite.play(BOSS_AWAKEN_ANIM);
+
+    const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + BOSS_AWAKEN_ANIM;
+    const finishAwaken = () => {
+      this.isAwakening = false;
+      this.hasAwakened = true;
+      this.isAttacking = false;
+      if (this.scene.anims.exists(BOSS_IDLE_ANIM)) {
+        this.sprite.play(BOSS_IDLE_ANIM, true);
+      }
+      if (onComplete) onComplete();
+    };
+
+    this.sprite.once(eventKey, finishAwaken);
+    this.scene.time.delayedCall(2400, () => {
+      if (this.isAwakening) {
+        this.sprite.off(eventKey, finishAwaken);
+        finishAwaken();
+      }
+    });
+
+    return true;
   }
 
   update() {
     if (!this.sprite || this.isDead) return;
+    if (!this.hasAwakened || this.isAwakening) return;
     if (this.isAttacking || this.isTakingHit) return;
 
     const body = this.sprite.body;
     if (!body) return;
-    const grounded = body.blocked.down || body.touching.down;
-    const movingX = Math.abs(body.velocity.x) > 5;
-    const currentKey = this.sprite.anims.currentAnim?.key;
+    const isMoving = Math.abs(body.velocity.x) > 8;
+    const currentKey = this.sprite.anims?.currentAnim?.key;
+    const targetAnim = isMoving && this.scene.anims.exists(BOSS_RUN_ANIM) ? BOSS_RUN_ANIM : BOSS_IDLE_ANIM;
 
-    let targetKey = 'boss_idle_anim';
-    if (!grounded) {
-      targetKey = body.velocity.y < 0 ? 'boss_jump_anim' : 'boss_fall_anim';
-    } else if (movingX) {
-      targetKey = 'boss_run_anim';
-    }
-
-    if ((!this.sprite.anims.isPlaying || currentKey !== targetKey) && this.scene.anims.exists(targetKey)) {
-      this.sprite.play(targetKey, true);
+    if (currentKey !== targetAnim && this.scene.anims.exists(targetAnim)) {
+      this.sprite.play(targetAnim, true);
     }
   }
 
   attack(onComplete, preferredAttackKey = null) {
+    if (!this.canFight()) return;
     if (!this.sprite || this.isAttacking || this.isDead || this.isTakingHit) return;
 
     this.isAttacking = true;
-    console.log('🔥 Boss attack initiated');
 
-    // Get available attacks
-    const availableAttacks = this.config.combat.attacks.filter(atk => 
+    const availableAttacks = this.config.combat.attacks.filter((atk) =>
       this.scene.anims.exists(atk.key)
     );
 
     if (availableAttacks.length === 0) {
-      console.error('❌ No boss attack animations available!');
       this.isAttacking = false;
-      // Still deal damage even without animation
       if (onComplete) onComplete(40);
       return;
     }
@@ -227,24 +211,17 @@ export class Boss extends BaseCharacter {
     const attack =
       (preferredAttackKey && availableAttacks.find((atk) => atk.key === preferredAttackKey)) ||
       Phaser.Utils.Array.GetRandom(availableAttacks);
-    console.log('Playing boss attack:', attack.key);
 
-    // Play attack animation
     this.sprite.play(attack.key);
-    this.playSound('boss_attack_sfx', { volume: 0.45 });
+    this.playSound('demon_attack', { volume: 0.45 });
 
-    // Listen for specific attack completion
     const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + attack.key;
-    
-    const completeHandler = () => {
-      console.log('✅ Boss attack animation completed:', attack.key);
-      this.isAttacking = false;
-      
-      // Return to idle
-      if (this.scene.anims.exists('boss_idle_anim')) {
-        this.sprite.play('boss_idle_anim', true);
-      }
 
+    const completeHandler = () => {
+      this.isAttacking = false;
+      if (this.scene.anims.exists(BOSS_IDLE_ANIM)) {
+        this.sprite.play(BOSS_IDLE_ANIM, true);
+      }
       if (onComplete) {
         onComplete(attack.damage);
       }
@@ -252,51 +229,40 @@ export class Boss extends BaseCharacter {
 
     this.sprite.once(eventKey, completeHandler);
 
-    // Fallback timeout
     this.scene.time.delayedCall(2000, () => {
       if (this.isAttacking) {
-        console.warn('⚠️ Boss attack timeout, forcing completion');
         this.sprite.off(eventKey, completeHandler);
         completeHandler();
       }
     });
   }
 
-  takeDamage(amount) {
+  takeDamage(_amount) {
+    if (!this.hasAwakened) return;
     if (!this.sprite || this.isDead || this.isTakingHit) return;
-
-    console.log(`Boss took ${amount} damage`);
-    
+    this.playSound('demon_hurt', { volume: 0.45 });
     this.isTakingHit = true;
 
-    // Play take hit animation if available
-    if (this.scene.anims.exists('boss_take_hit_anim')) {
-      this.sprite.play('boss_take_hit_anim');
-      
-      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'boss_take_hit_anim';
-      
+    if (this.scene.anims.exists(BOSS_TAKE_HIT_ANIM)) {
+      this.sprite.play(BOSS_TAKE_HIT_ANIM);
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + BOSS_TAKE_HIT_ANIM;
       const completeHandler = () => {
         this.isTakingHit = false;
-        
-        // Return to idle or stay dead
-        if (!this.isDead && this.scene.anims.exists('boss_idle_anim')) {
-          this.sprite.play('boss_idle_anim', true);
+        if (!this.isDead && this.scene.anims.exists(BOSS_IDLE_ANIM)) {
+          this.sprite.play(BOSS_IDLE_ANIM, true);
         }
       };
-
       this.sprite.once(eventKey, completeHandler);
-
-      // Fallback
       this.scene.time.delayedCall(500, () => {
         if (this.isTakingHit) {
           this.sprite.off(eventKey, completeHandler);
           completeHandler();
         }
       });
-    } else {
-      // No animation, just flash
-      this.isTakingHit = false;
+      return;
     }
+
+    this.isTakingHit = false;
   }
 
   die(onComplete) {
@@ -306,30 +272,22 @@ export class Boss extends BaseCharacter {
     this.isAttacking = false;
     this.isTakingHit = false;
 
-    console.log('💀 Boss death initiated');
-
-    // Play death animation if available
-    if (this.scene.anims.exists('boss_death_anim')) {
-      this.sprite.play('boss_death_anim');
-      
-      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'boss_death_anim';
-      
+    if (this.scene.anims.exists(BOSS_DEATH_ANIM)) {
+      this.sprite.play(BOSS_DEATH_ANIM);
+      const eventKey = Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + BOSS_DEATH_ANIM;
       const completeHandler = () => {
-        console.log('✅ Boss death animation completed');
         if (onComplete) onComplete();
       };
 
       this.sprite.once(eventKey, completeHandler);
-
-      // Fallback
       this.scene.time.delayedCall(1500, () => {
         this.sprite.off(eventKey, completeHandler);
         completeHandler();
       });
-    } else {
-      // No animation, immediate callback
-      if (onComplete) onComplete();
+      return;
     }
+
+    if (onComplete) onComplete();
   }
 
   getAttacks() {
