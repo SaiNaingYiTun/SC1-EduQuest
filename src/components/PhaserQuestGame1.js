@@ -258,6 +258,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
     let activeQuizArrows = [];
     let activeQuizProjectiles = [];
     let wasOverlappingQuestMaster = false;
+    let hasPlayedQuestMasterSpeak = false;
     let debugGraphics = null;
     const showDebugHitboxes = false;
 
@@ -444,7 +445,15 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
     const playQuestMasterTouchSequence = function () {
       if (!this.sound) return;
       if (!this.cache?.audio?.exists('touch_qm')) {
-        playSfx.call(this, 'qm_speak', { volume: 0.5 });
+        if (!hasPlayedQuestMasterSpeak) {
+          hasPlayedQuestMasterSpeak = true;
+          playSfx.call(this, 'qm_speak', { volume: 0.5 });
+        }
+        return;
+      }
+
+      if (hasPlayedQuestMasterSpeak) {
+        playSfx.call(this, 'touch_qm', { volume: 0.5 });
         return;
       }
 
@@ -453,6 +462,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
       const playSpeak = () => {
         if (hasPlayedSpeak) return;
         hasPlayedSpeak = true;
+        hasPlayedQuestMasterSpeak = true;
         if (touchSound && !touchSound.isDestroyed) {
           touchSound.destroy();
         }
@@ -513,7 +523,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
         'Move with A/D and jump with W. Talk to NPC to get the question!',
         'Attack the correct dark thing with ENTER.',
         'If a dark thing touches you, you retry the question.',
-        'After answering correctly, go collide with the door to continue.',
+        'After answering correctly, go inside the door to continue.',
         'Finally face the BOSS!',
         'Click to begin your quest...',
       ];
@@ -727,7 +737,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
         });
 
         if (promptText) {
-          promptText.setText('Correct. Go collide with the door to continue.');
+          promptText.setText('Correct. Go inside the door to continue.');
           promptText.setColor('#22c55e');
         }
       } else {
@@ -761,7 +771,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
         });
 
         if (promptText) {
-          promptText.setText('Wrong answer. No HP reward. Go collide with the door to continue.');
+          promptText.setText('Wrong answer. No HP reward. Go inside the door to continue.');
           promptText.setColor('#f59e0b');
         }
       }
@@ -1091,7 +1101,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
       quizNpcTitleText = this.add
         .text(quizNPC.x, quizNPC.y - QUEST_MASTER_CONFIG.titleOffsetY, QUEST_MASTER_CONFIG.titleText, {
           fontSize: '20px',
-          color: '#a78bfa',
+          color: '#ef4444',
           fontFamily: 'monospace',
           fontStyle: 'bold',
         })
