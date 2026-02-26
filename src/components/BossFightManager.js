@@ -1087,7 +1087,7 @@ export class BossFightManager {
         this.chestPromptText.destroy();
       }
       this.chestPromptText = this.scene.add
-        .text(640, 540, 'Chest unlocked! Go collide with it to finish.', {
+        .text(640, 540, 'Chest unlocked! Go collect your loot.', {
           fontSize: '22px',
           color: '#fbbf24',
           fontFamily: 'monospace',

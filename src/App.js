@@ -1139,11 +1139,17 @@ function App() {
         .join('\n')}`;
     }
 
-    setTimeout(() => {
-      alert(
-        `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}${bossBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossBonusXp})` : ''}${leveledUp ? `\n\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
-      );
-    }, 100);
+    const completionMessage = [
+      'Quest Complete!',
+      `Score: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)`,
+      `XP Earned: +${xpEarned}${bossBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossBonusXp})` : ''}`,
+      leveledUp ? `Level Up! You are now level ${newLevel}!` : '',
+      itemsText ? itemsText.replace(/^\n+/, '') : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    toast(completionMessage, 'success');
   };
 
   const handleAddItemToInventory = async (studentId, item, overrides = {}) => {
@@ -1380,7 +1386,7 @@ function App() {
                 backdrop-blur-md bg-slate-900/95 text-white animate-slide-in ${style}`}
               >
                 <span className="text-lg leading-none">{icon}</span>
-                <div className="text-sm leading-snug">{t.message}</div>
+                <div className="text-sm leading-snug whitespace-pre-line">{t.message}</div>
               </div>
             );
           })}
@@ -1499,3 +1505,4 @@ function App() {
 }
 
 export default App;
+
