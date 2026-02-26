@@ -4,8 +4,8 @@ import { Character } from '../App';
 
 import warriorSprite from '../sprites/characters/hero_warrior.png';
 import mageSprite from '../sprites/characters/hero_mage.png';
-import archerSprite from '../sprites/characters/hero_rogue.png';
-import witchSprite from '../sprites/characters/hero_cleric.png';
+import archerSprite from '../sprites/characters/hero_archer.png';
+import witchSprite from '../sprites/characters/hero_witch.png';
 
 const characterClasses = [
   {

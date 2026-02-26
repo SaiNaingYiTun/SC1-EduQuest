@@ -41,6 +41,11 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     // Boss fight manager
     let bossFightManager = null;
 
+    const playSfx = function (key, config = {}) {
+      if (!key || !this.sound || !this.cache?.audio?.exists(key)) return;
+      this.sound.play(key, config);
+    };
+
     const formatTime = (seconds) => {
       const mins = Math.floor(seconds / 60);
       const secs = seconds % 60;
@@ -184,8 +189,11 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
 
           const isCorrect = opt.originalIndex === question.correctAnswer;
           if (isCorrect) {
+            playSfx.call(this, 'correct', { volume: 0.55 });
             score += 1;
             playerHP += 100;
+          } else {
+            playSfx.call(this, 'incorrect', { volume: 0.55 });
           }
 
           this.time.delayedCall(500, () => {
@@ -271,6 +279,12 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       this.load.image('boss_healthbar_background', 'assets/sprites/healthbar/boss-healthbar_background.png');
       this.load.image('boss_healthbar_fill', 'assets/sprites/healthbar/boss-healthbar.png');
       this.load.image('boss_healthbar_icon', 'assets/sprites/healthbar/boss-healthbar_Icon.png');
+      this.load.audio('male_hurt', 'assets/sounds/male_hurt.mp3');
+      this.load.audio('female_hurt', 'assets/sounds/female_hurt.mp3');
+      this.load.audio('correct', 'assets/sounds/correct.mp3');
+      this.load.audio('incorrect', 'assets/sounds/incorrect.mp3');
+      this.load.audio('victory', 'assets/sounds/victory.mp3');
+      this.load.audio('defeat', 'assets/sounds/defeat.mp3');
     };
 
     const createQuestScene = function () {
@@ -354,26 +368,18 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
           fontFamily: 'monospace',
         })
         .setOrigin(0.5);
-
-      if (victory) {
-        const victoryItems = [
-          { id: `item_${Date.now()}_1`, name: 'Legendary Sword', description: 'Legendary weapon', icon: '⚔️', rarity: 'epic' },
-          { id: `item_${Date.now()}_2`, name: 'Dragon Scale Armor', description: 'Impenetrable armor', icon: '🛡️', rarity: 'epic' },
-          { id: `item_${Date.now()}_3`, name: 'Crown of Wisdom', description: 'Grants knowledge', icon: '👑', rarity: 'legendary' },
-        ];
-        const item = victoryItems[Math.floor(Math.random() * victoryItems.length)];
-        itemsEarned.push(item);
-
-        this.add        .text(640, 420, `Boss Dropped: ${item.icon} ${item.name}!`, {
-            fontSize: '24px',
-            color: '#a78bfa',
-            fontFamily: 'monospace',
-          })
-          .setOrigin(0.5);
-      }
+      // Legacy hard-coded reward list removed.
 
       this.time.delayedCall(3000, () => {
-        onQuestComplete(quest.id, score, quest.questions.length, timeRemaining, itemsEarned);
+        const bossVictoryBonusXp = victory ? 10 : 0;
+        onQuestComplete(
+          quest.id,
+          score,
+          quest.questions.length,
+          timeRemaining,
+          itemsEarned,
+          bossVictoryBonusXp
+        );
         if (phaserGameRef.current) {
           phaserGameRef.current.destroy(true);
           phaserGameRef.current = null;
@@ -440,6 +446,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
     </div>
   );
 }
+
 
 
 

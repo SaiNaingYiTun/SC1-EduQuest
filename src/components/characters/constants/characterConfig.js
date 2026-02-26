@@ -6,9 +6,9 @@ export const CHARACTER_CONFIG = {
       run: { key: 'warrior_run_anim', sheet: 'warrior_run', frameRate: 12, repeat: -1, frames: { start: 0, end: 5 } },
       jump: { key: 'warrior_jump_anim', sheet: 'warrior_jump', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
       fall: { key: 'warrior_fall_anim', sheet: 'warrior_fall', frameRate: 10, repeat: 0, frames: { start: 0, end: 5 } },
-      attack1: { key: 'warrior_attack_1', sheet: 'warrior_attack1', frameRate: 12, repeat: 0 },
-      attack2: { key: 'warrior_attack_2', sheet: 'warrior_attack2', frameRate: 12, repeat: 0 },
-      attack3: { key: 'warrior_attack_3', sheet: 'warrior_attack3', frameRate: 10, repeat: 0 },
+      attack1: { key: 'warrior_attack_1', sheet: 'warrior_attack1', frameRate: 15, repeat: 0 },
+      attack2: { key: 'warrior_attack_2', sheet: 'warrior_attack2', frameRate: 15, repeat: 0 },
+      attack3: { key: 'warrior_attack_3', sheet: 'warrior_attack3', frameRate: 15, repeat: 0 },
       takeHit: { key: 'warrior_take_hit_anim', sheet: 'warrior_takeHit', frameRate: 10, repeat: 0, frames: { start: 0, end: 2 } },
       death: { key: 'warrior_death_anim', sheet: 'warrior_death', frameRate: 10, repeat: 0, frames: { start: 0, end: 8 } },
     },
@@ -169,18 +169,18 @@ export const BOSS_CONFIG = {
     death: { key: 'boss_death_anim', sheet: 'boss_death', frameRate: 8, repeat: 0, frames: { start: 0, end: 5 } },
   },
   sprites: {
-    idle: { path: 'assets/sprites/war_boss/Idle.png', frameWidth: 200, frameHeight: 200 },
-    run: { path: 'assets/sprites/war_boss/Run.png', frameWidth: 200, frameHeight: 200 },
-    jump: { path: 'assets/sprites/war_boss/Jump.png', frameWidth: 200, frameHeight: 200 },
-    fall: { path: 'assets/sprites/war_boss/Fall.png', frameWidth: 200, frameHeight: 200 },
-    attack1: { path: 'assets/sprites/war_boss/Attack1.png', frameWidth: 200, frameHeight: 200 },
-    attack2: { path: 'assets/sprites/war_boss/Attack2.png', frameWidth: 200, frameHeight: 200 },
-    takeHit: { path: 'assets/sprites/war_boss/Take_Hit.png', frameWidth: 200, frameHeight: 200 },
-    death: { path: 'assets/sprites/war_boss/Death.png', frameWidth: 200, frameHeight: 200 },
+    idle: { path: 'assets/sprites/demon_boss/01_demon_idle/demon_idle_1.png', frameWidth: 288, frameHeight: 160 },
+    run: { path: 'assets/sprites/demon_boss/02_demon_walk/demon_walk_1.png', frameWidth: 288, frameHeight: 160 },
+    jump: { path: 'assets/sprites/demon_boss/02_demon_walk/demon_walk_1.png', frameWidth: 288, frameHeight: 160 },
+    fall: { path: 'assets/sprites/demon_boss/02_demon_walk/demon_walk_1.png', frameWidth: 288, frameHeight: 160 },
+    attack1: { path: 'assets/sprites/demon_boss/03_demon_cleave/demon_cleave_1.png', frameWidth: 288, frameHeight: 160 },
+    attack2: { path: 'assets/sprites/demon_boss/03_demon_cleave/demon_cleave_1.png', frameWidth: 288, frameHeight: 160 },
+    takeHit: { path: 'assets/sprites/demon_boss/04_demon_take_hit/demon_take_hit_1.png', frameWidth: 288, frameHeight: 160 },
+    death: { path: 'assets/sprites/demon_boss/05_demon_death/demon_death_1.png', frameWidth: 288, frameHeight: 160 },
   },
   physics: {
-    bodySize: { width: 20, height: 50 },
-    bodyOffset: { x: 90, y: 72 },
+    bodySize: { width: 50, height: 70 },
+    bodyOffset: { x: 119, y: 88 },
   },
   combat: {
     attacks: [
@@ -188,7 +188,7 @@ export const BOSS_CONFIG = {
       { key: 'boss_attack_2_anim', damage: 60 },
     ],
   },
-  scale: 2.5,
+  scale: 3.5,
 };
 
 

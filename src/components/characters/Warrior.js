@@ -150,11 +150,11 @@ export class Warrior extends BaseCharacter {
 
     // Horizontal movement
     if (this.movementState.direction === -1) {
-      body.setVelocityX(-this.config.physics.moveSpeed);
+      body.setVelocityX(-this.getMoveSpeed());
       this.sprite.setFlipX(true);
       this.movementState.isRunning = true;
     } else if (this.movementState.direction === 1) {
-      body.setVelocityX(this.config.physics.moveSpeed);
+      body.setVelocityX(this.getMoveSpeed());
       this.sprite.setFlipX(false);
       this.movementState.isRunning = true;
     } else {
@@ -242,6 +242,7 @@ export class Warrior extends BaseCharacter {
     console.log(`Warrior took ${amount} damage`);
 
     if (!this.sprite || this.isDead || this.isTakingHit) return;
+    this.playSound('male_hurt', { volume: 0.45 });
 
     this.isTakingHit = true;
     this.isAttacking = false;
