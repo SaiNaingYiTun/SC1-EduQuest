@@ -132,10 +132,7 @@ function App() {
           ...value.character,
           ...(typeof level === 'number' ? { level } : {}),
           ...(typeof xp === 'number' ? { xp } : {}),
-          maxXp:
-            typeof value.character.maxXp === 'number'
-              ? value.character.maxXp
-              : ((typeof level === 'number' ? level : 1) * 100),
+          maxXp: ((typeof level === 'number' ? level : 1) * 100),
         };
       }
 
@@ -328,10 +325,7 @@ function App() {
           ...data.character,
           level,
           xp,
-          maxXp:
-            typeof data.character.maxXp === 'number'
-              ? data.character.maxXp
-              : level * 100
+          maxXp: level * 100
         };
         setCharacters((prev) => ({
           ...prev,
@@ -420,10 +414,7 @@ function App() {
               ...existing,
               level: nextLevel,
               xp: nextXp,
-              maxXp:
-                typeof existing.maxXp === 'number'
-                  ? existing.maxXp
-                  : nextLevel * 100
+              maxXp: nextLevel * 100
             }
           };
         });
@@ -857,7 +848,10 @@ function App() {
         : a
     );
 
-    const inventory = studentInventories[userId] || [];
+    const inventory =
+      overrides.inventoryList ??
+      studentInventories[userId] ??
+      [];
     const progressObj =
       overrides.progressObj ??
       studentProgress[userId] ??
@@ -960,7 +954,14 @@ function App() {
     return `fallback:${name}|${tier}|${itemType}|${sprite}`;
   };
 
-  const handleQuestComplete = async (questId, score, totalQuestions, timeLeft, itemsEarned) => {
+  const handleQuestComplete = async (
+    questId,
+    score,
+    totalQuestions,
+    timeLeft,
+    itemsEarned,
+    bossVictoryBonusXp = 0
+  ) => {
     if (!currentUser || !currentUser.characterId) return;
 
     const quest = quests.find(q => q.id === questId);
@@ -970,7 +971,9 @@ function App() {
     if (!character) return;
 
     const percentage = (score / totalQuestions) * 100;
-    const xpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+    const baseXpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
+    const bossBonusXp = Math.max(0, Number(bossVictoryBonusXp) || 0);
+    const xpEarned = baseXpEarned + bossBonusXp;
     const progressData = await handleUpdateProgress(currentUser.id, questId, score, xpEarned);
 
     const newXp =
@@ -987,10 +990,7 @@ function App() {
       ...character,
       xp: newXp,
       level: newLevel,
-      maxXp:
-        typeof character.maxXp === 'number'
-          ? character.maxXp
-          : newLevel * 100
+      maxXp: newLevel * 100
     };
 
     handleUpdateCharacter(character.id, updatedCharacter);
@@ -1008,19 +1008,22 @@ function App() {
     const existingInventory = studentInventories[currentUser.id] || [];
     const existingKeys = new Set(existingInventory.map((item) => getInventoryItemIdentity(item)));
     const itemsToAdd = (itemsEarned || []).filter((item) => !existingKeys.has(getInventoryItemIdentity(item)));
+    const normalizedItemsToAdd = itemsToAdd.map((item) => ({
+      ...item,
+      equipped: Boolean(item?.equipped ?? false)
+    }));
+    const finalInventory = [...existingInventory, ...normalizedItemsToAdd];
 
-    // Add only non-duplicate earned items to inventory without overwriting fresh xp/progress from backend
-    await Promise.all(
-      itemsToAdd.map((item) =>
-        handleAddItemToInventory(currentUser.id, item, {
-          progress: progressData?.progress,
-          levelInfo: { level: newLevel, xp: newXp }
-        })
-      )
-    );
+    if (normalizedItemsToAdd.length > 0) {
+      setStudentInventories((prev) => ({
+        ...prev,
+        [currentUser.id]: finalInventory
+      }));
+    }
 
     // Check for achievements
     const achievementStateOverrides = {
+      inventoryList: finalInventory,
       progressObj: progressData?.progress,
       levelInfo: { level: newLevel, xp: newXp }
     };
@@ -1058,7 +1061,7 @@ function App() {
 
     setTimeout(() => {
       alert(
-        `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}${leveledUp ? `\n\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
+        `Quest Complete!\n\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\nXP Earned: +${xpEarned}${bossBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossBonusXp})` : ''}${leveledUp ? `\n\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
       );
     }, 100);
   };
