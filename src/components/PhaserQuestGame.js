@@ -5,7 +5,7 @@ import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
 import { Witch } from './characters/Witch';
-import { Boss } from './characters/Boss';
+import { DemonBoss } from './characters/DemonBoss';
 
 export default function PhaserQuestGame({ quest, character, onQuestComplete, onBack }) {
   const gameRef = useRef(null);
@@ -265,7 +265,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Mage.preload(this);
       Archer.preload(this);
       Witch.preload(this);
-      Boss.preload(this);
+      DemonBoss.preload(this);
 
       // Tilemap
       this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
@@ -319,7 +319,7 @@ export default function PhaserQuestGame({ quest, character, onQuestComplete, onB
       Mage.createAnimations(this);
       Archer.createAnimations(this);
       Witch.createAnimations(this);
-      Boss.createAnimations(this);
+      DemonBoss.createAnimations(this);
 
       showIntroDialogue.call(this);
     };

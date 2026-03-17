@@ -3,7 +3,7 @@ import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
 import { Witch } from './characters/Witch';
-import { Boss } from './characters/Boss';
+import { DemonBoss } from './characters/DemonBoss';
 import { FireBoss } from './characters/FireBoss';
 import { ForrestBoss } from './characters/ForrestBoss';
 
@@ -392,7 +392,7 @@ export class BossFightManager {
     if (this.bossType === 'forest') {
       return new ForrestBoss(this.scene, spawnX, spawnY);
     }
-    return new Boss(this.scene, spawnX, spawnY);
+      return new DemonBoss(this.scene, spawnX, spawnY);
   }
 
   getBossIdleAnimationKey() {

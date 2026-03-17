@@ -1,17 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
 export default function QuestsPage({
-  character,
-  onUpdateCharacter,
   studentClasses = [],
   teachers = [],
-  onUnlockAchievement,
   quests = [],
   courses = [],
-  onStartQuest
+  onStartQuest,
+  progress = {}
 }) {
-  const [completedQuests, setCompletedQuests] = useState([]);
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
 
   const getId = (value) => String(value?._id ?? value?.id ?? value ?? '');
@@ -29,63 +26,20 @@ export default function QuestsPage({
     return inEnrolledCourse && matchesCourseFilter;
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem(`completed_quests_${character.id}`);
-    if (saved) {
-      setCompletedQuests(JSON.parse(saved));
+  const completedCount = availableQuests.filter((quest) => {
+    const questId = getId(quest.id || quest._id);
+    return Object.prototype.hasOwnProperty.call(progress || {}, questId);
+  }).length;
+
+  const getQuestProgress = (questId) => {
+    const entry = (progress || {})[questId];
+    if (entry && typeof entry === 'object') {
+      return entry;
     }
-  }, [character.id]);
-
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned, bossVictoryBonusXp = 0) => {
-    const quest = (quests || []).find((q) => getId(q.id || q._id) === String(questId));
-    if (!quest) return;
-
-    const percentage = (score / totalQuestions) * 100;
-    const baseXpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
-    const xpEarned = baseXpEarned + Math.max(0, Number(bossVictoryBonusXp) || 0);
-
-    // Update character
-    const newXp = character.xp + xpEarned;
-    const newLevel = Math.floor(newXp / 100) + 1;
-    const leveledUp = newLevel > character.level;
-
-    onUpdateCharacter(character.id, {
-      xp: newXp,
-      level: newLevel,
-      maxXp: newLevel * 100
-    });
-
-    // Mark quest as completed
-    const newCompleted = [...completedQuests, questId];
-    setCompletedQuests(newCompleted);
-    localStorage.setItem(`completed_quests_${character.id}`, JSON.stringify(newCompleted));
-
-    // Check for achievements
-    if (completedQuests.length === 0) {
-      onUnlockAchievement('first_quest');
+    if (typeof entry === 'number') {
+      return { score: entry };
     }
-    if (percentage === 100) {
-      onUnlockAchievement('perfect_score');
-    }
-    if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
-      onUnlockAchievement('speed_demon');
-    }
-    if (newLevel >= 5) {
-      onUnlockAchievement('level_5');
-    }
-    if (newLevel >= 10) {
-      onUnlockAchievement('level_10');
-    }
-
-    // Show results
-    let itemsText = '';
-    if (itemsEarned.length > 0) {
-      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
-    }
-
-    alert(
-      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${bossVictoryBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossVictoryBonusXp})` : ''}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
-    );
+    return null;
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -106,7 +60,7 @@ export default function QuestsPage({
       <div className="flex items-center justify-between">
         <h2 className="text-4xl text-amber-400 font-pixel">Available Quests</h2>
         <div className="text-purple-200 font-pixel">
-          Completed: {completedQuests.length} / {availableQuests.length}
+          Completed: {completedCount} / {availableQuests.length}
         </div>
       </div>
 
@@ -141,7 +95,11 @@ export default function QuestsPage({
           {availableQuests.map((quest) => {
             const questId = getId(quest.id || quest._id);
             const teacherId = getId(quest.teacherId);
-            const isCompleted = completedQuests.includes(questId);
+            const isCompleted = Object.prototype.hasOwnProperty.call(progress || {}, questId);
+            const questProgress = isCompleted ? getQuestProgress(questId) : null;
+            const totalQuestions = quest.questions?.length || 0;
+            const correctCount = questProgress?.score ?? 0;
+            const correctTotal = questProgress?.totalQuestions ?? totalQuestions;
             const teacher = teachers.find((t) => getId(t.id || t._id) === teacherId);
             const difficultyColor = getDifficultyColor(quest.difficulty);
 
@@ -150,7 +108,7 @@ export default function QuestsPage({
                 key={questId}
                 className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${
                   isCompleted
-                    ? 'border-green-400/50 opacity-75'
+                    ? 'border-green-400/50'
                     : 'border-purple-400/30 hover:border-purple-400/50'
                 }`}
               >
@@ -201,20 +159,24 @@ export default function QuestsPage({
                     <span>{quest.questions.length} Qs</span>
                   </div>
                 </div>
+                {isCompleted && (
+                  <div className="mb-4 text-sm text-emerald-200 font-pixel">
+                    Correct: {correctCount} / {correctTotal || totalQuestions}
+                  </div>
+                )}
 
                 <button
                   onClick={() => onStartQuest && onStartQuest(quest)}
-                  disabled={isCompleted}
                   className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
                     isCompleted
-                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
                       : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
                   }`}
                 >
                   {isCompleted ? (
                     <>
                       <CheckCircle className="w-5 h-5 font-pixel" />
-                      Completed
+                      Retry Quest
                     </>
                   ) : (
                     <>

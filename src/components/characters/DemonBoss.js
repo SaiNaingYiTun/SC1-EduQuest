@@ -19,7 +19,7 @@ const BOSS_AWAKEN_START_TEXTURE = BOSS_DEATH_KEYS[BOSS_DEATH_KEYS.length - 1];
 
 const makeFrames = (keys) => keys.map((key) => ({ key }));
 
-export class Boss extends BaseCharacter {
+export class DemonBoss extends BaseCharacter {
   constructor(scene, x, y) {
     super(scene, x, y, BOSS_CONFIG);
     this.hasAwakened = false;

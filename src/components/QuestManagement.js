@@ -12,7 +12,9 @@ export default function QuestManagement({
   onDeleteQuest,
   onAddItemToInventory,
   quests,
-  selectedCourse
+  selectedCourse,
+  students = [],
+  studentProgress = {}
 }) {
   const toast = useToast();
 
@@ -41,6 +43,7 @@ export default function QuestManagement({
     { question: '', options: ['', '', '', ''], correctAnswer: 0, explanation: '' }
   ]);
   const [localQuests, setLocalQuests] = useState([]);
+  const [expandedQuestId, setExpandedQuestId] = useState(null);
 
   // Delete confirmation state
   const [deletingQuestId, setDeletingQuestId] = useState(null);
@@ -379,11 +382,47 @@ export default function QuestManagement({
         ) : (
           teacherQuests.map((quest) => {
             const difficultyColor = getDifficultyColor(quest.difficulty);
+            const questId = String(quest.id || quest._id || '');
+            const enrolledStudents = students.filter((student) =>
+              (student.studentClasses || []).some(
+                (cid) => String(cid) === String(quest.courseId)
+              )
+            );
+            const completedStudents = enrolledStudents.filter((student) =>
+              Object.prototype.hasOwnProperty.call(
+                studentProgress[student.id] || {},
+                questId
+              )
+            );
+            const completedDetails = completedStudents.map((student) => {
+              const entry = (studentProgress[student.id] || {})[questId];
+              const normalized =
+                entry && typeof entry === 'object'
+                  ? entry
+                  : { score: typeof entry === 'number' ? entry : 0 };
+              const total = normalized.totalQuestions ?? quest.questions?.length ?? 0;
+              const attempts = normalized.attempts ?? 1;
+              const retries = Math.max(0, attempts - 1);
+              return {
+                id: student.id,
+                name: student.name || 'Unnamed Student',
+                score: normalized.score ?? 0,
+                total,
+                retries
+              };
+            });
+            const completedNames = completedDetails.map((student) => student.name).filter(Boolean);
+            const visibleNames = completedNames.slice(0, 6);
+            const remainingCount = Math.max(0, completedNames.length - visibleNames.length);
+            const isExpanded = expandedQuestId === questId;
 
             return (
               <div
                 key={quest.id}
-                className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 border-purple-400/30 backdrop-blur-sm hover:border-purple-400/50 transition-all"
+                onClick={() => {
+                  setExpandedQuestId((prev) => (prev === questId ? null : questId));
+                }}
+                className="bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 border-purple-400/30 backdrop-blur-sm hover:border-purple-400/50 transition-all cursor-pointer"
               >
                 <div className="flex items-start justify-between mb-4">
                   <Scroll className="w-12 h-12 text-amber-400" />
@@ -416,22 +455,52 @@ export default function QuestManagement({
                   </div>
                 </div>
 
+                <div className="mb-4 text-sm text-emerald-200 font-pixel">
+                  Completed: {completedStudents.length} / {enrolledStudents.length}
+                </div>
+                {completedNames.length > 0 && (
+                  <div className="mb-6 text-xs text-emerald-100/90 font-pixel">
+                    {visibleNames.join(', ')}
+                    {remainingCount > 0 ? ` +${remainingCount} more` : ''}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
                   <button
-                    onClick={() => openEditModal(quest)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditModal(quest);
+                    }}
                     className="flex-1 bg-blue-600/30 hover:bg-blue-600/50 border border-blue-400/50 text-white py-2 rounded-lg transition-all flex items-center justify-center gap-2 font-pixel"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
                   </button>
                   <button
-                    onClick={() => handleDelete(quest.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(quest.id);
+                    }}
                     className="flex-1 bg-red-600/30 hover:bg-red-600/50 border border-red-400/50 text-white py-2 rounded-lg transition-all flex items-center justify-center gap-2 font-pixel"
                   >
                     <Trash2 className="w-4 h-4" />
                     Delete
                   </button>
                 </div>
+
+                {isExpanded && (
+                  <div className="mt-4 text-sm text-emerald-100 font-pixel">
+                    {completedDetails.length === 0 ? (
+                      <div>No students have completed this quest yet.</div>
+                    ) : (
+                      completedDetails.map((student) => (
+                        <div key={student.id}>
+                          {student.name} - Correct: {student.score} / {student.total} - Retries: {student.retries}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
