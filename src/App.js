@@ -50,26 +50,6 @@ function App() {
 
   const inflightRequestsRef = useRef(new Map());
 
-  const hashString = useCallback((value) => {
-    let hash = 2166136261;
-    for (let i = 0; i < value.length; i += 1) {
-      hash ^= value.charCodeAt(i);
-      hash = Math.imul(hash, 16777619);
-    }
-    return hash >>> 0;
-  }, []);
-
-  const createSeededRng = useCallback((seed) => {
-    let t = seed >>> 0;
-    return () => {
-      t += 0x6D2B79F5;
-      let r = t;
-      r = Math.imul(r ^ (r >>> 15), r | 1);
-      r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
-      return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
-    };
-  }, []);
-
   const shuffleWithRng = useCallback((items, rng) => {
     const arr = Array.isArray(items) ? items.slice() : [];
     for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -88,10 +68,7 @@ function App() {
   );
 
 
-
-  // -----------------------
   // Backend helpers
-  // -----------------------
 
   const authFetch = useCallback(async (url, options = {}) => {
     const res = await fetch(`${API_URL}${url}`, {
@@ -190,13 +167,13 @@ function App() {
 
 
   const refreshAllUsers = useCallback(async (force = false) => {
-    // 🚀 Request deduplication - prevent multiple simultaneous requests
+    // prevent multiple simultaneous requests
     const cacheKey = '/api/users';
     if (inflightRequestsRef.current.has(cacheKey)) {
       return inflightRequestsRef.current.get(cacheKey);
     }
 
-    // 🚀 Freshness check - skip if data is recent (< 30s)
+    // skip if data is recent (< 30s)
     const now = Date.now();
     if (!force && (now - lastFetchRef.current.users) < 30000) {
       return;
@@ -211,7 +188,6 @@ function App() {
         const normalized = data.map(u => ({ ...u, id: u.id || u._id }));
         setAllUsers(normalized);
 
-        // ✅ Build studentClasses map from backend User.studentClasses
         const nextMap = {};
         for (const u of normalized) {
           if (u.role === 'student') {
@@ -297,12 +273,6 @@ function App() {
     inflightRequestsRef.current.set(url, requestPromise);
     return requestPromise;
   }, [currentUser, authToken, authFetch]);
-
-
-
-
-
-
 
 
   const saveStudentState = async (
@@ -473,10 +443,8 @@ function App() {
     }
   };
 
-  // -----------------------
   // Initial load
-  // -----------------------
-
+ 
   useEffect(() => {
     refreshCourses();
   }, [refreshCourses]);
@@ -525,7 +493,7 @@ function App() {
       setStudentInventories(JSON.parse(savedStudentInventories));
     }
 
-    // Always load quests from backend API (backend is source of truth)
+    // load quests from backend API 
     fetch(`${API_URL}/api/quests`)
       .then(async (res) => {
         if (!res.ok) {
@@ -553,7 +521,6 @@ function App() {
         setCurrentView('dashboard');
       }
 
-      // On reload, sync student state from backend once.
       if (savedUser.role === 'student') {
         fetchStudentState(savedUser.id);
       }
@@ -574,10 +541,8 @@ function App() {
     }
   }, [fetchStudentState]);
 
-  // -----------------------
-  // Persist some state locally
-  // -----------------------
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
+
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -585,9 +550,8 @@ function App() {
     }
   }, [currentUser, currentView]);
 
-  // -----------------------
+
   // Auth & user handling
-  // -----------------------
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role);
@@ -635,7 +599,7 @@ function App() {
         setAuthToken(data.token);
         localStorage.setItem('authToken', data.token);
 
-        // keep local allUsers if other parts of app still rely on it
+        // keep local allUsers 
         setAllUsers((prev) => [...prev, normalizedUser]);
 
         if ((role || selectedRole) === 'student') {
@@ -665,7 +629,7 @@ function App() {
             [normalizedUser.id]: initialLevel
           }));
 
-          // move immediately, then sync student state in background
+          
           setCurrentView('character');
           toast('Syncing your profile in the background...', 'info');
           void saveStudentState(
@@ -676,11 +640,10 @@ function App() {
             initialLevel
           );
         } else {
-          // teacher goes straight to dashboard
           setCurrentView('dashboard');
         }
       } else {
-        // === SIGN IN ===
+        //  SIGN IN 
         const res = await fetch(`${API_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -697,7 +660,7 @@ function App() {
           return;
         }
 
-        const data = await res.json(); // { user, token }
+        const data = await res.json(); 
 
         const backendUser = data.user;
         const normalizedUser = {
@@ -709,13 +672,13 @@ function App() {
         setAuthToken(data.token);
         localStorage.setItem('authToken', data.token);
 
-        // keep local list if you still use allUsers for UI (classes, etc.)
+        // keep local list 
         setAllUsers((prev) => {
           const exists = prev.some((u) => u.id === normalizedUser.id);
           return exists ? prev : [...prev, normalizedUser];
         });
 
-        // for students, load state from backend (achievements, inventory, progress, level)
+        // for students, load state from backend 
         if (normalizedUser.role === 'student') {
           await fetchStudentState(normalizedUser.id);
         }
@@ -778,8 +741,6 @@ function App() {
   const handleCharacterCreation = async (character) => {
     if (!currentUser) return;
 
-
-
     const updatedUser = {
       ...currentUser,
       characterId: character.id
@@ -798,13 +759,13 @@ function App() {
 
     void (async () => {
       try {
-        // Save characterId in backend User document
+        // Save characterId in backend 
         await authFetch(`/api/users/${currentUser.id}/character`, {
           method: 'PUT',
           body: JSON.stringify({ characterId: character.id })
         });
 
-        // Save full character object in student state
+        // Save character in student state
         await fetch(`${API_URL}/api/students/${currentUser.id}/state`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -832,7 +793,7 @@ function App() {
     setAuthToken(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    setCurrentView('admin-login'); // return to admin-login after logout
+    setCurrentView('admin-login'); 
   };
 
   const handleUpdateUser = (updates) => {
@@ -971,13 +932,12 @@ function App() {
         throw new Error('Failed to create quest');
       }
 
-      // Option 1: Fetch all quests from backend to ensure state is up-to-date
       const allQuestsRes = await fetch(`${API_URL}/api/quests`);
       if (allQuestsRes.ok) {
         const allQuests = await allQuestsRes.json();
         setQuests(allQuests);
       } else {
-        // fallback: just add the created quest
+        
         const createdQuest = await response.json();
         setQuests((prev) => [...prev, createdQuest]);
       }
@@ -990,7 +950,6 @@ function App() {
     try {
       const response = await authFetch(`/api/quests/${updatedQuest.id}`, {
         method: 'PUT',
-        // headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedQuest)
       });
 
@@ -1110,7 +1069,6 @@ function App() {
       }));
     }
 
-    // Check for achievements
     const achievementStateOverrides = {
       inventoryList: finalInventory,
       progressObj: progressData?.progress,
@@ -1131,11 +1089,11 @@ function App() {
       handleUnlockAchievement('level_10', achievementStateOverrides);
     }
 
-    // Return to dashboard
+  
     setCurrentView('dashboard');
     setSelectedQuest(null);
 
-    // Show results
+  
     let itemsText = '';
     if (itemsToAdd.length > 0) {
       itemsText = `\n\nItems Earned:\n${itemsToAdd
@@ -1231,11 +1189,7 @@ function App() {
     );
   };
 
-  // -----------------------
   // Helpers
-  // -----------------------
-
-
 
   const getDefaultAchievements = () => [
     {
@@ -1354,21 +1308,15 @@ function App() {
   );
 
 
-
-
-
-
-
-  // -----------------------
   // Render
-  // -----------------------
+
 
   return (
     <ToastCtx.Provider value={toast}>
-      {/* 🌌 App Root */}
+      {/* App Root */}
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-900 to-slate-900 relative">
 
-        {/* 🔔 Toast Overlay */}
+        {/* Toast Overlay */}
         <div className="fixed top-4 right-4 z-[9999] space-y-3 w-[320px]">
           {toasts.map(t => {
             const style =
@@ -1401,7 +1349,7 @@ function App() {
           })}
         </div>
 
-        {/* 👇 APP CONTENT */}
+        {/* APP CONTENT */}
         {currentView === 'role' && (
           <RoleSelection onSelectRole={handleRoleSelect} />
         )}

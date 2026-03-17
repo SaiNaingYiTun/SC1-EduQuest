@@ -209,7 +209,7 @@ const Report = mongoose.model('Report', reportSchema);
 // Add this schema after the Report schema (around line 190)
 const notificationSchema = new mongoose.Schema({
   recipientId: { type: String, required: true }, // who receives the notification
-  type: { type: String, required: true }, // 'report', 'course_approved', etc.
+  type: { type: String, required: true }, 
   title: { type: String, required: true },
   message: { type: String, required: true },
   relatedId: { type: String, default: null }, // report ID, course ID, etc.
@@ -247,7 +247,7 @@ async function resolveSmtpConnectHosts() {
         return ipv4Addresses;
       }
     } catch (_err) {
-      // Fall back to the configured hostname if IPv4 resolution is unavailable.
+      
     }
 
     return [smtpHost];
@@ -588,7 +588,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
         recipientId: teacherId,
         type: 'report',
         title: 'New Student Report',
-        message: `${reporterName} has submitted a report about you in "${courseName || 'a course'}"`,
+        message: `A student has submitted a report about you in "${courseName || 'a course'}"`,
         relatedId: saved._id.toString()
       });
 
@@ -675,7 +675,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
     }
   });
 
-  // Update report status (admin only)
+  
   // Update report status endpoint - add notifications
   app.put('/api/admin/reports/:reportId', authMiddleware, adminOnly, async (req, res) => {
     try {
@@ -871,13 +871,13 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
       // 1) delete quests for this course
       await Quest.deleteMany({ courseId });
 
-      // 2) remove course from students (User.studentClasses is ObjectId[])
+      // 2) remove course from students 
       await User.updateMany(
         { studentClasses: courseId },
         { $pull: { studentClasses: courseId } }
       );
 
-      // 3) remove course from student states (StudentState.studentClasses is String[])
+      // 3) remove course from student states 
       await StudentState.updateMany(
         { studentClasses: String(courseId) },
         { $pull: { studentClasses: String(courseId) } }
@@ -1202,13 +1202,13 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
       // 1) delete quests for this course
       await Quest.deleteMany({ courseId });
 
-      // 2) remove course from students (User.studentClasses is ObjectId[])
+      // 2) remove course from students 
       await User.updateMany(
         { studentClasses: courseId },
         { $pull: { studentClasses: courseId } }
       );
 
-      // 3) remove course from student states (StudentState.studentClasses is String[])
+      // 3) remove course from student states 
       await StudentState.updateMany(
         { studentClasses: String(courseId) },
         { $pull: { studentClasses: String(courseId) } }
@@ -1226,7 +1226,6 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
 
 
   // Get all users (admin only)
-  // Optional filter: ?role=student | teacher
   app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
     try {
       const { role } = req.query;
@@ -1483,7 +1482,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
       const updatedQuest = await Quest.findOneAndUpdate(
         { id: questId },
         updates,
-        { new: true } // return updated doc
+        { new: true } 
       ).lean();
 
       if (!updatedQuest) {
@@ -1524,7 +1523,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
 
       let state = await StudentState.findOne({ studentId }).lean();
 
-      // auto-create if not exists
+      
       if (!state) {
         const created = await StudentState.create({ studentId });
         state = created.toObject();
@@ -1532,7 +1531,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
 
       res.json({
         ...state,
-        studentClasses: state.studentClasses || [] // Add studentClasses to the response
+        studentClasses: state.studentClasses || [] 
       });
     } catch (err) {
       console.error('Error fetching student state:', err);
@@ -1574,7 +1573,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
       console.error('Error saving student state:', err);
       res.status(500).json({ message: 'Failed to save student state' });
     }
-  }); // <-- This closes the endpoint!
+  }); 
 
 
 
@@ -1663,7 +1662,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
 
       if (!courseId) return res.status(400).json({ message: 'courseId is required' });
 
-      // ✅ Check if course is approved
+      // Check if course is approved
       const course = await Course.findById(courseId).lean();
       if (!course) return res.status(404).json({ message: 'Course not found' });
       if (course.status !== COURSE_STATUS.APPROVED) {

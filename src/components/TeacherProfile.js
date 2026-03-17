@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User as UserIcon, Edit2, Save, LogOut } from 'lucide-react';
-import { Character, useToast } from '../App';
+import { useToast } from '../App';
 import { API_URL } from '../api';
 
 
@@ -31,7 +31,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
         },
         body: JSON.stringify({
           name,
-          subjects, // string from input, backend will store as [subjects]
+          subjects, 
         }),
       });
 
@@ -66,7 +66,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
   const CLOUD_NAME = process.env.REACT_APP_CLOUDINARY_CLOUD_NAME;
   const UPLOAD_PRESET = process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET;
 
-  //console.log("Cloudinary config:", CLOUD_NAME, UPLOAD_PRESET);
+
 
 
   const handleFileUpload = async (e) => {
@@ -88,8 +88,7 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", UPLOAD_PRESET);
-      // optional folder override (if not set in preset)
-      // formData.append("folder", "eduquest/avatars");
+  
 
       const res = await fetch(
         `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
@@ -107,13 +106,11 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
         return;
       }
 
-      // Cloudinary returns secure_url
       const imageUrl = data.secure_url;
 
-      // Update UI immediately
       setSelectedAvatar(imageUrl);
 
-      // Save to YOUR backend (MongoDB) so it persists for the user
+      // Save in backend 
       await fetch(`${API_URL}/api/users/${user.id}/profile-pic`, {
         method: "PUT",
         headers: {
@@ -290,26 +287,6 @@ export default function TeacherProfile({ user, onUpdateUser, onLogout, stats }) 
               </div>
             </div>
 
-            {/* Optional direct URL (keep if you still want it) */}
-            <div className="mt-5">
-              <label className="text-sm text-purple-200 block mb-2 font-pixel">Or paste image URL</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="https://..."
-                  className="flex-1 bg-slate-700/50 border border-purple-400/30 rounded-lg px-4 py-2 text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none"
-                  value={selectedAvatar}
-                  onChange={(e) => setSelectedAvatar(e.target.value)}
-                />
-                <button
-                  onClick={() => setShowAvatarPicker(false)}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition-all"
-                  type="button"
-                >
-                  Set
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

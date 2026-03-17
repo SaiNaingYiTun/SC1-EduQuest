@@ -3,9 +3,6 @@ import { Users, Search, UserPlus, Star, Trophy } from 'lucide-react';
 import { useToast } from '../App';
 import { API_URL } from '../api';
 
-
-
-
 export default function StudentOverview({
   user,
   students,
@@ -24,10 +21,7 @@ export default function StudentOverview({
   const [pendingIds, setPendingIds] = useState(new Set());
   const toast = useToast();
 
-
-  // When opening the invite modal, set inviteCourseId to the current filter
   const handleOpenInvite = () => {
-    // If a specific course is selected, use it. If "All Courses" (empty string), use first course or empty.
     setInviteCourseId(
       selectedCourseId && selectedCourseId !== ''
         ? selectedCourseId
@@ -66,7 +60,6 @@ export default function StudentOverview({
 
 
   const displayedStudents = (() => {
-    // Deduplicate by student.id
     const seen = new Map();
     (selectedCourseId
       ? students.filter(
@@ -82,7 +75,6 @@ export default function StudentOverview({
   })();
 
   const availableStudents = (() => {
-    // Deduplicate by student.id
     const seen = new Map();
     allStudents.forEach(s => {
       if (!seen.has(s.id)) seen.set(s.id, s);
@@ -146,13 +138,13 @@ export default function StudentOverview({
         <button
           onClick={handleOpenInvite}
           className=" bg-gradient-to-r from-indigo-500 to-purple-600
-  hover:from-indigo-600 hover:to-purple-700
-  text-white
-  px-6 py-3
-  rounded-full
-  shadow-lg hover:shadow-indigo-500/40
-  transition-all duration-200
-  flex items-center gap-2"
+                      hover:from-indigo-600 hover:to-purple-700
+                      text-white
+                      px-6 py-3
+                      rounded-full
+                      shadow-lg hover:shadow-indigo-500/40
+                      transition-all duration-200
+                      flex items-center gap-2"
         >
           <UserPlus className="w-5 h-5" />
           Invite Student
@@ -222,9 +214,9 @@ export default function StudentOverview({
                                 <span
                                   key={cid}
                                   className="inline-flex items-center
-                           bg-gradient-to-r from-amber-500/90 to-orange-500/90
-                           text-white text-xs font-medium px-3 py-1 rounded-full shadow
-                           border border-white/10 font-pixel"
+                                             bg-gradient-to-r from-amber-500/90 to-orange-500/90
+                                             text-white text-xs font-medium px-3 py-1 rounded-full shadow
+                                             border border-white/10 font-pixel"
                                 >
                                   {course.name}{course.section ? ` (${course.section})` : ''}
                                 </span>
@@ -237,7 +229,7 @@ export default function StudentOverview({
                       </div>
                     </div>
 
-                    {/* Option A: One remove button per card, based on selected course filter */}
+                    {/*One remove button per card, based on selected course filter */}
                     {selectedCourseId ? (
                       <button
                         onClick={() => handleRemoveFromCourse(student.id, selectedCourseId)}
