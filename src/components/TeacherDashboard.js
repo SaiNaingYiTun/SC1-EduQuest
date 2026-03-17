@@ -218,6 +218,8 @@ export default function TeacherDashboard({
             onAddItemToInventory={onAddItemToInventory}
             quests={filteredQuests}
             selectedCourse={selectedCourse}
+            students={filteredStudents}
+            studentProgress={studentProgress}
           />
         )}
 

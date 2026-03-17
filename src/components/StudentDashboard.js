@@ -20,13 +20,13 @@ export default function StudentDashboard({
   studentClasses,
   teachers,
   achievements,
-  onUnlockAchievement,
   quests,
   inventory,
   onEquipInventoryItem,
   onStartQuest,
   courses,
-  authFetch
+  authFetch,
+  progress = {}
 }) {
   const [activeTab, setActiveTab] = useState('home');
 
@@ -97,16 +97,13 @@ export default function StudentDashboard({
 
         {activeTab === 'quests' && character && (
           <QuestsPage
-            user={user}
-            character={character}
-            onUpdateCharacter={onUpdateCharacter}
             studentClasses={studentClasses}
             teachers={teachers}
-            onUnlockAchievement={onUnlockAchievement}
             quests={quests}
             inventory={inventory}
             onStartQuest={onStartQuest}
             courses={courses}
+            progress={progress}
           />
         )}
 

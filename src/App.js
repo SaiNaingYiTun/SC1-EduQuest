@@ -128,6 +128,7 @@ function App() {
 
     const nextClasses = {};
     const nextCharacters = {};
+    const nextProgress = {};
 
     studentsToFetch.forEach((s, i) => {
       const r = results[i];
@@ -150,11 +151,18 @@ function App() {
         };
       }
 
+      if (value.progress && typeof value.progress === 'object') {
+        nextProgress[s.id] = value.progress;
+      }
+
       fetchedStudentStateRef.current.add(s.id);
     });
 
     setStudentClasses(prev => ({ ...prev, ...nextClasses }));
     setCharacters(prev => ({ ...prev, ...nextCharacters }));
+    if (Object.keys(nextProgress).length > 0) {
+      setStudentProgress(prev => ({ ...prev, ...nextProgress }));
+    }
   }, [currentUser, allUsers, courses, authFetch, studentClasses]);
 
 
@@ -372,14 +380,15 @@ function App() {
     }
   }, [API_URL]);
 
-  const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride) => {
+  const handleUpdateProgress = async (studentId, questId, score, xpGainedOverride, totalQuestions) => {
     try {
       const res = await authFetch(`/api/students/${studentId}/progress`, {
         method: 'POST',
         body: JSON.stringify({
           questId,
           score,
-          xpGained: xpGainedOverride
+          xpGained: xpGainedOverride,
+          totalQuestions
         })
       });
 
@@ -1013,7 +1022,7 @@ function App() {
     const baseXpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
     const bossBonusXp = Math.max(0, Number(bossVictoryBonusXp) || 0);
     const xpEarned = baseXpEarned + bossBonusXp;
-    const progressData = await handleUpdateProgress(currentUser.id, questId, score, xpEarned);
+    const progressData = await handleUpdateProgress(currentUser.id, questId, score, xpEarned, totalQuestions);
 
     const newXp =
       typeof progressData?.xp === 'number'
@@ -1393,7 +1402,6 @@ function App() {
               studentClasses={studentClasses[currentUser.id] || []}
               teachers={teachers}
               achievements={achievements[currentUser.id] || []}
-              onUnlockAchievement={handleUnlockAchievement}
               quests={quests}
               inventory={studentInventories[currentUser.id] || []}
               onEquipInventoryItem={(itemId) => handleEquipInventoryItem(currentUser.id, itemId)}
@@ -1416,6 +1424,7 @@ function App() {
               allStudents={allStudentsWithClasses}
               characters={characters}
               studentClasses={studentClasses}
+              studentProgress={studentProgress}
               onInviteStudent={onInviteStudent}
               onCreateQuest={handleCreateQuest}
               onUpdateQuest={handleUpdateQuest}

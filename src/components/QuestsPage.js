@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
 export default function QuestsPage({
@@ -7,9 +7,9 @@ export default function QuestsPage({
   teachers = [],
   quests = [],
   courses = [],
-  onStartQuest
+  onStartQuest,
+  progress = {}
 }) {
-  const [completedQuests, setCompletedQuests] = useState([]);
   const [selectedCourseFilter, setSelectedCourseFilter] = useState('all');
 
   const getId = (value) => String(value?._id ?? value?.id ?? value ?? '');
@@ -35,6 +35,21 @@ export default function QuestsPage({
   }, [character.id]);
 
  
+  const completedCount = availableQuests.filter((quest) => {
+    const questId = getId(quest.id || quest._id);
+    return Object.prototype.hasOwnProperty.call(progress || {}, questId);
+  }).length;
+
+  const getQuestProgress = (questId) => {
+    const entry = (progress || {})[questId];
+    if (entry && typeof entry === 'object') {
+      return entry;
+    }
+    if (typeof entry === 'number') {
+      return { score: entry };
+    }
+    return null;
+  };
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {
@@ -54,7 +69,7 @@ export default function QuestsPage({
       <div className="flex items-center justify-between">
         <h2 className="text-4xl text-amber-400 font-pixel">Available Quests</h2>
         <div className="text-purple-200 font-pixel">
-          Completed: {completedQuests.length} / {availableQuests.length}
+          Completed: {completedCount} / {availableQuests.length}
         </div>
       </div>
 
@@ -89,7 +104,11 @@ export default function QuestsPage({
           {availableQuests.map((quest) => {
             const questId = getId(quest.id || quest._id);
             const teacherId = getId(quest.teacherId);
-            const isCompleted = completedQuests.includes(questId);
+            const isCompleted = Object.prototype.hasOwnProperty.call(progress || {}, questId);
+            const questProgress = isCompleted ? getQuestProgress(questId) : null;
+            const totalQuestions = quest.questions?.length || 0;
+            const correctCount = questProgress?.score ?? 0;
+            const correctTotal = questProgress?.totalQuestions ?? totalQuestions;
             const teacher = teachers.find((t) => getId(t.id || t._id) === teacherId);
             const difficultyColor = getDifficultyColor(quest.difficulty);
 
@@ -98,7 +117,7 @@ export default function QuestsPage({
                 key={questId}
                 className={`bg-gradient-to-br from-purple-800/30 to-blue-800/30 rounded-2xl p-6 border-2 backdrop-blur-sm transition-all hover:scale-105 ${
                   isCompleted
-                    ? 'border-green-400/50 opacity-75'
+                    ? 'border-green-400/50'
                     : 'border-purple-400/30 hover:border-purple-400/50'
                 }`}
               >
@@ -149,20 +168,24 @@ export default function QuestsPage({
                     <span>{quest.questions.length} Qs</span>
                   </div>
                 </div>
+                {isCompleted && (
+                  <div className="mb-4 text-sm text-emerald-200 font-pixel">
+                    Correct: {correctCount} / {correctTotal || totalQuestions}
+                  </div>
+                )}
 
                 <button
                   onClick={() => onStartQuest && onStartQuest(quest)}
-                  disabled={isCompleted}
                   className={`w-full py-3 rounded-lg transition-all flex items-center justify-center gap-2 ${
                     isCompleted
-                      ? 'bg-slate-700 text-gray-400 cursor-not-allowed'
+                      ? 'bg-slate-700 hover:bg-slate-600 text-gray-100'
                       : 'bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-700 hover:to-orange-800 text-white shadow-lg'
                   }`}
                 >
                   {isCompleted ? (
                     <>
                       <CheckCircle className="w-5 h-5 font-pixel" />
-                      Completed
+                      Retry Quest
                     </>
                   ) : (
                     <>
