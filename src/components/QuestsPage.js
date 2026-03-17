@@ -3,10 +3,8 @@ import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-r
 
 export default function QuestsPage({
   character,
-  onUpdateCharacter,
   studentClasses = [],
   teachers = [],
-  onUnlockAchievement,
   quests = [],
   courses = [],
   onStartQuest
@@ -36,57 +34,7 @@ export default function QuestsPage({
     }
   }, [character.id]);
 
-  const handleQuestComplete = (questId, score, totalQuestions, timeLeft, itemsEarned, bossVictoryBonusXp = 0) => {
-    const quest = (quests || []).find((q) => getId(q.id || q._id) === String(questId));
-    if (!quest) return;
-
-    const percentage = (score / totalQuestions) * 100;
-    const baseXpEarned = Math.floor((quest.xpReward * score) / totalQuestions);
-    const xpEarned = baseXpEarned + Math.max(0, Number(bossVictoryBonusXp) || 0);
-
-    // Update character
-    const newXp = character.xp + xpEarned;
-    const newLevel = Math.floor(newXp / 100) + 1;
-    const leveledUp = newLevel > character.level;
-
-    onUpdateCharacter(character.id, {
-      xp: newXp,
-      level: newLevel,
-      maxXp: newLevel * 100
-    });
-
-    // Mark quest as completed
-    const newCompleted = [...completedQuests, questId];
-    setCompletedQuests(newCompleted);
-    localStorage.setItem(`completed_quests_${character.id}`, JSON.stringify(newCompleted));
-
-    // Check for achievements
-    if (completedQuests.length === 0) {
-      onUnlockAchievement('first_quest');
-    }
-    if (percentage === 100) {
-      onUnlockAchievement('perfect_score');
-    }
-    if (quest.timeLimit && timeLeft > quest.timeLimit * 0.5) {
-      onUnlockAchievement('speed_demon');
-    }
-    if (newLevel >= 5) {
-      onUnlockAchievement('level_5');
-    }
-    if (newLevel >= 10) {
-      onUnlockAchievement('level_10');
-    }
-
-    // Show results
-    let itemsText = '';
-    if (itemsEarned.length > 0) {
-      itemsText = `\n\nItems Earned:\n${itemsEarned.map(item => `${item.icon} ${item.name}`).join('\n')}`;
-    }
-
-    alert(
-      `Quest Complete!\\n\\nScore: ${score}/${totalQuestions} (${percentage.toFixed(0)}%)\\nXP Earned: +${xpEarned}${bossVictoryBonusXp > 0 ? ` (Base: +${baseXpEarned}, Boss Bonus: +${bossVictoryBonusXp})` : ''}${leveledUp ? `\\n\\n🎉 Level Up! You are now level ${newLevel}!` : ''}${itemsText}`
-    );
-  };
+ 
 
   const getDifficultyColor = (difficulty) => {
     switch (difficulty) {

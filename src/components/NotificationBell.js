@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, X } from 'lucide-react';
+import { Bell } from 'lucide-react';
 
 export default function NotificationBell({ user, authFetch }) {
   const [notifications, setNotifications] = useState([]);

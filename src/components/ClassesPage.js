@@ -81,7 +81,7 @@ export default function ClassesPage({
         </div>
       </div>
 
-      {/* Main container (like Inventory) */}
+      {/* Main container*/}
       <Panel className="p-6">
         {/* top actions row */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -163,7 +163,7 @@ export default function ClassesPage({
                     className="rounded-2xl border border-white/10 bg-black/20
                                hover:bg-black/25 hover:border-white/20 transition"
                   >
-                    {/* small top accent line (subtle like other pages) */}
+                    {/* small top accent line */}
                     <div className="h-1 rounded-t-2xl bg-gradient-to-r from-amber-400/70 to-purple-400/40" />
 
                     <div className="p-5">

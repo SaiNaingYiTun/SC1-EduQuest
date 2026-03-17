@@ -15,7 +15,6 @@ export default function TeacherDashboard({
   students,
   allStudents,
   characters,
-  studentClasses,
   onInviteStudent,
   onCreateQuest,
   onUpdateQuest,
@@ -27,7 +26,6 @@ export default function TeacherDashboard({
   onRefreshQuests,
   onRefreshStudentClasses,
   onRefreshCourses,
-  onCoursesChange,
 
 }) {
   const [activeTab, setActiveTab] = useState('home');
@@ -229,7 +227,6 @@ export default function TeacherDashboard({
             authFetch={authFetch}
             onCoursesChange={(courses) => {
               setCourses(courses);
-              // Optionally update selectedCourse if needed
               if (courses.length > 0 && (!selectedCourse || !courses.some(c => c._id === selectedCourse._id))) {
                 setSelectedCourse(courses[0]);
               }

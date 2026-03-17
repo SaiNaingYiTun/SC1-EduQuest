@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { User as UserIcon, Edit2, Save, LogOut, Camera } from 'lucide-react';
-import { Character, useToast } from '../App';
+import { useToast } from '../App';
 import { API_URL } from '../api';
 
 

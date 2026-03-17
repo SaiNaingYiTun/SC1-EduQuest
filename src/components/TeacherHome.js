@@ -1,6 +1,4 @@
 import { Users, Scroll, GraduationCap, BookOpen } from 'lucide-react';
-import { User, Character } from '../App';
-
 
 
 export default function TeacherHome({ user, students, characters, selectedCourse, dashboardStats }) {

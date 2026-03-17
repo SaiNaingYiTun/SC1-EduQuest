@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { Home, Scroll, Trophy, User as UserIcon, Users, Package } from 'lucide-react';
-//import { User, Character, Achievement, Quest, Item } from '../App';
 import StudentHome from './StudentHome';
 import QuestsPage from './QuestsPage';
 import LeaderboardPage from './LeaderboardPage';
 import StudentProfile from './StudentProfile';
 import ClassesPage from './ClassesPage';
 import InventoryPage from './InventoryPage';
-//import ReportTeacherModal from './ReportTeacherModal';
+
 
 
 
@@ -30,8 +29,7 @@ export default function StudentDashboard({
   authFetch
 }) {
   const [activeTab, setActiveTab] = useState('home');
-  //const [showReportModal, setShowReportModal] = useState(false);
-  //const [reportingTeacher, setReportingTeacher] = useState(null);
+
 
   const tabs = [
     { id: 'home', label: 'Home', icon: Home },
