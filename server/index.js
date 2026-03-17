@@ -154,10 +154,10 @@ const studentStateSchema = new mongoose.Schema(
     studentId: { type: String, required: true, unique: true },
     character: { type: Object, default: null },
 
-    // progress per quest: { questId: score }
+    // progress per quest: { questId: { score, totalQuestions, attempts } }
     progress: {
       type: Map,
-      of: Number,
+      of: mongoose.Schema.Types.Mixed,
       default: {}
     },
 
@@ -1582,7 +1582,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
   app.post('/api/students/:studentId/progress', async (req, res) => {
     try {
       const { studentId } = req.params;
-      const { questId, score, xpGained } = req.body;
+      const { questId, score, xpGained, totalQuestions } = req.body;
 
       if (!questId || typeof score !== 'number') {
         return res
@@ -1597,7 +1597,19 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
       }
 
       // update progress map
-      state.progress.set(questId, score);
+      const existing = state.progress.get(questId);
+      const normalizedExisting =
+        existing && typeof existing === 'object'
+          ? existing
+          : { score: typeof existing === 'number' ? existing : 0, attempts: 0 };
+
+      const nextAttempts = (normalizedExisting.attempts || 0) + 1;
+      const nextProgress = {
+        score,
+        totalQuestions: typeof totalQuestions === 'number' ? totalQuestions : normalizedExisting.totalQuestions,
+        attempts: nextAttempts
+      };
+      state.progress.set(questId, nextProgress);
 
       // update xp / level
       const gained = typeof xpGained === 'number' ? xpGained : score * 10;

@@ -5,7 +5,7 @@ import { Warrior } from './characters/Warrior';
 import { Mage } from './characters/Mage';
 import { Archer } from './characters/Archer';
 import { Witch } from './characters/Witch';
-import { Boss } from './characters/Boss';
+import { DemonBoss } from './characters/DemonBoss';
 import { FireBoss } from './characters/FireBoss';
 import { ForrestBoss } from './characters/ForrestBoss';
 import { CHARACTER_CONFIG } from './characters/constants/characterConfig';
@@ -1257,7 +1257,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
       Mage.preload(this);
       Archer.preload(this);
       Witch.preload(this);
-      Boss.preload(this);
+      DemonBoss.preload(this);
       FireBoss.preload(this);
       ForrestBoss.preload(this);
 
@@ -1322,7 +1322,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
       Mage.createAnimations(this);
       Archer.createAnimations(this);
       Witch.createAnimations(this);
-      Boss.createAnimations(this);
+      DemonBoss.createAnimations(this);
       FireBoss.createAnimations(this);
       ForrestBoss.createAnimations(this);
 

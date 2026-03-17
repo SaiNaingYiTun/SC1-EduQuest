@@ -191,6 +191,33 @@ export const BOSS_CONFIG = {
   scale: 3.5,
 };
 
+export const FIRE_BOSS_CONFIG = {
+  spriteKey: 'fire_boss',
+  physics: {
+    bodySize: { width: 36, height: 28 },
+    bodyOffset: { x: 28, y: 30 },
+  },
+  combat: {
+    attacks: [{ key: 'fire_boss_attack_anim', damage: 48 }],
+  },
+  scale: 3.5,
+};
+
+export const FORREST_BOSS_CONFIG = {
+  spriteKey: 'forrest_boss',
+  physics: {
+    bodySize: { width: 36, height: 56 },
+    bodyOffset: { x: 44, y: 6 },
+  },
+  combat: {
+    attacks: [
+      { key: 'forrest_boss_spell_anim', damage: 52 },
+      { key: 'forrest_boss_thorn_anim', damage: 56 },
+    ],
+  },
+  scale: 2.3,
+};
+
 
 
 
