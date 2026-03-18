@@ -588,7 +588,7 @@ async function sendPasswordResetEmail(toEmail, rawCode) {
         recipientId: teacherId,
         type: 'report',
         title: 'New Student Report',
-        message: `${reporterName} has submitted a report about you in "${courseName || 'a course'}"`,
+        message: `A student has submitted a report about you in "${courseName || 'a course'}"`,
         relatedId: saved._id.toString()
       });
 

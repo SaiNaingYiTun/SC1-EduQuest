@@ -190,13 +190,13 @@ function App() {
 
 
   const refreshAllUsers = useCallback(async (force = false) => {
-    // 🚀 Request deduplication - prevent multiple simultaneous requests
+    //Request deduplication - prevent multiple simultaneous requests
     const cacheKey = '/api/users';
     if (inflightRequestsRef.current.has(cacheKey)) {
       return inflightRequestsRef.current.get(cacheKey);
     }
 
-    // 🚀 Freshness check - skip if data is recent (< 30s)
+    //Freshness check - skip if data is recent (< 30s)
     const now = Date.now();
     if (!force && (now - lastFetchRef.current.users) < 30000) {
       return;
@@ -211,7 +211,7 @@ function App() {
         const normalized = data.map(u => ({ ...u, id: u.id || u._id }));
         setAllUsers(normalized);
 
-        // ✅ Build studentClasses map from backend User.studentClasses
+        //Build studentClasses map from backend User.studentClasses
         const nextMap = {};
         for (const u of normalized) {
           if (u.role === 'student') {
@@ -577,7 +577,6 @@ function App() {
   // -----------------------
   // Persist some state locally
   // -----------------------
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -622,9 +621,9 @@ function App() {
           return;
         }
 
-        const data = await res.json(); // { user, token }
+        const data = await res.json();
 
-        // normalise so we always have user.id
+        //normalise so we always have user.id
         const backendUser = data.user;
         const normalizedUser = {
           ...backendUser,
@@ -635,11 +634,10 @@ function App() {
         setAuthToken(data.token);
         localStorage.setItem('authToken', data.token);
 
-        // keep local allUsers if other parts of app still rely on it
+        //keep local allUsers if other parts of app still rely on it
         setAllUsers((prev) => [...prev, normalizedUser]);
 
         if ((role || selectedRole) === 'student') {
-          // set up local defaults for achievements/progress/inventory/level
           const defaultAchievements = getDefaultAchievements();
           const initialInventory = [];
           const initialProgress = {};
@@ -709,13 +707,11 @@ function App() {
         setAuthToken(data.token);
         localStorage.setItem('authToken', data.token);
 
-        // keep local list if you still use allUsers for UI (classes, etc.)
         setAllUsers((prev) => {
           const exists = prev.some((u) => u.id === normalizedUser.id);
           return exists ? prev : [...prev, normalizedUser];
         });
 
-        // for students, load state from backend (achievements, inventory, progress, level)
         if (normalizedUser.role === 'student') {
           await fetchStudentState(normalizedUser.id);
         }
@@ -832,7 +828,7 @@ function App() {
     setAuthToken(null);
     localStorage.removeItem('authToken');
     localStorage.removeItem('currentUser');
-    setCurrentView('admin-login'); // return to admin-login after logout
+    setCurrentView('admin-login');
   };
 
   const handleUpdateUser = (updates) => {
@@ -971,13 +967,11 @@ function App() {
         throw new Error('Failed to create quest');
       }
 
-      // Option 1: Fetch all quests from backend to ensure state is up-to-date
       const allQuestsRes = await fetch(`${API_URL}/api/quests`);
       if (allQuestsRes.ok) {
         const allQuests = await allQuestsRes.json();
         setQuests(allQuests);
       } else {
-        // fallback: just add the created quest
         const createdQuest = await response.json();
         setQuests((prev) => [...prev, createdQuest]);
       }
@@ -990,7 +984,6 @@ function App() {
     try {
       const response = await authFetch(`/api/quests/${updatedQuest.id}`, {
         method: 'PUT',
-        // headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedQuest)
       });
 
@@ -1110,7 +1103,6 @@ function App() {
       }));
     }
 
-    // Check for achievements
     const achievementStateOverrides = {
       inventoryList: finalInventory,
       progressObj: progressData?.progress,
@@ -1131,11 +1123,9 @@ function App() {
       handleUnlockAchievement('level_10', achievementStateOverrides);
     }
 
-    // Return to dashboard
     setCurrentView('dashboard');
     setSelectedQuest(null);
 
-    // Show results
     let itemsText = '';
     if (itemsToAdd.length > 0) {
       itemsText = `\n\nItems Earned:\n${itemsToAdd

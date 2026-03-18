@@ -1303,7 +1303,7 @@ export default function PhaserQuestGame({ quest, character, equipment, onQuestCo
       this.load.audio('touch_qm', 'assets/sounds/touch_qm.mp3');
       this.load.audio('qm_speak', 'assets/sounds/qm_speak.mp3');
 
-      this.load.tilemapTiledJSON('map1', 'assets/maps/map1.json');
+     
     };
 
     const createQuestScene = function () {
