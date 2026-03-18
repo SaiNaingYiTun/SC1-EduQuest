@@ -1,9 +1,6 @@
 import { TrendingUp, Users, Award, Target } from 'lucide-react';
-import { User, Character } from '../App';
 
-
-
-export default function ClassAnalytics({ students, characters,selectedCourse }) {
+export default function ClassAnalytics({ students, characters,}) {
   // Calculate analytics
   const totalStudents = students.length;
   const studentsWithCharacters = students.filter(s => s.characterId).length;

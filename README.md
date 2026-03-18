@@ -1,70 +1,173 @@
-# Getting Started with Create React App
+# EduQuest
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+EduQuest is a gamified learning platform where students complete quiz-based quests, earn XP, level up characters, and track progress while teachers manage courses and assessments through role-based dashboards.
+
+## Features
+
+### Student
+- Role-based authentication (register/login)
+- Character selection and leveling system
+- Join classes using `teacher username + OTP`
+- Quest board filtered by enrolled course
+- Quiz quest gameplay (Phaser integration)
+- XP, achievements, inventory, and leaderboard
+- Profile updates and password reset via OTP email
+
+### Teacher
+- Teacher dashboard with course context filters
+- Create/manage courses
+- Create/edit/delete quests
+- Build quizzes manually or upload via CSV
+- Student overview and class analytics
+- Notification center
+
+### Admin
+- Admin login and user management
+- Approve/reject teacher courses
+- Manage reports submitted by students
+- Platform-wide moderation tools
+
+## Tech Stack
+
+- Frontend: React 19, Tailwind CSS, Lucide icons, Recharts
+- Game Layer: Phaser 3
+- Backend: Node.js, Express 5, JWT auth
+- Database: MongoDB + Mongoose
+- Security: bcrypt password hashing, rate limiting
+- Email: SMTP (Nodemailer) or Brevo API
+
+## Project Structure
+
+```text
+SC1-EduQuest/
+  src/                 # React frontend
+  public/              # Static assets, sprites, maps, sounds
+  server/              # Express + MongoDB backend
+  package.json         # Frontend scripts/deps
+  server/package.json  # Backend scripts/deps
+```
+
+## Prerequisites
+
+- Node.js 18+
+- npm 9+
+- MongoDB instance (local or Atlas)
+
+
+
+
+### Vercel
+- https://sc1-eduquest.vercel.app/
+
+-Note 
+Dont do forgot passwords too much cause we use brevo as free tier so limited
+
+
+### GamePlay
+- W - jump
+- A - left
+- D - right
+- Enter - Attack
+
+
+
+# SMTP mode (if MAIL_PROVIDER=smtp)
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_FAMILY=4
+SMTP_CONNECTION_TIMEOUT=15000
+SMTP_GREETING_TIMEOUT=15000
+SMTP_SOCKET_TIMEOUT=20000
+SMTP_USER=your_smtp_user
+SMTP_PASS=your_smtp_password
+SMTP_FROM="EduQuest <noreply@example.com>"
+
+# Brevo mode (if MAIL_PROVIDER=brevo)
+BREVO_API_KEY=your_brevo_api_key
+MAIL_FROM="EduQuest <noreply@example.com>"
+```
+
+## Installation
+
+### 1) Install frontend dependencies
+
+```bash
+npm install
+```
+
+### 2) Install backend dependencies
+
+```bash
+cd server
+npm install
+cd ..
+```
+
+## Running Locally
+
+### Start backend
+
+```bash
+cd server
+npm run dev
+```
+
+Backend runs on `http://localhost:5000` by default.
+
+### Start frontend
+
+```bash
+npm start
+```
+
+Frontend runs on `http://localhost:3000`.
+
+## First-Time Admin Setup
+
+After backend is running and `SETUP_ADMIN_KEY` is set, create the first admin once:
+
+```bash
+curl -X POST http://localhost:5000/api/setup-admin \
+  -H "Content-Type: application/json" \
+  
+```
+
+Notes:
+- This endpoint only works if no admin exists yet.
+- Use a strong password.
+
+## Core API Areas (High-Level)
+
+- Auth: register, login, forgot/reset password
+- Users: profile, character, user listing
+- Courses: teacher CRUD, student join/remove, admin approval flow
+- Quests: CRUD + course-linked questions
+- Student State: progress, XP/level, inventory, achievements
+- Reports/Notifications: student reporting and admin resolution workflow
+- Leaderboard: per-course ranking based on level/XP
 
 ## Available Scripts
 
-In the project directory, you can run:
+### Frontend (`/`)
+- `npm start` - run React app
+- `npm run build` - production build
+- `npm test` - run tests
 
-### `npm start`
+### Backend (`/server`)
+- `npm run dev` - run server with nodemon
+- `npm start` - run server with node
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
 
-### `npm test`
+## Team Demo Flow (Suggested)
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. Teacher logs in and creates a course
+2. Teacher creates a quest for that course
+3. Student joins class via teacher username + OTP
+4. Student completes quest and gains XP/level
+5. Show leaderboard/analytics updates
+6. Admin views users/courses/reports panel
 
-### `npm run build`
+---
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)

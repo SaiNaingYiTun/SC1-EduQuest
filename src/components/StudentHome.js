@@ -1,5 +1,5 @@
 import { Trophy, Star, Zap, BookOpen } from 'lucide-react';
-import { Character, Achievement, User } from '../App';
+
 
 
 

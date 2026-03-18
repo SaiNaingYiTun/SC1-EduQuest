@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Scroll, BookOpen, Edit, Trash2, Clock, Star, X, Upload } from 'lucide-react';
 import Papa from 'papaparse';
-import { User, Quest, Question, Item } from '../App';
 import { API_URL } from '../api';
 import { useToast } from '../App';
 
@@ -10,7 +9,6 @@ export default function QuestManagement({
   onCreateQuest,
   onUpdateQuest,
   onDeleteQuest,
-  onAddItemToInventory,
   quests,
   selectedCourse,
   students = [],
@@ -24,7 +22,6 @@ export default function QuestManagement({
   // Courses from backend
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState('');
 
   // CSV state
   const [csvQuestions, setCsvQuestions] = useState([]);
@@ -81,7 +78,7 @@ export default function QuestManagement({
       }
     }
     fetchCourses();
-    // eslint-disable-next-line
+    
   }, [user, editingQuest]);
 
   useEffect(() => {
@@ -678,14 +675,14 @@ export default function QuestManagement({
 
                     {csvError && (
                       <div className="text-red-400 text-sm bg-red-900/20 border border-red-400/30 rounded px-3 py-2 font-pixel">
-                        ❌ {csvError}
+                         {csvError}
                       </div>
                     )}
 
                     {csvQuestions.length > 0 && (
                       <>
                         <div className="text-green-400 text-sm bg-green-900/20 border border-green-400/30 rounded px-3 py-2 font-pixel">
-                          ✅ {csvQuestions.length} questions loaded
+                           {csvQuestions.length} questions loaded
                         </div>
                         <div>
                           <label className="block text-purple-100 text-sm mb-2 font-pixel">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Scroll, Clock, Star, Trophy, Play, CheckCircle, Filter } from 'lucide-react';
 
 export default function QuestsPage({
+  character,
   studentClasses = [],
   teachers = [],
   quests = [],
@@ -26,6 +27,14 @@ export default function QuestsPage({
     return inEnrolledCourse && matchesCourseFilter;
   });
 
+  useEffect(() => {
+    const saved = localStorage.getItem(`completed_quests_${character.id}`);
+    if (saved) {
+      setCompletedQuests(JSON.parse(saved));
+    }
+  }, [character.id]);
+
+ 
   const completedCount = availableQuests.filter((quest) => {
     const questId = getId(quest.id || quest._id);
     return Object.prototype.hasOwnProperty.call(progress || {}, questId);
