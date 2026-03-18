@@ -59,7 +59,7 @@ export class BossFightManager {
     this.lastPlayerAttackTime = 0;
     this.lastBossAttackTime = 0;
     this.bossAttackTimer = 0;
-    this.bossAttackCooldown = 3600; // Slower cadence so attacks feel heavier
+    this.bossAttackCooldown = 3600;
     this.bossChaseSpeed = 125;
     this.bossDashSpeed = 240;
     this.bossJumpVelocity = -420;
@@ -117,7 +117,7 @@ export class BossFightManager {
     this.forrestThornAttackActive = false;
     this.forrestThornAttackHasHit = false;
 
-    // Boss fight spawn points (edit these to move spawn locations).
+    // Boss fight spawn points .
     this.spawnPoints = this.bossVariant.spawnPoints || config.spawnPoints || {
       player: { x: 50, y: 410 },
       boss: { x: 1100, y: 530 },
@@ -1010,7 +1010,7 @@ export class BossFightManager {
     }
   }
 
-  // ✅ Helper function to draw debug boxes
+  // Helper function to draw debug boxes
   drawDebugBox(graphics, sprite, color) {
     if (!sprite || !sprite.body) return;
 

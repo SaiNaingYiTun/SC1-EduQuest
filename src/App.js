@@ -167,7 +167,7 @@ function App() {
 
 
   const refreshAllUsers = useCallback(async (force = false) => {
-    // prevent multiple simultaneous requests
+    //Request deduplication - prevent multiple simultaneous requests
     const cacheKey = '/api/users';
     if (inflightRequestsRef.current.has(cacheKey)) {
       return inflightRequestsRef.current.get(cacheKey);
@@ -586,9 +586,9 @@ function App() {
           return;
         }
 
-        const data = await res.json(); // { user, token }
+        const data = await res.json();
 
-        // normalise so we always have user.id
+        //normalise so we always have user.id
         const backendUser = data.user;
         const normalizedUser = {
           ...backendUser,
@@ -603,7 +603,6 @@ function App() {
         setAllUsers((prev) => [...prev, normalizedUser]);
 
         if ((role || selectedRole) === 'student') {
-          // set up local defaults for achievements/progress/inventory/level
           const defaultAchievements = getDefaultAchievements();
           const initialInventory = [];
           const initialProgress = {};
@@ -672,13 +671,12 @@ function App() {
         setAuthToken(data.token);
         localStorage.setItem('authToken', data.token);
 
-        // keep local list 
+         
         setAllUsers((prev) => {
           const exists = prev.some((u) => u.id === normalizedUser.id);
           return exists ? prev : [...prev, normalizedUser];
         });
 
-        // for students, load state from backend 
         if (normalizedUser.role === 'student') {
           await fetchStudentState(normalizedUser.id);
         }
@@ -937,7 +935,6 @@ function App() {
         const allQuests = await allQuestsRes.json();
         setQuests(allQuests);
       } else {
-        
         const createdQuest = await response.json();
         setQuests((prev) => [...prev, createdQuest]);
       }
@@ -1089,11 +1086,9 @@ function App() {
       handleUnlockAchievement('level_10', achievementStateOverrides);
     }
 
-  
     setCurrentView('dashboard');
     setSelectedQuest(null);
 
-  
     let itemsText = '';
     if (itemsToAdd.length > 0) {
       itemsText = `\n\nItems Earned:\n${itemsToAdd
